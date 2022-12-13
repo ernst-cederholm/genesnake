@@ -52,10 +52,10 @@ def make_new_model(network,combines,names=None):
 
     # remove any . in the names in combinations as . can not be used in variable names
     combines = {
-    key.replace(".", ""): [v.replace(".","") for v in value] for key, value in combines.items()
+    str(key).replace(".", ""): [str(v).replace(".","") for v in value] for key, value in combines.items()
     }
     # same for names
-    names = [i.replace(".","") for i in names]
+    names = [str(i).replace(".","") for i in names]
     
     # Define a number of inital values and other small things 
     model = """def model(y,t,alphas,mis,ris,ns,ks,lambda_RNA,lambda_P,comb_mat,pert):    

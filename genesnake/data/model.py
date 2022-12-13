@@ -9,8 +9,11 @@ import scipy.stats as stats
 import pandas as pd
 import numpy as np
 import itertools
+import pickle
 import types
-
+import json
+#!# remove this
+import sys
 
 class GRNmodel(object):
     """
@@ -30,14 +33,14 @@ class GRNmodel(object):
         """
         self.steady_state_RNA = None
         self.steady_state_prot = None    
-        self.model = None    
+        self.ODEmodel = None    
         self.parameters = self.param(self)
         self.network = None
         self.genes = list()
-        self._runing_model = None
+        self._runing_ODEmodel = None
         self.perturbation = None
     
-    def make_model(network,*args,**kwargs):
+    def make_ODEmodel(network,*args,**kwargs):
         """
         add a bunch of documentation here
         """
@@ -80,7 +83,7 @@ class GRNmodel(object):
                                    
                 combines = self.parameters.generateSP("combinations",network=network,max_comb=max_comb,comb_prob=comb_prob,names=names)
             
-            self.model= make_new_model(network,combines,names)
+            self.ODEmodel= make_new_model(network,combines,names)
         
         elif isinstance(network, pd.DataFrame) or isinstance(network, np.ndarray):
             network = network
@@ -124,26 +127,28 @@ class GRNmodel(object):
             savemodel.parameters.combinations = combines
             savemodel.genes = names
             # and the model it self 
-            savemodel.model = make_new_model(network,combines,names)
+            savemodel.ODEmodel = make_new_model(network,combines,names)
             
             return(savemodel)
         
         else:
             raise TypeError("Input to genesnake.GRNmodel.make_model must be of type numpy.ndarray or pandas.DataFrame.")
-        
-        
-    def _start_model(self):
+    
+    
+    def _start_ODEmodel(self):
         """
         function for converting the GRNmodel.model from a string to a runing function 
         Takes no input and as output adds the model to the runing_model variable. 
         """
         # make an empty dict to store the dunction in 
         mod_func= {}
+        print(sys.getsizeof(self.ODEmodel))
+        
         # start the function in the dict 
-        exec(self.model,mod_func)
+        exec(self.ODEmodel,mod_func)
         # add the function to the class name space 
-        setattr(self,"runing_model",mod_func["model"])
-    
+        setattr(self,"_runing_ODEmodel",mod_func["model"])
+        
     
     def train(self):
         """
@@ -151,19 +156,20 @@ class GRNmodel(object):
         Takes no input as it will lift all parameters from the class
         gives no output other than adding the steady state attributes to the model 
         """
-
+                
+        #!# add warnings about missing parameters. 
+        
         # if the model is not a function start it up and add it to name space via _start_model
-        if self.runing_model==None:
-            self._start_model()
+        if self._runing_ODEmodel==None:
+            self._start_ODEmodel()
         # set all perturbation to 0 meaning no change
         perts = np.zeros(len(self.genes)).tolist()
         # merge RNA and prot in to a single list so that
         # both can be updated with each ODE time step
         y = self.parameters.start_rna+self.parameters.start_prot
         
-        
         # run the model using odeint with all the set parameters
-        ss = odeint(self.runing_model,y,self.parameters.time,
+        ss = odeint(self._runing_ODEmodel,y,self.parameters.time,
                     (self.parameters.alphas,
                      self.parameters.max_rna_exp,
                      self.parameters.max_prot_exp,
@@ -203,7 +209,7 @@ class GRNmodel(object):
             perts = self.perturbation[self.perturbation.columns[i]].values.tolist()     
             
             # and run the ODE model from steady state to max time 
-            exp = odeint(self.runing_model,y,self.parameters.time,
+            exp = odeint(self._runing_ODEmodel,y,self.parameters.time,
                     (self.parameters.alphas,
                      self.parameters.max_rna_exp,
                      self.parameters.max_prot_exp,
@@ -233,9 +239,267 @@ class GRNmodel(object):
         add documentation
         """
         setattr(self,"perturbation",getattr(pertgen,'{}'.format(scheme))(self.genes,reps,sign))
+    
+    
+    def _json_save(self,file=None):
+        """
+        Function to save the model to a json file that can later be loaded in to the model. This can both be used 
+        to reuse a model and create new models with underlying parameters and such. 
+        INPUT: 
+            self - a model to be saved. Can not save an empty un-initilized model for obvious reasons
+            file - a string with the path to save the json to 
+        OUTPUT: 
+            saves file.json with all attributes in the GRNmodel. 
+        """
+        # first create a dict to store all data in after it is sterilized
+        save_dict = dict()
+        # as the pandas dataframes needs to be turned to numpy each element is loped over and cleande
+        for key in self.__dict__.keys():
+            # as the _running_model is a function it can not be saved 
+            if key == "_runing_ODEmodel":
+                continue
+            # then as parameters is a bunch of nested attributes we creata a sub dict of that
+            elif key == "parameters":
+                # start a parameters dict
+                pa = dict()
+                
+                for k in self.__dict__["parameters"].__dict__.keys():
+                    # again skip the internals and unsaved objects
+                    if k == "_model_self":
+                        continue
+                    else:
+                        pa[k] = self.__dict__["parameters"].__dict__[k]
+                # then add that to the save_dict
+                save_dict["parameters"] = pa
+            # network and perturbation can only be pandas, check if these are indeed pandas.DataFrames
+            elif key == "network":
+                if isinstance(self.__dict__[key],pd.DataFrame):
+                    save_dict["network"] = self.__dict__[key].values.tolist()
+                else:
+                    save_dict["network"] = self.__dict__[key]
+            elif key == "perturbation":
+                if isinstance(self.__dict__[key],pd.DataFrame):
+                    save_dict["perturbation"] = self.__dict__[key].values.tolist()
+                    save_dict["perturbation_header"] = list(self.__dict__[key].columns)
+                else:
+                    save_dict["network"] = self.__dict__[key]
+                    save_dict["perturbation_header"] = None
+            # anything else is just a list so it can be saved directly in the save_dict
+            else:
+                save_dict[key] = self.__dict__[key]
         
+        # make the model in to a json object
+        save_data = json.dumps(save_dict,indent=4)
+        # write to file
+        save_file = open(file,"w+")
+        save_file.write(save_data)
+        save_file.close()
+    
+    
+    def _pickle_save(self,file):
+        """
+        Function to save the model to a pickle file that can later be loaded in to the model. This can both be used 
+        to reuse a model and create new models with underlying parameters and such. 
+        INPUT: 
+            self - a model to be saved. Can not save an empty un-initilized model for obvious reasons
+            file - a string with the path to save the pickle to 
+        OUTPUT: 
+            saves file.pickle with all attributes in the GRNmodel. 
+        """
+        # first create a dict to store all data in after it is sterilized
+        save_dict = dict()
+        # as the pandas dataframes needs to be turned to numpy each element is loped over and cleande
+        for key in self.__dict__.keys():
+            # as the _running_model is a function it can not be saved 
+            if key == "_runing_ODEmodel":
+                continue
+            # then as parameters is a bunch of nested attributes we creata a sub dict of that
+            elif key == "parameters":
+                # start a parameters dict
+                pa = dict()
+                
+                for k in self.__dict__["parameters"].__dict__.keys():
+                    # again skip the internals and unsaved objects
+                    if k == "_model_self":
+                        continue
+                    else:
+                        pa[k] = self.__dict__["parameters"].__dict__[k]
+                # then add that to the save_dict
+                save_dict["parameters"] = pa
+            # network and perturbation can only be pandas, check if these are indeed pandas.DataFrames
+            elif key == "network":
+                if isinstance(self.__dict__[key],pd.DataFrame):
+                    save_dict["network"] = self.__dict__[key].values.tolist()
+                else:
+                    save_dict["network"] = self.__dict__[key]
+            elif key == "perturbation":
+                if isinstance(self.__dict__[key],pd.DataFrame):
+                    save_dict["perturbation"] = self.__dict__[key].values.tolist()
+                    save_dict["perturbation_header"] = list(self.__dict__[key].columns)
+                else:
+                    save_dict["network"] = self.__dict__[key]
+                    save_dict["perturbation_header"] = None
+            # anything else is just a list so it can be saved directly in the save_dict
+            else:
+                save_dict[key] = self.__dict__[key]
         
+        file = open(file,"wb+")
+        pickle.dump(save_dict,file)
+        file.close()
+    
+    
+    def save(self,file=None,kind=None):
+        """
+        Function that acts as a wraper for the two options to save data from the GRNmodel. 
+        It either creates a json file or a pickle file with all parameters. 
+        INPUT: 
+            file - A file name or a file path to save the data to 
+            kind -[optional]- The type of file to create, can be either json or pickle. Default: json
+        OUTPUT:
+            Function creates a file on the hardrive based on file input 
+        """
         
+        # make sure the file to save to is defined 
+        if file is None:
+            raise ValueError("Attempted to save to None in genesnake.GRNmodel.save. Add a file name to save model.")
+        
+        if kind is None:
+            if file.endswith(".json"):
+                kind = "json"
+            elif file.endswith(".pickle"):
+                kind = "pickle"
+            else:
+                raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
+        else:
+            raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
+        
+        if kind=="json":
+            self._json_save(file)
+        elif kind == "pickle":
+            self._pickle_save(file)
+        else:
+            raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
+    
+    
+    def _pickle_load(file):
+        """
+        Function for loading a pickle file with the model and parameters in to a GRNmodel object. 
+        It is primarily aimed at loading saved GRNmodels from the GRNmodel.save function but will
+        work with any pickle file with the right keys present. 
+        INPUT: 
+            file - the file name or file path of the file to load
+        OUTPUT: 
+            loadmodel - a GRNmodel object containg the attributes loaded from the pickle file
+        """
+        
+        file = open(file,"rb")
+        data = pickle.load(file)
+        file.close()
+        
+        loadmodel = GRNmodel._dict_to_model(data)
+        return loadmodel
+    
+    
+    def _json_load(file):
+        """
+        Function for loading a JSON file with the model and parameters in to a GRNmodel object. 
+        It is primarily aimed at loading saved GRNmodels from the GRNmodel.save function but will
+        work with any json file with the right keys present. 
+        INPUT: 
+            file - the file name or file path of the file to load
+        OUTPUT: 
+            loadmodel - a GRNmodel object containg the attributes loaded from the json file
+        """
+        file = open(file,"r")
+        data = json.load(file)
+        file.close()
+        
+        loadmodel = GRNmodel._dict_to_model(data)
+        return loadmodel
+    
+    
+    def _dict_to_model(data):
+        """
+        Function that turns a loaded dict from a GRNmodel saved model to an actual model 
+        INPUT: 
+            data - a dictonary with all the attributes to add to a GRNmodel object 
+        OUTPUT: 
+            loadmodel - a GRNmodel object with all the attributes from the dictonary
+        """
+        
+        # start a model class and return that.
+        loadmodel = GRNmodel.__new__(GRNmodel)
+        # start a super class of the class 
+        super(GRNmodel,loadmodel).__init__()
+        # and then start the class it self
+        # a bit odd but requiered to make python behave. 
+        loadmodel.__init__(loadmodel)
+        
+        # loop over each key in the loaded data dict  
+        for key in data.keys():
+            # and add it to the right key in the GRNmodel
+            # the parameters attribute has a special loading as it contains multiple subheadings
+            if key == "parameters":
+                for k in data[key].keys():
+                    setattr(loadmodel.parameters,k,data[key][k])
+            else:
+                setattr(loadmodel,key,data[key])
+        
+        # once all attributes are set we convert the network and perturbation to pandas
+        loadmodel.network = pd.DataFrame(loadmodel.network)
+        # if we have genes use these to set the network names
+        if len(loadmodel.genes) == loadmodel.network.shape[0]:
+            loadmodel.network.index = loadmodel.genes
+            loadmodel.network.columns = loadmodel.genes
+            
+        loadmodel.perturbation = pd.DataFrame(loadmodel.perturbation)
+        if len(loadmodel.genes) == loadmodel.perturbation.shape[0]:
+            loadmodel.perturbation.index = loadmodel.genes
+        if loadmodel.perturbation_header is not None:
+            if len(loadmodel.perturbation_header) == loadmodel.perturbation.shape[1]:
+                loadmodel.perturbation.columns = loadmodel.perturbation_header
+        
+        # then remove the perturbation_header attribute as it only exists to save the header
+        delattr(loadmodel,"perturbation_header")
+        
+        # if there is a model and steady state values start the model up 
+        if loadmodel.ODEmodel is not None and loadmodel.steady_state_RNA is not None:
+            loadmodel._start_ODEmodel()
+        
+        return loadmodel
+    
+    
+    def load(file=None,kind=None):
+        """
+        Function that reads a json file, starts a GRNmodel class and parse the data in to the GRNmodel object 
+        INPUT: 
+            file - the file to be read 
+            kind -[optional]- The type of file [json or pickle] to be read. If not given this will be the end of file. 
+                              If the end of file is neither .json or .pickle the function will crash. 
+        OUTPUT: 
+            loadmodel - A GRNmodel object with the data from the json file added to each attribute
+        """
+            
+        if kind is None:
+            if file.endswith(".json"):
+                kind = "json"
+            elif file.endswith(".pickle"):
+                kind = "pickle"
+            else:
+                raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
+        elif kind != "json" or kind != "pickle":
+            raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
+        
+        if kind == "json":
+            loadmodel = GRNmodel._json_load(file)
+        elif kind == "pickle":
+            loadmodel = GRNmodel._pickle_load(file)
+        else:
+            raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
+        
+        return loadmodel
+    
+    
     class param(object):
         
         
