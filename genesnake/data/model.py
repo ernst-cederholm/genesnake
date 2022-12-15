@@ -90,6 +90,8 @@ class GRNmodel(object):
             i = 0
             if "genes" in kwargs.keys():
                 names = kwargs["genes"]
+            elif isinstance(network, pd.DataFrame):
+                names=list(network.columns)
             elif i < len(args):
                 if isinstance(args[i],list):
                     names = args[i]
@@ -113,7 +115,6 @@ class GRNmodel(object):
                         comb_prob = 0.3
                             
                 combines = pargen.make_combinations(network,max_comb=max_comb,comb_prob=comb_prob,names=names)
-            
             
             # start a model class and return that.
             savemodel = GRNmodel.__new__(GRNmodel)

@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import sys
 import joblib
-sys.path.insert(0, "../src")
+#sys.path.insert(0, "../src")
 
-from .auxilary_functions import functions as f
+from . import auxilary_functions as f
 # from generation_algorithm import * # this is just bad coding, why not just put the functions in the order they are called..? 
 
 from copy import deepcopy
@@ -69,7 +69,6 @@ def get_network_nucleus(interaction_matrix, motifs, motifs_network, min_size, ra
 
 def get_network_params(interaction_matrix, config_file, verbose=False,motif_search=True,known_motifs=False):
     # motif search
-    print("network")
     if motif_search:
         motifs = f.motif_search(
             config_file, interaction_matrix, batch_size=10000, verbose=False,
@@ -1281,7 +1280,7 @@ def generate_artificial_network(
         #print(matrix_motifs['030C'])
         print(f"ffl_perc: {ffl_perc}")
         print(f"links_per_node: {links_per_node}")
-    print(f"Network has been successfully generated!\nTotal time spent: {datetime.now() - init_time}")
+        print(f"Network has been successfully generated!\nTotal time spent: {datetime.now() - init_time}")
     
     #in-degree
     in_degree = []
