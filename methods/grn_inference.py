@@ -1,37 +1,18 @@
-# MG
-# load libraries
-
 import numpy as np
 import pandas as pd
 import sys
-import networkx as nx
-import matplotlib.pyplot as plt
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import ElasticNet
 
-# sample Y matrix (sY) 4x4 for 1 replicate
-# 1st replicate
-sY1 = pd.DataFrame({"G1": [-1, 0, -0.65, 0],
-                    "G2": [-0.2, -0.98, 0, 0.01],
-                    "G3": [-0.1, 0.09, -1, 0.2],
-                    "G4": [0, -0.09, 0.1, -0.96]})
-# 2nd replicate
-sY2 = pd.DataFrame({"G1_2": [-0.9, 0.1, -0.7, 0],
-                    "G2_2": [-0.05, -1, 0, 0.4],
-                    "G3_2": [0, -0.04, -0.88, 0.6],
-                    "G4_2": [0, 0.02, 0.3, -0.99]})
-# merge replicates
-sY = pd.concat([sY1, sY2], axis=1)
 
-# sample P matrix (sP) 4x8
-sP1 = np.eye(4, 4)  # create matrix with 1's on diagonal (for 1 replicate)
-sP1 = pd.DataFrame(sP1)
-sP = -pd.concat([sP1, sP1], axis=1)  # as two replicates
-
-
-# make N networks under various cutoffs using vector of zeta values as thresholds
-# auto means that it takes 100 thresholds between 0 and maximum absolute value from the full network
-def handle_zeta(A, zvec, zvec_auto=False):
+def cutoff_handler(A, zvec, zvec_auto=False):
+    """
+    Create N networks under various cutoffs using vector of so-called zeta values as thresholds
+    INPUT:
+        A - network
+        zvec - zeta vector
+        zvec_auto - 100 lineary-spaced thresholds between 0 and absolute maximum value taken from the full network
+    """
     aests = []
     if (zvec_auto):
         zvec = np.linspace(0, max(abs(A)), 100)
@@ -47,17 +28,24 @@ def handle_zeta(A, zvec, zvec_auto=False):
     return aests
 
 
-# function for inferring networks
-def grn_inference(Y, P, method, zvec):
+def infer_networks(Y, P, method, zvec):
+    """
+    Function for inferring networks with various methods
+    INPUT:
+        Y - gene expressions, where columns are experiments and rows are genes
+        P - binary matrix of perturbations corresponding to Y
+        method - inference method to apply
+        zvec - vector of zeta values for cutoff
+    """
     if method == "lsco":  # least squares
         aest = np.matmul(-P, np.linalg.pinv(Y))
-        aests = handle_zeta(aest, zvec, False)
+        aests = cutoff_handler(aest, zvec, False)
     if method == "lscon":  # normalized least squares
         aest = np.matmul(-P, np.linalg.pinv(Y))
         aest = pd.DataFrame(aest)
         for column in aest:
             aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
-        aests = handle_zeta(aest, zvec, False)
+        aests = cutoff_handler(aest, zvec, False)
     if method == "zscore":  # Z-score
         outNet = []
         P2 = P.transpose()
@@ -67,7 +55,7 @@ def grn_inference(Y, P, method, zvec):
             tmpAest = np.divide((np.mean(Y2.iloc[inds], axis=0) - np.mean(Y, axis=1)), np.std(Y, axis=1))
             outNet.append(tmpAest)
         aest = pd.DataFrame(outNet).transpose()
-        aests = handle_zeta(aest, zvec, False)
+        aests = cutoff_handler(aest, zvec, False)
     if method == "lasso":  # lasso
         aests = []
         for z in zvec:
@@ -88,24 +76,104 @@ def grn_inference(Y, P, method, zvec):
                 outNetTmp.append(lassoMod.coef_)
             outNetTmp = pd.DataFrame(outNetTmp)
             aests.append(outNetTmp)
-    return aests
+    return aests ###
 
+def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
+    """
+    Function for comparing networks and returning performance statistics.
+    Allows to exclude diagonal and/or consider sign in a network.
+    INPUT:
+        nets - inferred networks
+        net0 - gold standard network for comparison
+    """
+    F1o = []
+    MCCo = []
+    FMo = []
+    TPo = []
+    FPo = []
+    TNo = []
+    FNo = []
+    BMo = []
+    DORo = []
+    MKo = []
+    So = []
+    PTo = []
+    TSo = []
+    PPVo = []
+    for n in range(0, len(nets)):
 
-# testing the GRN inference
-zvec = np.logspace(-6, 0, 30)
-Anets = grn_inference(sY, sP, "lasso", zvec)
+        if (exclude_diagonal):  # if diagonal should be excluded for statistics
+            net1 = np.array(nets[n])  # take a single network to compare
+            np.fill_diagonal(net1, 0)
+            net2 = np.array(net0)  # gold standard
+            np.fill_diagonal(net2, 0)
+        else:  # if diagonal should be included for statistics
+            net1 = np.array(nets[n])  # take a single network to compare
+            net2 = np.array(net0)  # gold standard
 
-# simple visualization of network
-# select n-th network and display it
-n = 21
-print(Anets[n])
-net_to_show = pd.DataFrame(Anets[n])
+        S = np.mean(sum(net1))  # sparsity of a network
+        So.append(S)
 
-G = nx.to_networkx_graph(net_to_show.transpose(), create_using=nx.DiGraph()) # directed network
-G.remove_edges_from(nx.selfloop_edges(G))  # remove selfloops
-pos = nx.circular_layout(G) # set up layout
-wgs = nx.get_edge_attributes(G, "weight") # give it a weight
-# draw the network with visible labels, opacity 50% and arrows
-nx.draw(G, pos, with_labels=True, node_size=1000, alpha=0.5, font_weight="bold", arrows=True, arrowstyle='simple', node_color='gray')
-plt.axis('on')
-plt.show()
+        if (signed):  # if sign should be considered
+            net1[net1 > 0] = 1
+            net1[net1 < 0] = -1
+            net2[net2 > 0] = 1
+            net2[net2 < 0] = -1
+            cond1 = net1 == net2
+            cond2 = net1 != 0
+            cond3 = net2 != 0
+
+            TP = sum(sum(cond1 & cond2 & cond3))
+            TPo.append(TP)
+            FP = sum(sum(net1.astype(dtype=bool))) - TP
+            FPo.append(FP)
+            TN = sum(sum(~net1.astype(dtype=bool) & ~net1.astype(dtype=bool)))
+            TNo.append(TN)
+            FN = sum(sum(~net1.astype(dtype=bool))) - TN
+            FNo.append(FN)
+        else:  # if sign should be ignored
+            net1 = net1.astype(dtype=bool)
+            net2 = net2.astype(dtype=bool)
+            TP = sum(sum(net1 & net2))
+            TPo.append(TP)
+            FP = sum(sum(net1)) - TP
+            FPo.append(FP)
+            TN = sum(sum(~net1 & ~net2))
+            TNo.append(TN)
+            FN = sum(sum(~net1)) - TN
+            FNo.append(FN)
+
+        TPR = TP / (TP + FN)
+        TNR = TN / (TN + FP)
+        PPV = TP / (TP + FP)
+        PPVo.append(PPV)
+        NPV = TN / (TN + FN)
+        FNR = FN / (FN + TP)
+        FPR = FP / (FP + TN)
+        FDR = FP / (FP + TP)
+        FOR = FN / (FN + TN)
+        LRp = TPR / FPR
+        LRm = FNR / TNR
+        PT = np.sqrt(FPR) / (np.sqrt(TPR) + np.sqrt(FPR))
+        PTo.append(PT)
+        TS = TP / (TP + FN + FP)
+        TSo.append(TS)
+        ##
+        F1 = 2 * TP / (2 * TP + FP + FN)
+        F1o.append(F1)
+        MCC = np.sqrt(PPV * TPR * TNR * NPV) - np.sqrt(FDR * FNR * FPR * FOR)
+        MCCo.append(MCC)
+        FM = np.sqrt(PPV * TPR)
+        FMo.append(FM)
+        BM = TPR + TNR - 1
+        BMo.append(BM)
+        MK = PPV + NPV - 1
+        MKo.append(MK)
+        DOR = LRp / LRm
+        DORo.append(DOR)
+    data = [TPo, FPo, TNo, FNo, MCCo, F1o, PPVo, FMo, BMo, MKo, DORo, PTo, TSo, So]
+    df = pd.DataFrame(data,
+                      index=['tp', 'fp', 'tn', 'fn', 'mcc', 'f1_score', 'ppv', 'fm', 'bm', 'mk', 'dor', 'pt', 'ts',
+                             's'])
+    df2 = df.replace(np.nan, 0)
+    return df2.transpose()
