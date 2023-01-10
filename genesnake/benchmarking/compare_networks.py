@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
     """
     Function for comparing networks and returning performance statistics.

@@ -5,3 +5,4 @@ Any added class should be imported in to the genesnake/__init__.py file instead.
 """
 
 from .make_FFLATnetwork import make_FFLATnetwork
+ 

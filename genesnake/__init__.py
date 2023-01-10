@@ -19,3 +19,4 @@ from .data.model import GRNmodel
 from . import network
 from . import data
 from . import util 
+from . import benchmarking
