@@ -86,20 +86,33 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
         nets - inferred networks
         net0 - gold standard network for comparison
     """
-    F1o = []
-    MCCo = []
-    FMo = []
     TPo = []
     FPo = []
     TNo = []
     FNo = []
-    BMo = []
-    DORo = []
-    MKo = []
-    So = []
+
+    TPRo = []
+    TNRo = []
+    PPVo = []
+    NPVo = []
+    FNRo = []
+    FPRo = []
+    FDRo = []
+    FORo = []
+    LRpo = []
+    LRmo = []
     PTo = []
     TSo = []
-    PPVo = []
+
+    F1o = []
+    MCCo = []
+    FMo = []
+    BMo = []
+    MKo = []
+    DORo = []
+    So = []
+
+
     for n in range(0, len(nets)):
 
         if (exclude_diagonal):  # if diagonal should be excluded for statistics
@@ -142,38 +155,113 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
             TNo.append(TN)
             FN = sum(sum(~net1)) - TN
             FNo.append(FN)
+        # measures based on confusion matrix
+        # based on https://en.wikipedia.org/wiki/Confusion_matrix
+        # ifs are for handling division by zero
 
-        TPR = TP / (TP + FN)
-        TNR = TN / (TN + FP)
-        PPV = TP / (TP + FP)
+        # sensitivity
+        if (TP + FN) != 0:
+            TPR = TP / (TP + FN)
+        else:
+            TPR = 0
+        TPRo.append(TPR)
+        # specificity
+        if (TN + FP) != 0:
+            TNR = TN / (TN + FP)
+        else:
+            TNR = 0
+        TNRo.append(TNR)
+        # precision
+        if (TP + FP) != 0:
+            PPV = TP / (TP + FP)
+        else:
+            PPV = 0
         PPVo.append(PPV)
-        NPV = TN / (TN + FN)
-        FNR = FN / (FN + TP)
-        FPR = FP / (FP + TN)
-        FDR = FP / (FP + TP)
-        FOR = FN / (FN + TN)
-        LRp = TPR / FPR
-        LRm = FNR / TNR
-        PT = np.sqrt(FPR) / (np.sqrt(TPR) + np.sqrt(FPR))
+        # negative predictive value
+        if (TN + FN) != 0:
+            NPV = TN / (TN + FN)
+        else:
+            NPV = 0
+        NPVo.append(NPV)
+        # miss rate
+        if (FN + TP) != 0:
+            FNR = FN / (FN + TP)
+        else:
+            FNR = 0
+        FNRo.append(FNR)
+        # fall-out
+        if (FP + TN) != 0:
+            FPR = FP / (FP + TN)
+        else:
+            FPR = 0
+        FPRo.append(FPRo)
+        # false discovery rate
+        if (FP + TP) != 0:
+            FDR = FP / (FP + TP)
+        else:
+            FPR = 0
+        FDRo.append(FDR)
+        # false omission rate
+        if (FN + TN) != 0:
+            FOR = FN / (FN + TN)
+        else:
+            FOR = 0
+        FORo.append(FOR)
+        # positive likelihood ratio
+        if FPR != 0:
+            LRp = TPR / FPR
+        else:
+            LRp = 0
+        LRpo.append(LRp)
+        # negative likelihood ratio
+        if TNR != 0:
+            LRm = FNR / TNR
+        else:
+            LRm = 0
+        LRmo.append(LRm)
+        # prevalence threshold
+        if (np.sqrt(TPR) + np.sqrt(FPR)) != 0:
+            PT = np.sqrt(FPR) / (np.sqrt(TPR) + np.sqrt(FPR))
+        else:
+            PT = 0
         PTo.append(PT)
-        TS = TP / (TP + FN + FP)
+        # threat score
+        if (TP + FN + FP) != 0:
+            TS = TP / (TP + FN + FP)
+        else:
+            TS = 0
         TSo.append(TS)
-        ##
-        F1 = 2 * TP / (2 * TP + FP + FN)
+        # F1 score
+        if (2 * TP + FP + FN) != 0:
+            F1 = 2 * TP / (2 * TP + FP + FN)
+        else:
+            F1 = 0
         F1o.append(F1)
+        # MCC
         MCC = np.sqrt(PPV * TPR * TNR * NPV) - np.sqrt(FDR * FNR * FPR * FOR)
         MCCo.append(MCC)
+        # Fowlkes-Mallows index
         FM = np.sqrt(PPV * TPR)
         FMo.append(FM)
+        # informedness
         BM = TPR + TNR - 1
         BMo.append(BM)
+        # markedness
         MK = PPV + NPV - 1
         MKo.append(MK)
-        DOR = LRp / LRm
-        DORo.append(DOR)
-    data = [TPo, FPo, TNo, FNo, MCCo, F1o, PPVo, FMo, BMo, MKo, DORo, PTo, TSo, So]
+        #diagnostic odds ratio
+        if LRm != 0:
+            DOR = LRp / LRm
+            DORo.append(DOR)
+        else:
+            DORo.append(0)
+
+    data = [TPo, FPo, TNo, FNo,
+            TPRo, TNRo, PPVo, NPVo, FNRo, FPRo, FDRo, FORo, LRpo, LRmo, PTo, TSo,
+            F1o, MCCo, FMo, BMo, MKo, DORo, So]
     df = pd.DataFrame(data,
-                      index=['tp', 'fp', 'tn', 'fn', 'mcc', 'f1_score', 'ppv', 'fm', 'bm', 'mk', 'dor', 'pt', 'ts',
-                             's'])
+                      index=['tp', 'fp', 'tn', 'fn',
+                             'tpr', 'tnr', 'ppv', 'npv', 'fnr', 'fpr', 'fdr', 'for', 'lrp', 'lrm','pt','ts',
+                             'f1', 'mcc', 'fm', 'bm', 'mk', 'dor', 's'])
     df2 = df.replace(np.nan, 0)
     return df2.transpose()
