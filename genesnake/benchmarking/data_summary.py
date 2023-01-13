@@ -23,9 +23,10 @@ def data_summary(data):
     else:
         print('Data is distributed normally')
 
-
+    # basic measures of whole data, min, max, mean, median
     print( '▶ min:', min(data), '▶ median: ', st.median(data), '▶ mean: ', st.mean(data), 'max:', max(data))
 
+    # printing some statistics regarding values itself
     print('Number of 0 values', np.isclose(data, 0.0).sum(), '[', round(np.isclose(data, 0.0).sum() / data.size * 100, 2), '%]')
     print('Number of Inf values', np.isinf(data).sum().sum(), '[', round(np.isinf(data).sum().sum() / data.size * 100, 2), '%]')
     print('Number of NaN values', data.isnull().values.sum(), '[', round(data.isnull().values.sum() / data.size * 100, 2), '%]')
