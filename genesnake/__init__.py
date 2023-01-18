@@ -16,7 +16,7 @@ from .data.model import GRNmodel
 # Note any function added to a directory here needs to be added in the
 # corresponding __init__ e.g. for fflat_network the network/__init__
 # must have the line from .FFLAT import FFLAT
-from . import network
+from . import grn
 from . import data
 from . import util 
 from . import benchmarking

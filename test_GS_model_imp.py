@@ -10,34 +10,36 @@ import sys
 import genesnake as gs
 
 # make a random network 
-genes = int(sys.argv[1])
-network = nx.scale_free_graph(genes,0.4,0.3,0.3)
-network = nx.to_pandas_edgelist(network)
-network = network.values
-network = np.hstack((network,np.random.normal(0,1,(network.shape[0],1))))
-print(network)
+#genes = int(sys.argv[1])
+#network = nx.scale_free_graph(genes,0.4,0.3,0.3)
+#network = nx.to_pandas_edgelist(network)
+#network = network.values
+#network = np.hstack((network,np.random.normal(0,1,(network.shape[0],1))))
 
+network = gs.grn.make_random(int(sys.argv[1]),3) #make_FFLATnetwork(network_size=sys.argv[1])
 # turn that in to an adjacency matrix 
-adj = gs.util.numpy_to_adjacency(network)
-
+#adj = gs.util.numpy_to_adjacency(network)
+print(network)
 # build a model by first starting an empty model 
 #model = gs.GRNmodel()
 #model.make_model(adj,comb)
 #print(model.model)
 #exec(model.model,globals())
+#network = gs.network.make_FFLATnetwork(network_size=sys.argv[1])
 
 # build a model from make_model 
-M = gs.GRNmodel.make_model(adj)
-M.genes = np.unique(network[:,0:2]).astype(int).tolist()
-
-#print(M.parameters.start_rna,"|",M.parameters.time,"|",M.parameters.alphas,"|",M.parameters.dis_const)
-#M.parameters.dis_const = 10
-#print(M.parameters.start_rna,"|",M.parameters.time,"|",M.parameters.alphas,"|",M.parameters.dis_const)
-#exec(M.model,globals())
-
+M = gs.GRNmodel.make_ODEmodel(network)
 M.parameters.generateMP()
-M._start_model()
 M.train()
+#print("didn't die")
 M.get_pert("diagonal")
 data = M.experiment()
 print(data["time_100"])
+#M.save("test_GS_GRNmodel.pickle")
+
+#loadmodel = gs.GRNmodel.load("test_GS_GRNmodel.pickle")
+#for key in loadmodel.__dict__.keys():
+#    if key == "parameters":
+#        print(key,loadmodel.__dict__[key].__dict__)
+#    else:
+#        print(key,loadmodel.__dict__[key])
