@@ -19,20 +19,13 @@ import genesnake as gs
 network = gs.grn.make_random(int(sys.argv[1]),3) #make_FFLATnetwork(network_size=sys.argv[1])
 # turn that in to an adjacency matrix 
 #adj = gs.util.numpy_to_adjacency(network)
-print(network)
-# build a model by first starting an empty model 
-#model = gs.GRNmodel()
-#model.make_model(adj,comb)
-#print(model.model)
-#exec(model.model,globals())
-#network = gs.network.make_FFLATnetwork(network_size=sys.argv[1])
-
 # build a model from make_model 
-M = gs.GRNmodel.make_ODEmodel(network)
+M = gs.ODEmodel.make_ODEmodel(network)
+
 M.parameters.generateMP()
 M.train()
-#print("didn't die")
-M.get_pert("diagonal")
+
+M.set_pert("diag",effect=(0.6,0.8),noise=0,multipert=3,reps=2,sign=1)
 data = M.experiment()
 print(data["time_100"])
 #M.save("test_GS_GRNmodel.pickle")
