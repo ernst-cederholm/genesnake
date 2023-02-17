@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.stats import shapiro, kstest
 import statistics as st
-def data_summary(data):
+
+
+def data_summary(data, p_matrix):
     """
     Function for displaying data summary.
     INPUT:
@@ -12,7 +14,7 @@ def data_summary(data):
     ncl = len(data.columns)
     print('Data has', nrw, 'genes (rows)', 'and', ncl, 'samples (columns)')
 
-    if (ncl >= 50):
+    if (ncl >= 50): #plot
         data2 = data.to_numpy()
         test_nor = kstest(data2.flatten(), 'norm')  # >= 50
     else:
@@ -23,12 +25,20 @@ def data_summary(data):
     else:
         print('Data is distributed normally')
 
-    # basic measures of whole data, min, max, mean, median
-    print( '▶ min:', min(data), '▶ median: ', st.median(data), '▶ mean: ', st.mean(data), 'max:', max(data))
+    print('▶ min:', min(data), '▶ median: ', st.median(data), '▶ mean: ', st.mean(data), 'max:', max(data))
 
-    # printing some statistics regarding values itself
-    print('Number of 0 values', np.isclose(data, 0.0).sum(), '[', round(np.isclose(data, 0.0).sum() / data.size * 100, 2), '%]')
-    print('Number of Inf values', np.isinf(data).sum().sum(), '[', round(np.isinf(data).sum().sum() / data.size * 100, 2), '%]')
-    print('Number of NaN values', data.isnull().values.sum(), '[', round(data.isnull().values.sum() / data.size * 100, 2), '%]')
-    print('Number of positive values', (data > 0).values.sum(), '[', round((data > 0).values.sum() / data.size * 100, 2), '%]')
-    print('Number of negative values', (data < 0).values.sum(), '[', round((data < 0).values.sum() / data.size * 100, 2), '%]')
+    print('Number of 0 values', np.isclose(data, 0.0).sum(), '[',
+          round(np.isclose(data, 0.0).sum() / data.size * 100, 2), '%]')
+    print('Number of Inf values', np.isinf(data).sum().sum(), '[',
+          round(np.isinf(data).sum().sum() / data.size * 100, 2), '%]')
+    print('Number of NaN values', data.isnull().values.sum(), '[',
+          round(data.isnull().values.sum() / data.size * 100, 2), '%]')
+    print('Number of positive values', (data > 0).values.sum(), '[',
+          round((data > 0).values.sum() / data.size * 100, 2), '%]')
+    print('Number of negative values', (data < 0).values.sum(), '[',
+          round((data < 0).values.sum() / data.size * 100, 2), '%]')
+
+    print('Number of replicates', (p_matrix == 1).values.mean() * (p_matrix == 1).values.sum())
+
+    # to do
+    # perturbation ranking

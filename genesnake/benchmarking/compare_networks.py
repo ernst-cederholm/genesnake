@@ -1,8 +1,5 @@
 import numpy as np
 import pandas as pd
-
-
-
 def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
     """
     Function for comparing networks and returning performance statistics.
@@ -37,7 +34,6 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
     DORo = []
     So = []
 
-
     for n in range(0, len(nets)):
 
         if (exclude_diagonal):  # if diagonal should be excluded for statistics
@@ -49,7 +45,8 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
             net1 = np.array(nets[n])  # take a single network to compare
             net2 = np.array(net0)  # gold standard
 
-        S = np.mean(sum(net1))  # sparsity of a network
+        S = len(np.nonzero(net1)[0])/net1.shape[0] # sparsity of a network
+
         So.append(S)
 
         if (signed):  # if sign should be considered
@@ -80,6 +77,15 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
             TNo.append(TN)
             FN = sum(sum(~net1)) - TN
             FNo.append(FN)
+
+        #precision, recall, thresholds = precision_recall_curve((net2+[0]).flatten(), (net1+[0]).flatten())
+        # Use AUC function to calculate the area under the curve of precision recall curve
+        #auc_precision_recall = auc(recall, precision)
+        #roc_auc = roc_auc_score((net2+[0]).flatten(), (net1+[0]).flatten())
+
+        # AUPRo.append(auc_precision_recall)
+        # AUCo.append(roc_auc)
+
         # measures based on confusion matrix
         # based on https://en.wikipedia.org/wiki/Confusion_matrix
         # ifs are for handling division by zero
@@ -119,7 +125,7 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
             FPR = FP / (FP + TN)
         else:
             FPR = 0
-        FPRo.append(FPRo)
+        FPRo.append(FPR)
         # false discovery rate
         if (FP + TP) != 0:
             FDR = FP / (FP + TP)
@@ -181,12 +187,26 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
         else:
             DORo.append(0)
 
+    # calculating AUPR and AUROC
+
+    srt = np.argsort(np.transpose(np.asarray(So)))
+    TPRate = np.transpose(np.asarray(TPRo))
+    FPRate = np.transpose(np.asarray(FPRo))
+    Prec = np.transpose(np.asarray(PPVo))
+
+    AUROCo = round(np.trapz(TPRate[srt], FPRate[srt]), ndigits=4)
+    AUPRo = round(np.trapz(Prec[srt], TPRate[srt]), ndigits=4)
+
     data = [TPo, FPo, TNo, FNo,
-            TPRo, TNRo, PPVo, NPVo, FNRo, FPRo, FDRo, FORo, LRpo, LRmo, PTo, TSo,
-            F1o, MCCo, FMo, BMo, MKo, DORo, So]
+        TPRo, TNRo, PPVo, NPVo, FNRo, FPRo, FDRo, FORo, LRpo, LRmo, PTo, TSo,
+        F1o, MCCo, FMo, BMo, MKo, DORo, So]
     df = pd.DataFrame(data,
-                      index=['tp', 'fp', 'tn', 'fn',
-                             'tpr', 'tnr', 'ppv', 'npv', 'fnr', 'fpr', 'fdr', 'for', 'lrp', 'lrm','pt','ts',
-                             'f1', 'mcc', 'fm', 'bm', 'mk', 'dor', 's'])
+                    index=['tp', 'fp', 'tn', 'fn',
+                         'tpr', 'tnr', 'ppv', 'npv', 'fnr', 'fpr', 'fdr', 'for', 'lrp', 'lrm','pt','ts',
+                         'f1', 'mcc', 'fm', 'bm', 'mk', 'dor', 's'])
+    op = dict()
     df2 = df.replace(np.nan, 0)
-    return df2.transpose()
+    op['metrics'] = df2.transpose()
+    op['AUROC'] = AUROCo
+    op['AUPR'] = AUPRo
+    return op
