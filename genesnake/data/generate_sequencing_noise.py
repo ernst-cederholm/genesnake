@@ -73,8 +73,8 @@ def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin
                 tmp_counts = (reads_pos > int(tmp_start+L)) & (reads_pos < int(tmp_end-L))
                 tmp_start = tmp_end
                 counts_samp.append(sum(tmp_counts))
-            rate = np.divide(counts_samp, (c*g_length_set)/L) # estimated / expected
-            snr = np.var((c * g_length_set) / L)/np.var(counts_samp - ((c * g_length_set) / L))  # var (signal) / var (noise)
+            rate = np.divide(counts_samp, c*g_length_set/L) # estimated / expected
+            snr = np.var(c*g_length_set/L)/np.var(counts_samp - c*g_length_set/L)  # var (signal) / var (noise)
 
             allArrays[s].append(np.transpose(rate))
             all_snrs.append(snr)
