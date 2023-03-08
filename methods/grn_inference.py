@@ -1,3 +1,5 @@
+import statistics
+
 import numpy as np
 import pandas as pd
 import sys
@@ -8,6 +10,7 @@ import statistics as st
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import seaborn as sns
+from statistics import mean
 
 def cutoff_handler(A, zvec, zvec_auto=False):
     """
@@ -298,7 +301,8 @@ def data_summary(data, p_matrix):
     """
     Function for displaying data summary.
     INPUT:
-        data - Y matrix
+        data - data matrix (Y)
+        p_matrix - perturbation matrix (P)
     """
 
     nrw = len(data.index)
@@ -352,8 +356,9 @@ import random
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from numpy import inf
 import statistics as stats
-def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin=0, ermax=0.1):
+def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin=0, ermax=0.1, prob_zi=0.1, prob_nb=0.5, sf=1):
     """
     Function for generating sequencing-based noise based on coverage, GC-content and sequencing error rates
     INPUT:
@@ -363,8 +368,11 @@ def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin
         c - coverage
         L - read length [bp]
         techrep - number of technical replicates
-        ermin - minimum sequencing error rate
-        ermax - maximum sequencing error rate
+        ermin - minimum sequencing error rate, 0-1
+        ermax - maximum sequencing error rate, 0-1
+        prob_zi - probability of zero-inflation, 0-1
+        prob_nb - probability of noiseless data from negative binomial distribution, e.g. value around 1 is lack of noise
+        sf - scaling factor that adjusts variance in data to variance in noise
     """
 
     p = Path(__file__).with_name("pc_genes_start_end_gc.txt")
@@ -404,36 +412,59 @@ def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin
     #nsamp = 10
 
     for t in range(0, techrep):
-        allArrays = []
-        all_snrs = []
+        allCounts = []
+        allNoErrorCounts = []
         for s in range(0, nsamp):
             # error rate of reads
             # based on: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-13-185
             # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4631051/
-            er = random.uniform(ermin, ermax) # good mapping rates 0.1-0.2 (good) or 0-0.1 (very good)
+            er = random.uniform(ermin, ermax)  # good mapping rates 0.1-0.2 (good) or 0-0.1 (very good)
             # e.g. here for ENCODE project mismatch counting is 0.45-073
             # https: // bmcbioinformatics.biomedcentral.com / articles / 10.1186 / 1471 - 2105 - 13 - 185 / tables / 3
-            Ne = round(N - N*er) # we decrease the number of reads as some of them are mismatched with a given error rate
+            Ne = round(N - N * er)  # we decrease the number of reads as some of them are mismatched with a given error rate
             reads_pos = np.random.choice(frag, p=prbs, size=Ne, replace=True)
             counts_samp = []
-            allArrays.append([])
+            allCounts.append([])
+            allNoErrorCounts.append([])
             tmp_start = 0
             for n in range(0, len(g_length_set)):  # loop over genes
-                tmp_len = g_length_set.iloc[n] # tmp variables are to slide over all genes and check how many reads are mapped
+                tmp_len = g_length_set.iloc[n]  # tmp variables are to slide over all genes and check how many reads are mapped
                 tmp_end = tmp_start + tmp_len
-                tmp_counts = (reads_pos > int(tmp_start+L)) & (reads_pos < int(tmp_end-L))
+                tmp_counts = (reads_pos > int(tmp_start + L)) & (reads_pos < int(tmp_end - L))
                 tmp_start = tmp_end
                 counts_samp.append(sum(tmp_counts))
-            rate = np.divide(counts_samp, c*g_length_set/L) # estimated / expected
-            snr = np.var(c*g_length_set/L)/np.var(counts_samp - c*g_length_set/L)  # var (signal) / var (noise)
+            counts = pd.Series(counts_samp)
+            necounts = pd.Series(c * g_length_set / L)
 
-            allArrays[s].append(np.transpose(rate))
-            all_snrs.append(snr)
-        out = np.transpose(pd.DataFrame(np.concatenate(allArrays)))  # samples in columns, genes in rows
-    out += out
+            allCounts[s].append(np.transpose(counts))
+            allNoErrorCounts[s].append(np.transpose(necounts))
+        out_counts = np.transpose(pd.DataFrame(np.concatenate(allCounts)))  # samples in columns, genes in rows
+        out_necounts = np.transpose(pd.DataFrame(np.concatenate(allNoErrorCounts)))  # samples in columns, genes in rows
+    out_counts += out_counts
+    out_necounts += out_necounts
 
+    # zero inflation negative binomial noise to genes
+    # zero inflation simulates dropouts
+    # negative binomial simulates noise strength in counts
+
+    def zinbme(data, prob_nb, sf): # sf is scaling factor (SNR like)
+        n = round(mean(data)-st.stdev(data))
+        nb = np.random.negative_binomial(n, prob_nb, size=len(data))  # negative binomial distribution
+        zinb = nb
+        msf = st.sqrt(np.var(data) / (sf * (np.var(zinb))))  # scaling factor to adjust noise values to data
+        return pd.Series(zinb*msf)
+
+    out_counts = pd.DataFrame(round(out_counts/techrep))
+    out_error = out_counts.apply(lambda x: zinbme(x, prob_nb, sf), axis=1)
+
+    ratios = np.divide(out_counts+out_error, out_necounts / techrep)
+    ratios = ratios.apply(lambda x: np.multiply(x, np.random.choice([0, 1], p=[prob_zi, 1 - prob_zi], size=len(x), replace=True)), axis=1)
+    ratios[ratios == inf] = 0
+    out_counts[out_counts == inf] = 0
     op = dict()
-    op['ratios'] = out/techrep
-    op['snrs'] = all_snrs # snrs per sample
+    op['ratios'] = ratios
+    op['seq_counts'] = round(out_counts)
+    op['noerror_counts'] = round(out_necounts / techrep)
+    op['zinb_counts'] = out_error
 
     return op
