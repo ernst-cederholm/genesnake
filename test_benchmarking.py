@@ -4,7 +4,7 @@
 import scipy.io
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 #from genesnake.benchmarking.compare_networks import compare_networks
 from methods.grn_inference import infer_networks, compare_networks, data_summary
