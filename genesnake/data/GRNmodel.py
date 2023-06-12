@@ -1,10 +1,15 @@
 # class for storing a geneSnoake model as a string object and all the parameters needed to use it
 # created: 2022-11-08
 
+# import geneSNAKE specific functions 
+from .make_new_ODEmodel import make_new_ODEmodel
 from .perturbation_generators import pertgen
-from .make_new_model import make_new_model
 from .parameter_generators import pargen
-from scipy.integrate import odeint
+from .noise_generators import noise_gen
+from .simulators import simulators
+
+# import generic packages
+# note that these are seperated to make future maintenence easier as well as making requierments.txt files
 import scipy.stats as stats
 import pandas as pd
 import numpy as np
@@ -12,8 +17,8 @@ import itertools
 import pickle
 import types
 import json
-#!# remove this
 import sys
+
 
 class GRNmodel(object):
     """
@@ -32,15 +37,19 @@ class GRNmodel(object):
                     - str_object - a ODE modle in the form of a string object. It will be stored in model.model. 
         """
         self.steady_state_RNA = None
-        self.steady_state_prot = None    
-        self.ODEmodel = None    
+        self.steady_state_prot = None
+        self.model_type = None
+        self.model = None    
         self.parameters = self.param(self)
         self.network = None
         self.genes = list()
-        self._runing_ODEmodel = None
+        self._runing_model = None
         self.perturbation = None
+        self.noise_free_data = None
+        self.data = None
     
-    def make_ODEmodel(network,*args,**kwargs):
+    
+    def make_model(network,modtype="ODE",*args,**kwargs):
         """
         add a bunch of documentation here
         """
@@ -82,9 +91,9 @@ class GRNmodel(object):
                     comb_prob = 0.3
                                    
                 combines = self.parameters.generateSP("combinations",network=network,max_comb=max_comb,comb_prob=comb_prob,names=names)
+                
+            self._start_model(modtype)
             
-            self.ODEmodel= make_new_model(network,combines,names)
-        
         elif isinstance(network, pd.DataFrame) or isinstance(network, np.ndarray):
             network = network
             i = 0
@@ -99,6 +108,12 @@ class GRNmodel(object):
             else:
                 names = None
                 
+            # clean the names to ensure no characters that will mess with the pseduo code generation occurs
+            names = [i.replace(",","comma") for i in names]
+            names = [i.replace("-","") for i in names]
+            names = [i.replace("(","") for i in names]
+            names = [i.replace(")","") for i in names]
+            
             if i < len(args):
                 if isinstance(args[i],dict) or args[i]==False:
                     combines = args[i]
@@ -127,119 +142,230 @@ class GRNmodel(object):
             savemodel.network = network
             savemodel.parameters.combinations = combines
             savemodel.genes = names
-            # and the model it self 
-            savemodel.ODEmodel = make_new_model(network,combines,names)
-            
-            return(savemodel)
-        
+            # and the model it self
+            savemodel._start_model(modtype)
+            return(savemodel)   
         else:
-            raise TypeError("Input to genesnake.GRNmodel.make_model must be of type numpy.ndarray or pandas.DataFrame.")
+            raise TypeError("Input to genesnake.ODEmodel.make_model must be of type numpy.ndarray or pandas.DataFrame.")
     
     
-    def _start_ODEmodel(self):
+    def _start_model(self,modtype):
         """
-        function for converting the GRNmodel.model from a string to a runing function 
-        Takes no input and as output adds the model to the runing_model variable. 
+        function for adding the chosen model type to the GRNmodel object and converting the model 
+        from a string to a runing function 
         """
+        
+        # get the model
+        # Note that this code is primarily here to allow future addition of new models as
+        # currently ODE is the only supported model
+        if modtype == "ODE":
+            self.model= make_new_ODEmodel(self.network,self.parameters.combinations,self.genes)
+            self.model_type = "ODE"
+        else:
+            raise ValueError("""Unknown model type in genesnake.GRNmodel._start_model.
+            Currently supported models are:
+            - ODE - a differential equations model that simulates change in gene expression over time""")
+        
+        # and then add this as a running function under the GRNmodel class. 
         # make an empty dict to store the dunction in 
         mod_func= {}
-        print(sys.getsizeof(self.ODEmodel))
         
         # start the function in the dict 
-        exec(self.ODEmodel,mod_func)
+        exec(self.model,mod_func)
         # add the function to the class name space 
-        setattr(self,"_runing_ODEmodel",mod_func["model"])
-        
+        setattr(self,"_runing_model",mod_func["model"])
     
-    def train(self):
+    
+    def start_protein(self,start_rna):
         """
-        function to find steady state from which experiments can be simulated.
-        Takes no input as it will lift all parameters from the class
-        gives no output other than adding the steady state attributes to the model 
+        Function for staring a GRN model with a specific RNA level. aimed at simulating based on real data with a measured RNA control. 
+        INPUT: 
+            - start_rna - the measured control RNA to simulate the protein levels from. 
+        OUT: 
+            - sets the model.start_prot and modle.start_rna variables based on the initial simulation. 
         """
+        
+        # if the GRNmodel is not already running start it up 
+        if self._runing_model==None:
+            self._start_model()
+        
+        simulators._start_protein(self,start_rna)
+        
+        
+        
+    def simulate_data(self,restart_control=False,time_points=10,exp_type="ss",draw_pattern="log",noise_model="gaussian",SNR=5,end_at_ss=False):
+        """
+        Function that act as a wraper for the set of possible models that could be used for simulation
+        of expression data. 
+        """
+        # if the GRNmodel is not already running start it up 
+        if self._runing_model==None:
+            self._start_model()
+        
+        # select what model/solver should be used:
+        # Note that this code is primarily here to allow future addition of new models as
+        # currently ODE is the only supported model
+        if self.model_type == "ODE":
+            results = simulators._run_ODE_sim(self,restart_control,time_points=time_points,exp_type=exp_type,draw_pattern=draw_pattern)
+        else:
+            raise ValueError("""Unknown model type in genesnake.GRNmodel._start_model.
+            Currently supported models are:
+            - ODE - a differential equations model that simulates change in gene expression over time""")        
+        
+        # assign the noise free simulation to the GRNmodel
+        self.noise_free_data = results
+        
+        # add noise based on selected models
+        # first generate noise with the selected noise model
+        if noise_model == "gaussian" or noise_model == "normal":
+            data = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
+        elif noise_model == "micro_array_like" or noise_model == "array_like" or noise_model == "array":
+            data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
+        else:
+            if noise_model != None:
+                print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
+            data = self.noise_free_data.values
                 
-        #!# add warnings about missing parameters. 
+        # set all values less than 0 to 0 as counts cannot be negative
+        data[np.where(data<0)] = 0
         
-        # if the model is not a function start it up and add it to name space via _start_model
-        if self._runing_ODEmodel==None:
-            self._start_ODEmodel()
-        # set all perturbation to 0 meaning no change
-        perts = np.zeros(len(self.genes)).tolist()
-        # merge RNA and prot in to a single list so that
-        # both can be updated with each ODE time step
-        y = self.parameters.start_rna+self.parameters.start_prot
-        
-        # run the model using odeint with all the set parameters
-        ss = odeint(self._runing_ODEmodel,y,self.parameters.time,
-                    (self.parameters.alphas,
-                     self.parameters.max_rna_exp,
-                     self.parameters.max_prot_exp,
-                     self.parameters.hill_coef,
-                     self.parameters.dis_const,
-                     self.parameters.lambda_RNA,
-                     self.parameters.lambda_prot,
-                     self.parameters.combinations,
-                     perts))
-        
-        # split the RNA and protein back up again for human readability
-        # and store these in the GNRmodel
-        self.steady_state_RNA = ss[-1,0:len(self.genes)].tolist()
-        self.steady_state_prot = ss[-1,len(self.genes):].tolist()
+        # and assign the noisy data to the GNRmodels data parameter
+        self.data = pd.DataFrame(data,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
     
     
-    def experiment(self):
+    def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
+        """
+        Function for generating perturbation design matrixes with n reps of x experiemnts in various schemes. 
+        #!# add more detailed documentation somewhere. 
+        INPUT: 
+            scheme - String which determines design of the perturbations should have. Currently avalible are: 
+                     - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
+                     - multi - Multipert genes are perturbed per replicate*experiments in a way that ensures each gene is perturbed
+                               at least once per replicate. Will attempt to add additional perturbation so that each gene is pertrubed
+                               in equal number of experiemts where possible.  
+                     - combined  - Perturbs genes in a combinatory targeted fashion. Perturbing up to multipert genes that co-regulate
+                                  a target in each experiment. 
+                     - random - Randomly perturb multipert genes in each experiment. Will attempt to distribute 
+                                pertrubations evenly accross all genes. 
+                     - all - All genes will be slightly perturbed (between 0.1-0.3) with random sign in a multifactorial design.
+                     - targeted - Similar to diagonal but only the genes listed in targets will be perturbed.
+                     - scheme - Will print the avalible perturbation designs. 
+            effect - the strength of the perturbation as a float in range 0-1, gene expression will be limited to max 1-effect.
+                     e.g. max expression at effect 0.7 => 1-0.7=0.3 > expression = max_expression*0.3 or 30% of control max.  
+                     Can be given as single float, a tuple with floats for (min_effect,max_effect) or as a list of flaots size 1*exp. 
+                     Note for multi or random specific values can only be set per experiment, if a more fine grain value control is 
+                     needed it is possible to generate a full matrix and set as perturbation by using GRNmodel.perturbation=pd.DataFrame
+            reps - the number of replicates to generate of each experiemts. Note that each replicate will have an identical pert effect
+                   and design.
+            exp - the number of experiemnts to generate. Similar to reps but effect and pert design change between exp. 
+                  NOTE: Not used in diagonal scheme as that needs genes*reps. Default to 1 exp per gene (exp=len(genes in network))
+            noise - Float number. The perturbation effect can vary wiht +/-noise. Set to None or 0 for no noise. 
+                    E.g. if effect = 0.7 and noise = 0.1 perturbation effect will range from 0.6-0.8 centering on 0.7.
+                    Note: This can not change sign of the perturbation (down<=1,up>=1) nor can it cause negative max expression (<0).
+            multipert - Int value between 2-#genes. Used in multi and random pert scheme to determine number of perturbations per exp. 
+            targets - List of gene names to be perturbed. Used in pert scheme specific to determine which genes will be perturbed. 
+                      NOTE to include multiple pertbations in a single experiemnt use a list of lists e.g. [name1,name2,[name2,name1]..]
+            sign - +/-1. Used to determine if the perturbation is up or down regulation. 
+        
+        OUTPUT: 
+            GRNmodel.pertrubations - sets the GRNmodel perturbation to the selected design with selected values in a pd.DataFrame. 
+        """
+        
+        # first check that effect is not greater than 1 or less than 0
+        if not isinstance(effect,tuple):
+            if effect >1.0:
+                print("WARNING: Perturbation effect greater than 100% (1.0) in genesnake.GRNmodel.set_pert. Effect have been set to 1.0")
+                effect = 1.0
+            elif effect < 0.0:
+                print("WARNING: Perturbation effect greater than 0% (0.0) in genesnake.GRNmodel.set_pert. Effect have been set to 0.0")
+                effect = 0.0
+        else:
+            if effect[0]>effect[1]:
+                raise ValueError("In genesnake.GRNmodel.set_pert wehn supplying effect as a tuple effect[0] must be smaller than effect[1].")
+            elif effect[1] >1.0:
+                print("WARNING: Perturbation effect greater than 100% (1.0) in genesnake.GRNmodel.set_pert. Effect have been set to 1.0")
+                effect[1] = 1.0
+            elif effect[0] < 0.0:
+                print("WARNING: Perturbation effect greater than 0% (0.0) in genesnake.GRNmodel.set_pert. Effect have been set to 0.0")
+                effect[0] = 0.0
+                
+        # set noise to 0 if it's none simply to make calculations easy
+        if noise == None:
+            noise=0
+                
+        # next check so that reps is at least 1
+        if reps < 1: 
+            print("WARNING: Fewer than 1 replicate (reps<1) detected in genesnake.GRNmodel.set_pert. reps have been set to 1")
+            reps = 1
+            
+        # if the number of experiemnts are not set set it to 1 per gene  
+        if exp==None:
+            exp=len(self.genes)
+            
+        # call the pert generator from perturbation_generators and check some needed parameters for them
+        if scheme=="diag": 
+            setattr(self,"perturbation",pertgen.diagonal(self.genes,effect,reps,noise,sign))
+        elif scheme=="multi":
+            if multipert < 2: 
+                print("WARNING: Cannot perform multiple pertrubations <2  (multipert<2) in genesnake.GRNmodel.set_pert. multipert have been set to 2")
+                multipert = 2
+            elif multipert > len(self.genes):
+                raise ValueError("Cannot include more perturbations than genes in genesnake.GRNmodel.set_pert multi, random or combined perturbation scheme")
+                            
+            setattr(self,"perturbation",pertgen.multiple_pert(self.genes,effect,reps,exp,noise,sign,multipert))
+                
+        elif scheme=="random":
+            if multipert < 2: 
+                print("WARNING: Using multipert<2 in genesnake.GRNmodel.set_pert for random scheme will result in diagonal scehem it is adviced to use multipert>2.")
+            elif multipert > len(self.genes):
+                raise ValueError("Cannot include more perturbations than genes in genesnake.GRNmodel.set_pert multi, random or combined perturbation scheme")
+                            
+            setattr(self,"perturbation",pertgen.random_pert(self.genes,effect,reps,exp,noise,sign,multipert))
+                
+        elif scheme=="all":
+            
+            setattr(self,"perturbation",pertgen.all_pert(self.genes,effect,reps,exp,noise,sign))
+            
+        elif scheme=="targeted":
+            if targets == None:
+                raise ValueError("Failed to find list specififying which genes to perturbe in genesnake.GRNmodel.set_pert. When using scheme specific a list of which genes to perturb must be given in format [name_gene_1...name_gene_n].")
 
-        # make sure the key elements for the model exists, steady state and perturbation
-        if self.steady_state_RNA is None or self.steady_state_prot is None:
-            raise ValueError("Attempted to run the experiment function on a modle without a steady state in genesnake.GRNmodel.experiment This will cause unpredictable results as the starting point is random. Please run GRNmodel.train befor attempting to run this function.")
-        if self.perturbation is None:
-            raise ValueError("Attempted to run the experiment function on a modle without a perturbation matrix in genesnake.GRNmodel.experiment This will not work as there is no experiment describe and thus nothing to simulate. Please run GRNmodel.get_pert befor attempting to run this function.")
-        
-        # make a 3D numpy array to store that data in
-        # this needs to be improved and further sub selection is needed somehow
-        data = np.zeros((len(self.genes),self.perturbation.shape[1],len(self.parameters.time)))
-        
-        # then for each perturbation creata an experiment where the perturbation is
-        # applied to the system
-        for i in range(self.perturbation.shape[1]):
+            setattr(self,"perturbation",pertgen.targeted_pert(self.genes,effect,reps,noise,sign,targets))
+
+        elif scheme == "combined":
+            if multipert < 2: 
+                print("WARNING: Using multipert<2 in genesnake.GRNmodel.set_pert for combined scheme will result in diagonal scehem it is adviced to use multipert>2.")
+            elif multipert > len(self.genes):
+                raise ValueError("Cannot include more perturbations than genes in genesnake.GRNmodel.set_pert multi, random or combined perturbation scheme")
+                            
+            setattr(self,"perturbation",pertgen.combined_pert(self.genes,self.network,effect,reps,exp,noise,sign,multipert)) 
             
-            # merge RNA and prot in to a single list so that both can be updated with each ODE time step
-            y = self.steady_state_RNA+self.steady_state_prot
-            
-            # select the perturbation for this simulation
-            perts = self.perturbation[self.perturbation.columns[i]].values.tolist()     
-            
-            # and run the ODE model from steady state to max time 
-            exp = odeint(self._runing_ODEmodel,y,self.parameters.time,
-                    (self.parameters.alphas,
-                     self.parameters.max_rna_exp,
-                     self.parameters.max_prot_exp,
-                     self.parameters.hill_coef,
-                     self.parameters.dis_const,
-                     self.parameters.lambda_RNA,
-                     self.parameters.lambda_prot,
-                     self.parameters.combinations,
-                     perts))
-            
-            # then add each simulation as a column over all timepoints in the data array  
-            for j in range(len(self.parameters.time)):
-                data[:,i,j] = exp[j,:len(self.genes)]
-        
-        # finally transform this to a dict of pandas dataframes with the right annotation
-        # to make it somewhat clear what is going on 
-        # this needs fixing as it is most likely the slowest part of the GRNmodel script right now
-        out_data = dict()
-        for i in range(len(self.parameters.time)):
-            out_data["time_"+str(i)] = pd.DataFrame(data[:,:,i],index=self.genes,columns=self.perturbation.columns)
-        
-        return out_data
-    
-    
-    def get_pert(self,scheme,reps=3,sign="down"):
-        """
-        add documentation
-        """
-        setattr(self,"perturbation",getattr(pertgen,'{}'.format(scheme))(self.genes,reps,sign))
+        elif scheme=="scheme":
+            print("""Avalible pertrubation designs are:
+            - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
+            - multi - Multipert genes are perturbed per replicate*experiments in a way that ensures each gene is perturbed
+                      at least once per replicate. Will attempt to add additional perturbation so that each gene is pertrubed
+                      in equal number of experiemts where possible.
+            - combined  - Perturbs genes in a combinatory targetwd fashion. Perturbing up to multipert genes that co-regulate
+                          a target in each experiemnt.  
+            - random - Randomly perturb genes between 0 and multipert times in each experiment. Will attempt to distribute 
+                       pertrubations evenly accross all genes.
+            - all - All genes will be slightly perturbed (between 0.1-0.3) with random sign in a multifactorial design.\n
+            - targeted - Similar to diagonal but only the genes listed in targets will be perturbed. 
+            - scheme - Will print the avalible perturbation designs.""")
+        else:
+            raise ValueError("""Unknown perturbation design selected in genesnake.GRNmodel.get_pert. Avalible pertrubation designs are:
+            - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
+            - multi - Multipert genes are perturbed per replicate*experiments in a way that ensures each gene is perturbed
+                      at least once per replicate. Will attempt to add additional perturbation so that each gene is pertrubed
+                      in equal number of experiemts where possible.  
+            - combined  - Perturbs genes in a combinatory targetwd fashion. Perturbing up to multipert genes that co-regulate
+                          a target in each experiemnt.
+            - random - Randomly perturb genes between 0 and multipert times in each experiment. Will attempt to distribute 
+                       pertrubations evenly accross all genes.
+            - all - All genes will be slightly perturbed (between 0.1-0.3) with random sign in a multifactorial design.\n
+            - targeted - Similar to diagonal but only the genes listed in targets will be perturbed. 
+            - scheme - Will print the avalible perturbation designs.""")
     
     
     def _json_save(self,file=None):
@@ -250,14 +376,14 @@ class GRNmodel(object):
             self - a model to be saved. Can not save an empty un-initilized model for obvious reasons
             file - a string with the path to save the json to 
         OUTPUT: 
-            saves file.json with all attributes in the GRNmodel. 
+            saves file.json with all attributes in the model. 
         """
         # first create a dict to store all data in after it is sterilized
         save_dict = dict()
         # as the pandas dataframes needs to be turned to numpy each element is loped over and cleande
         for key in self.__dict__.keys():
             # as the _running_model is a function it can not be saved 
-            if key == "_runing_ODEmodel":
+            if key == "_runing_model":
                 continue
             # then as parameters is a bunch of nested attributes we creata a sub dict of that
             elif key == "parameters":
@@ -305,14 +431,14 @@ class GRNmodel(object):
             self - a model to be saved. Can not save an empty un-initilized model for obvious reasons
             file - a string with the path to save the pickle to 
         OUTPUT: 
-            saves file.pickle with all attributes in the GRNmodel. 
+            saves file.pickle with all attributes in the model. 
         """
         # first create a dict to store all data in after it is sterilized
         save_dict = dict()
         # as the pandas dataframes needs to be turned to numpy each element is loped over and cleande
         for key in self.__dict__.keys():
             # as the _running_model is a function it can not be saved 
-            if key == "_runing_ODEmodel":
+            if key == "_runing_model":
                 continue
             # then as parameters is a bunch of nested attributes we creata a sub dict of that
             elif key == "parameters":
@@ -351,7 +477,7 @@ class GRNmodel(object):
     
     def save(self,file=None,kind=None):
         """
-        Function that acts as a wraper for the two options to save data from the GRNmodel. 
+        Function that acts as a wraper for the two options to save data from the model. 
         It either creates a json file or a pickle file with all parameters. 
         INPUT: 
             file - A file name or a file path to save the data to 
@@ -371,10 +497,7 @@ class GRNmodel(object):
                 kind = "pickle"
             else:
                 raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
-        else:
-            raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
-        
-        if kind=="json":
+        elif kind=="json":
             self._json_save(file)
         elif kind == "pickle":
             self._pickle_save(file)
@@ -384,7 +507,7 @@ class GRNmodel(object):
     
     def _pickle_load(file):
         """
-        Function for loading a pickle file with the model and parameters in to a GRNmodel object. 
+        Function for loading a pickle file with the model and parameters in to a model object. 
         It is primarily aimed at loading saved GRNmodels from the GRNmodel.save function but will
         work with any pickle file with the right keys present. 
         INPUT: 
@@ -464,8 +587,8 @@ class GRNmodel(object):
         delattr(loadmodel,"perturbation_header")
         
         # if there is a model and steady state values start the model up 
-        if loadmodel.ODEmodel is not None and loadmodel.steady_state_RNA is not None:
-            loadmodel._start_ODEmodel()
+        if loadmodel.model is not None and loadmodel.steady_state_RNA is not None:
+            loadmodel._start_model()
         
         return loadmodel
     

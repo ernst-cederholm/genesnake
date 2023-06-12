@@ -10,7 +10,7 @@ Stand alone functions should be imported so that they are in the right sub group
 """
 
 # import the classes that should be under genesnake.class
-from .data.model import GRNmodel
+from .data.GRNmodel import GRNmodel
 
 # import the entier folders and corresponding functions
 # Note any function added to a directory here needs to be added in the

@@ -58,7 +58,7 @@ def make_new_ODEmodel(network,combines,names=None):
     names = [str(i).replace(".","") for i in names]
     
     # Define a number of inital values and other small things 
-    model = """def model(y,t,alphas,mis,ris,ns,ks,lambda_RNA,lambda_P,comb_mat,pert):    
+    model = """def model(t,y,alphas,mis,ris,ns,ks,lambda_RNA,lambda_P,comb_mat,pert):    
     # Auto generated function for describing a system of ODE equations 
     # that describes a GRN"""
 
@@ -76,7 +76,7 @@ def make_new_ODEmodel(network,combines,names=None):
         model+="""
     prot_{}=y[{}]""".format(g,genes+i)
         model+="""
-    mi_{}=mis[{}]+pert[{}]""".format(g,i,i)
+    mi_{}=round(max(mis[{}]*(1+pert[{}]),0),4) #take max of input and 0 to ensure that the expression is never <0""".format(g,i,i)
         model+="""
     ri_{}=ris[{}]""".format(g,i)
         model+="""

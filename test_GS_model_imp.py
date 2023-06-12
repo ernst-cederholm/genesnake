@@ -1,6 +1,7 @@
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import scipy.stats as stats
+import seaborn as sns
 import networkx as nx 
 import pandas as pd
 import numpy as np
@@ -16,18 +17,28 @@ import genesnake as gs
 #network = network.values
 #network = np.hstack((network,np.random.normal(0,1,(network.shape[0],1))))
 
-network = gs.grn.make_random(int(sys.argv[1]),3) #make_FFLATnetwork(network_size=sys.argv[1])
+network = gs.grn.make_random(int(sys.argv[1]),2)
 # turn that in to an adjacency matrix 
 #adj = gs.util.numpy_to_adjacency(network)
 # build a model from make_model 
-M = gs.ODEmodel.make_ODEmodel(network)
-
+M = gs.GRNmodel.make_model(network)
+#print(network)
 M.parameters.generateMP()
-M.train()
+M.set_pert("diag",effect=(0.6,0.8),noise=0,multipert=3,exp=1,reps=2,sign=-1)
+M.simulate_data(exp_type="ss",SNR=5,draw_pattern="lin",time_points=100,noise_model="gaussian")
 
-M.set_pert("diag",effect=(0.6,0.8),noise=0,multipert=3,reps=2,sign=1)
-data = M.experiment()
-print(data["time_100"])
+print(M.model)
+print(M.noise_free_data)
+
+#G = nx.from_pandas_adjacency(network,create_using=nx.DiGraph)
+#nx.draw(G,with_labels=True)
+sns.heatmap(M.noise_free_data,cmap="YlGn",linecolor="k",linewidths=0.01)
+plt.show()
+sns.heatmap(M.data,cmap="YlGn",linecolor="k",linewidths=0.01)
+plt.show()
+sns.heatmap(M.data-M.noise_free_data,cmap="YlOrRd",linecolor="k",linewidths=0.01)
+plt.show()
+
 #M.save("test_GS_GRNmodel.pickle")
 
 #loadmodel = gs.GRNmodel.load("test_GS_GRNmodel.pickle")

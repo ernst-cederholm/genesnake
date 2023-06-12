@@ -24,7 +24,7 @@ class pargen:
         return np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
 
     
-    def make_time(genes=None,time_points=100,end_time=10):
+    def make_time(genes=None,time_points=10000,end_time=10):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         # make the timepoints in a linspace between 0 and max

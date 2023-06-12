@@ -14,6 +14,8 @@ def make_FFLATnetwork(**kvargs):
     function for generating a network using the FFLAT model
     """
     #!# improve documentation when it is clear what each element does. 
+
+    #!# this is dumb rewrite so that it takes imput in a better way and then strores that in a dict instead of what ever this is. Thomas to Thomas
     
     # start up a dict with all the keys and default values this is done both to have default
     # values and to make sure nothing strange can be loaded from the json file if loading config
@@ -75,9 +77,11 @@ def make_FFLATnetwork(**kvargs):
             tmpnet[i[0],i[1]] = 1
         else:
             tmpnet[i[0],i[1]] = -1
-    
+            
+    tmpnet[np.where(np.eye(tmpnet.shape[0]))] = -1
+            
     # then make up gene names by adding G1..Gn
-    names = ["G"+str(i) for i in range(int(settings["NETWORK_SIZE"]))]
+    names = ["G"+str(i+1) for i in range(int(settings["NETWORK_SIZE"]))]
     
     # and make a pandas datafram to return this information to
     network = pd.DataFrame(tmpnet,index=names,columns=names)

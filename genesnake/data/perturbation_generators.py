@@ -41,15 +41,14 @@ def get_noise(noise):
 
 def fix_perts(pert_mat,sign):
     """
-    Function for ensuring that noise cannot change perturbations to be less than 0 or more than 100% for -1 sign
+    Function for ensuring that noise cannot change perturbations to be less than 0 or more than -100% depending for -1 sign
     """
     if sign == -1:
         pert_mat[np.where(pert_mat<-1.0)] = -1.0
         pert_mat[np.where(pert_mat>0.0)] = 0.0
     if sign == 1:
-        #pert_mat[np.where(pert_mat>1.0)] = 1.0
         pert_mat[np.where(pert_mat<0.0)] = 0.0
-
+        
     return pert_mat
 
 
