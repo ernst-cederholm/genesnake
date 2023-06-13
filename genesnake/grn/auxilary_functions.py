@@ -21,7 +21,7 @@ from copy import copy
 from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy import sparse
-import resource
+#import resource
 import csv
 
 import networkx as nx

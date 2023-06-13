@@ -148,7 +148,7 @@ class simulators(object):
             stop = False
             ss_tmin = 0
             ss_tmax = 1
-            while not stop and ss_tmax <=102:
+            while not stop and ss_tmax <= 102:
                 time_steps = np.linspace(ss_tmin,ss_tmax,100).tolist()
                 y = Y[:,-1]
                 ss = solve_ivp(model._runing_model,(ss_tmin,ss_tmax),y,
@@ -182,7 +182,7 @@ class simulators(object):
         # make a variable to add the data to 
         data = None
         
-        # then for each perturbation creata an experiment where the perturbation is
+        # then for each perturbation create an experiment where the perturbation is
         # applied to the system
         for i in range(model.perturbation.shape[1]):
             

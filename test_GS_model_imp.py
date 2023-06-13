@@ -17,7 +17,7 @@ import genesnake as gs
 #network = network.values
 #network = np.hstack((network,np.random.normal(0,1,(network.shape[0],1))))
 
-network = gs.grn.make_random(int(sys.argv[1]),2)
+network = gs.grn.make_random(5,2)
 # turn that in to an adjacency matrix 
 #adj = gs.util.numpy_to_adjacency(network)
 # build a model from make_model 
@@ -29,15 +29,15 @@ M.simulate_data(exp_type="ss",SNR=5,draw_pattern="lin",time_points=100,noise_mod
 
 print(M.model)
 print(M.noise_free_data)
-
+print(M.data)
 #G = nx.from_pandas_adjacency(network,create_using=nx.DiGraph)
 #nx.draw(G,with_labels=True)
 sns.heatmap(M.noise_free_data,cmap="YlGn",linecolor="k",linewidths=0.01)
-plt.show()
-sns.heatmap(M.data,cmap="YlGn",linecolor="k",linewidths=0.01)
-plt.show()
-sns.heatmap(M.data-M.noise_free_data,cmap="YlOrRd",linecolor="k",linewidths=0.01)
-plt.show()
+#plt.show()
+#sns.heatmap(M.data,cmap="YlGn",linecolor="k",linewidths=0.01)
+#plt.show()
+#sns.heatmap(M.data-M.noise_free_data,cmap="YlOrRd",linecolor="k",linewidths=0.01)
+#plt.show()
 
 #M.save("test_GS_GRNmodel.pickle")
 

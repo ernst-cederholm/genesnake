@@ -14,7 +14,7 @@ def make_random(nodes,degree,alpha=0.9,self_loops=True):
     easiest get a networkx model in to genesnake format (pandas adjacency matrix). 
     INPUT: 
         nodes - int for the number of nodes in the system.
-        degree - int for the outdegree each node should have 
+        degree - int for the out-degree each node should have
         alpha - optional - float used for selecting the node a new edge should be added to. A higher number gives a more uniform distrubution. Default 0.9 and a lower number means a node is more likely to be selected as the indegree increases. 
         self_loops - optional - bool for if self loops are allowed or not. 
     OUTPUT: 

@@ -7,6 +7,7 @@ from .perturbation_generators import pertgen
 from .parameter_generators import pargen
 from .noise_generators import noise_gen
 from .simulators import simulators
+from methods.grn_inference import generate_sequencing_noise
 
 # import generic packages
 # note that these are seperated to make future maintenence easier as well as making requierments.txt files
@@ -22,14 +23,14 @@ import sys
 
 class GRNmodel(object):
     """
-    geneSnake class for storing a ODE model as a string object along with all the nessesary parameters to run the model. 
+    geneSnake class for storing an ODE model as a string object along with all the nessesary parameters to run the model.
     The model class further contains methods to run a model and to generate parameters in and model if needed. 
     """
     
     
     def __init__(self,model=None,parameters=None,network=None,genes=None):
         """
-        Function for storing and initilization of a modle with corresponding parameters. 
+        Function for storing and initilization of a model with corresponding parameters.
         INPUT: 
             model - the source of the model for this object. Input can be: 
                     - None - an empty model class will be created
@@ -152,7 +153,7 @@ class GRNmodel(object):
     def _start_model(self,modtype):
         """
         function for adding the chosen model type to the GRNmodel object and converting the model 
-        from a string to a runing function 
+        from a string to a running function
         """
         
         # get the model
@@ -195,7 +196,7 @@ class GRNmodel(object):
         
     def simulate_data(self,restart_control=False,time_points=10,exp_type="ss",draw_pattern="log",noise_model="gaussian",SNR=5,end_at_ss=False):
         """
-        Function that act as a wraper for the set of possible models that could be used for simulation
+        Function that act as a wrapper for the set of possible models that could be used for simulation
         of expression data. 
         """
         # if the GRNmodel is not already running start it up 
@@ -221,6 +222,10 @@ class GRNmodel(object):
             data = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
         elif noise_model == "micro_array_like" or noise_model == "array_like" or noise_model == "array":
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
+        elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
+            noise = generate_sequencing_noise(self.noise_free_data.values, SNR)
+            data = noise["ratios"] * self.noise_free_data.values
+            data = data.to_numpy()
         else:
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
@@ -235,10 +240,10 @@ class GRNmodel(object):
     
     def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
         """
-        Function for generating perturbation design matrixes with n reps of x experiemnts in various schemes. 
+        Function for generating perturbation design matrices with n reps of x experiemnts in various schemes.
         #!# add more detailed documentation somewhere. 
         INPUT: 
-            scheme - String which determines design of the perturbations should have. Currently avalible are: 
+            scheme - String which determines design of the perturbations should have. Currently, avalible are:
                      - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
                      - multi - Multipert genes are perturbed per replicate*experiments in a way that ensures each gene is perturbed
                                at least once per replicate. Will attempt to add additional perturbation so that each gene is pertrubed
@@ -691,7 +696,7 @@ class GRNmodel(object):
         
         def generateMP(self):
             """
-            Wraper for lazely adding all parameters with default values
+            Wrapper for lazely adding all parameters with default values
             """
             
             # make a list of keys we expect to see
@@ -705,7 +710,7 @@ class GRNmodel(object):
         
         def generateSP(self,parameter,**kwargs):
             """
-            Wraper function to generate and assign parameters from a number of different functions 
+            Wrapper function to generate and assign parameters from a number of different functions
             based on an input string 
             INPUT: 
                 parameter - a string with the name of the parameter to be generated 

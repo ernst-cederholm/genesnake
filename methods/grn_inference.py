@@ -358,12 +358,12 @@ import numpy as np
 from pathlib import Path
 from numpy import inf
 import statistics as stats
-def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin=0, ermax=0.1, prob_zi=0.1, prob_nb=0.5, sf=1):
+def generate_sequencing_noise(data, SNR, genes_ind="random",  c=5, L=75, techrep=2, ermin=0.45, ermax=0.73, prob_zi=0.1, prob_nb=0.5, sf=0.05):
     """
     Function for generating sequencing-based noise based on coverage, GC-content and sequencing error rates
     INPUT:
         ng - number of genes
-        nsamp - numebr of samples
+        nsamp - number of samples
         genes_ind - indices of genes
         c - coverage
         L - read length [bp]
@@ -374,7 +374,44 @@ def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin
         prob_nb - probability of noiseless data from negative binomial distribution, e.g. value around 1 is lack of noise
         sf - scaling factor that adjusts variance in data to variance in noise
     """
+    nsamp = np.shape(data)[1]
+    ng = np.shape(data)[0]
+    if SNR == "very_low":
+        ermin = 0.7
+        ermax = 1
+        prob_zi = 0.4
+        prob_nb = 0.1
+        sf = 0.005
+    elif SNR == "low":
+        ermin = 0.6
+        ermax = 0.9
+        prob_zi = 0.3
+        prob_nb = 0.1
+        sf = 0.01
+    elif SNR == "medium":
+        ermin = 0.45
+        ermax = 0.73
+        prob_zi = 0.1
+        prob_nb = 0.5
+        sf = 0.05
+    elif SNR == "high":
+        ermin = 0.1
+        ermax = 0.2
+        prob_zi = 0.1
+        prob_nb = 0.5
+        sf = 0.1
+    elif SNR == "very_high":
+        ermin = 0
+        ermax = 0.1
+        prob_zi = 0.05
+        prob_nb = 0.7
+        sf = 0.5
+    else:
+        print("Default noise settings have been used (Wang et al., 2012)")
+    # based on: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-13-185
+    # e.g. here for ENCODE project mismatch counting is 0.45-073
 
+    # code block 3
     p = Path(__file__).with_name("pc_genes_start_end_gc.txt")
     df = pd.read_csv(p, sep='\t', header=0)
 
@@ -390,7 +427,10 @@ def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin
     #techrep = 2
     # randomize genes
     rand_genes_ind = genes_ind
-    #rand_genes_ind = np.random.randint(1, len(g_length), size=ng)
+    if genes_ind == "random":
+        rand_genes_ind = np.random.randint(1, len(g_length), size=ng)
+    else:
+        rand_genes_ind = genes_ind
     #rand_genes_ind = [1000, 2000, 10000, 10010, 5000, 7000, 7500, 100, 3500, 9000]
 
     g_start = df["start_position"][rand_genes_ind].to_frame()
