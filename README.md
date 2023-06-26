@@ -16,3 +16,6 @@ Once the work is done merge the changes in to the master branch and prune the tr
 In a similar way if you develop anything new for the genesnake project make sure to add these to the right folder of genesnake in the master branch and update all __init__.py files accordingly. 
 Any tool that is not on the master branch will not be cloned by git and therefore unavalible to most users.
 
+## GeneSNAKE tutorial
+[Visit the website with the GeneSNAKE tutorial](https://sonnhammer-tutorials.bitbucket.io/genesnake.html)
+
