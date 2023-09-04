@@ -20,3 +20,4 @@ from . import grn
 from . import data
 from . import util 
 from . import benchmarking
+from . import analysis
