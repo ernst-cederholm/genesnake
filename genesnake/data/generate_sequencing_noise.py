@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from numpy import inf
 import statistics as st
+
 def generate_sequencing_noise(ng, nsamp, genes_ind,  c=5, L=75, techrep=2, ermin=0, ermax=0.1, prob_zi=0.1, prob_nb=0.5, sf=1):
     """
     Function for generating sequencing-based noise based on coverage, GC-content and sequencing error rates

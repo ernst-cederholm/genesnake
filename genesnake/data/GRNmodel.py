@@ -48,6 +48,7 @@ class GRNmodel(object):
         self.perturbation = None
         self.noise_free_data = None
         self.data = None
+        self.noise = None
     
     
     def make_model(network,modtype="ODE",*args,**kwargs):
@@ -122,16 +123,16 @@ class GRNmodel(object):
                 combines = kwargs["combinations"] 
             else:
                 if "max_comb" in kwargs.keys():
-                    max_comb = kwargs[max_comb]
+                    max_comb = kwargs["max_comb"]
                 else:
                     max_comb = 2
-                    if "comb_prob" in kwargs.keys():
-                        comb_prob = kwargs[comb_prob]
-                    else:
-                        comb_prob = 0.3
+                if "comb_prob" in kwargs.keys():
+                    comb_prob = kwargs["comb_prob"]
+                else:
+                    comb_prob = 0.3
                             
                 combines = pargen.make_combinations(network,max_comb=max_comb,comb_prob=comb_prob,names=names)
-            
+                
             # start a model class and return that.
             savemodel = GRNmodel.__new__(GRNmodel)
             # start a super class of the class 
@@ -192,8 +193,7 @@ class GRNmodel(object):
         
         simulators._start_protein(self,start_rna)
         
-        
-        
+                
     def simulate_data(self,restart_control=False,time_points=10,exp_type="ss",draw_pattern="log",noise_model="gaussian",SNR=5,end_at_ss=False):
         """
         Function that act as a wrapper for the set of possible models that could be used for simulation
@@ -219,13 +219,15 @@ class GRNmodel(object):
         # add noise based on selected models
         # first generate noise with the selected noise model
         if noise_model == "gaussian" or noise_model == "normal":
-            data = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
+            [data,noise] = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
         elif noise_model == "micro_array_like" or noise_model == "array_like" or noise_model == "array":
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
+            noise = data-self.noise_free_data
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
-            noise = generate_sequencing_noise(self.noise_free_data.values, SNR)
+            noise = noise_gen.make_sequencing_noise(self.noise_free_data.values, SNR)
             data = noise["ratios"] * self.noise_free_data.values
             data = data.to_numpy()
+            noise = noise["ratios"].values
         else:
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
@@ -236,7 +238,7 @@ class GRNmodel(object):
         
         # and assign the noisy data to the GNRmodels data parameter
         self.data = pd.DataFrame(data,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
-    
+        self.noise = pd.DataFrame(noise,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
     
     def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
         """

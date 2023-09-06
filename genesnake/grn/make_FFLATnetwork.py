@@ -19,7 +19,7 @@ def make_FFLATnetwork(**kvargs):
     
     # start up a dict with all the keys and default values this is done both to have default
     # values and to make sure nothing strange can be loaded from the json file if loading config
-    settings = {"RANDOM_SEED":np.random.randint(1,100), "FFL_ENRICHED":0, "SPARSITY":2.328, "NETWORK_SIZE":100, "N_CORES_TO_USE":-1, "SHUFFLED":0, "OUTPUT":"adj_list", "NO_CYCLES":1}
+    settings = {"RANDOM_SEED":np.random.randint(1,100), "FFL_ENRICHED":1, "SPARSITY":2.328, "NETWORK_SIZE":100, "N_CORES_TO_USE":-1, "SHUFFLED":0, "OUTPUT":"adj_list", "NO_CYCLES":1}
 
     # if there is a file to load configs from do that  
     if "LOAD" in kvargs.keys() or "load" in kvargs.keys():
@@ -77,9 +77,7 @@ def make_FFLATnetwork(**kvargs):
             tmpnet[i[0],i[1]] = 1
         else:
             tmpnet[i[0],i[1]] = -1
-            
-    tmpnet[np.where(np.eye(tmpnet.shape[0]))] = -1
-            
+                    
     # then make up gene names by adding G1..Gn
     names = ["G"+str(i+1) for i in range(int(settings["NETWORK_SIZE"]))]
     

@@ -52,7 +52,7 @@ class pargen:
         return np.round(np.random.randint(low=Emin,high=Emax+1,size=(len(genes))),2).tolist()
     
     
-    def make_combinations(network=None,max_comb=2,comb_prob=0.3,names=None):
+    def make_combinations(network,max_comb=2,comb_prob=0.3,names=None):
         """
         Function for drawing all possible combinations of genes regualting the same 
         targer in max_comb sized groups and storing this in a 
@@ -89,7 +89,7 @@ class pargen:
         # make sure that combinations of length 1 is not created as this will cause issues later
         # on and does not make sense instead return false telling the other tools that no combinations are possible
         if max_comb < 2:
-            return False
+            return {i:[] for i in names}
         
         # create an empty dict 
         combinations = dict() 
