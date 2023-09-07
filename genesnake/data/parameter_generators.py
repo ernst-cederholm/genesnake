@@ -197,24 +197,24 @@ class pargen:
                 # if the alpha exist do not resign it 
                 if reg+"_"+genes[i] not in alphas.keys():
                     # if there is a strong regulator assing a high alpha 
-                    if np.abs(network[j,i])>edge_median:
-                        alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.6,1),2)
+                    #if np.abs(network[j,i])>edge_median:
+                    alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.6,1),2)
                     # otherwise assing a semi strong regulator as the method for determening
                     # regultor strenght is rather poor
-                    else:
-                        alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.4,0.8),2)
+                    #else:
+                    #    alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.4,0.8),2)
         
         # and return the dict 
         return(alphas)
     
     
-    def make_dis_const(genes=None,Emax=0.6,Emin=0.2):
+    def make_dis_const(genes=None,Emax=0.4,Emin=0.1):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         return np.round(np.random.uniform(Emin,Emax,(len(genes))),2).tolist()
     
     
-    def make_lambda_RNA(genes=None,Emax=0.7,Emin=0.5):
+    def make_lambda_RNA(genes=None,Emax=0.6,Emin=0.4):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         return np.round(np.random.uniform(Emin,Emax,(len(genes))),2).tolist()
