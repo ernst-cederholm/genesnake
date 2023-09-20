@@ -155,8 +155,8 @@ class pargen:
                 genes = network.index.astype(str).tolist()
             # and set network to a numpy array
             network = network.values
-        elif isinstance(network, np.ndarray) and not names:
-            raise ValueError("When using numpy.array for generation of alphas in genesnake.model.parameters the gene names must be provided in the names argument.")
+        elif isinstance(network, np.ndarray) and not genes:
+            raise ValueError("When using numpy.array for generation of alphas in genesnake.model.parameters the gene names must be provided in the genes argument.")
         else:
             raise TypeError("Network input to genesnake.model.parameters.generateSP(alphas) must be of type numpy.ndarray or pandas.DataFrame.")
         
@@ -165,11 +165,7 @@ class pargen:
         
         # assign some varaibles that we will need for all loops 
         alphas = dict()
-        
-        # get the median edge strength as an indicator if a regulation is strong or weak
-        # so that alpha can be adjusted based on this 
-        edge_median = np.median(np.abs(network[np.where(network)]))
-        
+     
         # set genes to string as combinations.keys() will be string objects
         genes = [str(g) for g in genes]
         
@@ -192,50 +188,69 @@ class pargen:
                         # add these to a list and turn absolute
                         reg_strength = np.abs(network[inds,i])
                         # then map the mean streng of these to the alpha value 
-                        alphas[comb+"_"+genes[i]] = np.round(mina+(maxa-mina)*(np.mean(np.abs(reg_strength))/np.max(np.abs(network))) ,2)
-                        """
-                        # then check if this is a strong or weak regulation 
-                        if any(reg_strength)>=edge_median:
-                            # if strong assing a high value to the alpha 
-                            alphas[comb+"_"+genes[i]] = np.round(np.random.uniform(0.7,1),2)
-                            # and a weak value to each regulator+target without the AND 
-                            for reg in regs:
-                                if reg+"_"+genes[i] not in alphas.keys():
-                                    alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.2,0.4),2)
-                        else:
-                            # else asign a weak regulation to both the AND and each seperate regulator+target
-                            alphas[comb+"_"+genes[i]] = np.round(np.random.uniform(0.5,0.6),2)
-                            for reg in regs:
-                                if reg+"_"+genes[i] not in alphas.keys():
-                                    alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.2,0.4),2)
-                        """
+                        alphas[genes[i]+"_"+comb.split(":")[0]] = np.round(mina+(maxa-mina)*(np.mean(np.abs(reg_strength))/np.max(np.abs(network))) ,2)
             # once all combinatory relations are solved add any remaning alphas
             inds = np.where(network[:,i])[0]
             for j in inds:
                 reg = genes[j]
                 # if the alpha exist do not resign it 
-                if reg+"_"+genes[i] not in alphas.keys():
+                if genes[i]+"_"+reg not in alphas.keys():
                     # map the regulator to the weight in the network
-                    alphas[reg+"_"+genes[i]] = np.round(mina+(maxa-mina)*(np.abs(network[j,i])/np.max(np.abs(network))) ,2)
+                    alphas[genes[i]+"_"+reg] = np.round(mina+(maxa-mina)*(np.abs(network[j,i])/np.max(np.abs(network))) ,2)
         
         # and return the dict 
         return(alphas)
     
     
-    def make_dis_const(genes=None,Emax=0.6,Emin=0.3):
-        if genes is None:
-            raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
+    def make_dis_const(network,combinations,genes=None,Emax=0.6,Emin=0.3):
+        
+        # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
+        if isinstance(network, pd.DataFrame):
+            # if names are not set seperatly assign the index as names 
+            if not genes:
+                genes = network.index.astype(str).tolist()
+            # and set network to a numpy array
+            network = network.values
+        elif isinstance(network, np.ndarray) and not genes:
+            raise ValueError("When using numpy.array for generation of alphas in genesnake.model.parameters the gene names must be provided in the genes argument.")
+        else:
+            raise TypeError("Network input to genesnake.model.parameters.generateSP(alphas) must be of type numpy.ndarray or pandas.DataFrame.")
+        
+        if not isinstance(combinations,dict):
+            raise TypeError("combinations input to genesnake.model.parameters.generateSP(alphas) must be of type dict.")
+
         # get mean
         mean = (Emax+Emin)/2
         # and simply assign a random std
         std = 1
         
-        dis = list()
-        for i in range(len(genes)): 
-            dis.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
-        
+        # assign some varaibles that we will need for all loops 
+        dis = dict()
+            
+        # set genes to string as combinations.keys() will be string objects
+        genes = [str(g) for g in genes]
+        print(network)
+        # for each gene get the regulators 
+        for i in range(len(genes)):
+            # check if the gene is regulated by multiple other genes
+            # and if so do any of them colaberate
+            # if not no aplha is added 
+            if len(combinations[genes[i]])>0:
+                for comb in combinations[genes[i]]:
+                    # if this is an AND relation we set
+                    # the combination high and the 
+                    if comb.split(":")[-1] == '1':
+                        dis[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2)
+            # once all combinatory relations are solved add any remaning alphas
+            inds = np.where(network[:,i])[0]
+            for j in inds:
+                reg = genes[j]
+                # if the alpha exist do not resign it 
+                if genes[i]+"_"+reg not in dis.keys():
+                    # map the regulator to the weight in the network
+                    dis[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2)
+                
         return dis
-    
     
     
     def make_lambda_RNA(genes=None,Emax=0.8,Emin=0.4):

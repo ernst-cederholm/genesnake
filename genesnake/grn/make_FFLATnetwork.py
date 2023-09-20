@@ -80,6 +80,9 @@ def make_FFLATnetwork(**kvargs):
                     
     # then make up gene names by adding G1..Gn
     names = ["G"+str(i+1) for i in range(int(settings["NETWORK_SIZE"]))]
+
+    # add weights from a uniform distribution
+    tmpnet = np.multiply(tmpnet,np.random.uniform(0.2,1,tmpnet.shape))
     
     # and make a pandas datafram to return this information to
     network = pd.DataFrame(tmpnet,index=names,columns=names)

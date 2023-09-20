@@ -610,10 +610,10 @@ class GRNmodel(object):
             self.time = list()
             self.max_rna_exp = list()
             self.max_prot_exp = list()
-            self.hill_coef = list()
+            self.hill_coef = dict()
             self.combinations = dict()
             self.alphas = dict()
-            self.dis_const = list()
+            self.dis_const = dict()
             self.lambda_RNA = list()
             self.lambda_prot = list()
             self._model_self = model
@@ -699,16 +699,20 @@ class GRNmodel(object):
             
             if len(kwargs)>0:
                 if parameter == "combinations":
+                    # if the parameter is combinations use this as it needs a special case 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,**kwargs))
-                elif parameter=="alphas":
+                elif parameter=="alphas" or parameter=="dis_const":
+                    # if it is a parameter that should have a value per regulation use this one 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,self.combinations,self._model_self.genes,**kwargs))
                 else:
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.genes,**kwargs))
                 
             else:
                 if parameter == "combinations":
+                    # if the parameter is combinations use this as it needs a special case 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network))
-                elif parameter=="alphas":
+                elif parameter=="alphas" or parameter=="dis_const":
+                    # if it is a parameter that should have a value per regulation use this one 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,self.combinations,self._model_self.genes))
                 else:
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.genes))
