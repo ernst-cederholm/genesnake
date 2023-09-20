@@ -83,6 +83,9 @@ def make_DAG(nodes,degree,self_loops=False,single_comp=True,sign_bias=0.6):
                 else:
                     new_reg = random.choice(max_comp)
                     net[max_n,new_reg] = sign
+                    
+    # add weights from a uniform distribution
+    net = np.multiply(net,np.random.uniform(0.2,1,net.shape))
     
     network = pd.DataFrame(net)
     
@@ -92,13 +95,6 @@ def make_DAG(nodes,degree,self_loops=False,single_comp=True,sign_bias=0.6):
     # add these to the network dataframe
     network.index = names
     network.columns = names
-    
-    # scale the network to be 1.0 for all edges to fit the genesnake framework
-    network = network.where(network<1.0,1.0) 
-    # and add random sign in range +/-1
-    sign  = np.random.randint(2,size=(nodes,nodes))*2-1
-    # add sign to the network 
-    network = network.multiply(sign,axis=0)
     
     # and remove -0.0s for estetics (this step does not affect anything and is added due to personal preferense)
     network = network.mask(network==0.0,0.0) 

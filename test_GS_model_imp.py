@@ -20,12 +20,17 @@ genes = int(sys.argv[1])
 
 #network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0)
 network = gs.grn.make_DAG(genes,1.2)
+print(network)
 # turn that in to an adjacency matrix 
 #adj = gs.util.numpy_to_adjacency(network)
 # build a model from make_model 
-M = gs.GRNmodel.make_model(network,max_comb=1)
-M.parameters.generateMP()
+M = gs.GRNmodel.make_model(network,"line",lambda_RNA={"Emax":1,"Emin":0.8})
+print(vars(M))
 M.set_pert("diag",effect=(0.8,0.9),noise=0,multipert=3,exp=1,reps=3,sign=-1)
+
+#for i in vars(M.parameters):
+#    if i != "time":
+#        print(i,eval("M.parameters."+i))
 
 datasets = pd.DataFrame()
 noisesets = pd.DataFrame()
@@ -51,7 +56,7 @@ for s in [10]:
         fold_change_data = pd.DataFrame(fold_change_data,index=M.data.index,columns=M.data.columns)
         #np.log2(np.divide(M.noise_free_data,np.reshape(np.array(M.steady_state_RNA),(-1,1))))
         print(fold_change_data)
-        print(M.model)
+        #print(M.model)
         #lscon = infer_networks(fold_change_data,M.perturbation,"lscon",np.logspace(-6,0,100))
         #correct = gs.benchmarking.compare_networks(lscon,M.network,exclude_diagonal=True)
         #print(correct["AUPR"],correct["AUROC"])
@@ -73,7 +78,10 @@ for w in weights:
         colors.append("r")
     else:
         colors.append("b")
-nx.draw_planar(G,with_labels=True,ax=ax1,edgelist=edges,edge_color=colors)
+try:
+    nx.draw_planar(G,with_labels=True,ax=ax1,edgelist=edges,edge_color=colors)
+except nx.NetworkXException: 
+    nx.draw_spring(G,with_labels=True,ax=ax1,edgelist=edges,edge_color=colors)
 sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2,annot=True)
 sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3,annot=True)
 

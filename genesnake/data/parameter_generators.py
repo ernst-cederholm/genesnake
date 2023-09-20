@@ -3,6 +3,7 @@ A collection of functions that are used to randomly generate parameters for the 
 Note that they are not imported in to the data namespace only the model class. 
 """
 
+import scipy.stats as stats
 import pandas as pd
 import numpy as np
 import itertools
@@ -10,21 +11,36 @@ import itertools
 class pargen:
     
     
-    def make_start_rna(genes=None,high_exp=1,low_exp=0.1):
+    def make_start_rna(genes=None,high_exp=1,low_exp=0.11):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
+                
+        mean = (high_exp+low_exp)/2
+        std = 1
         
-        A= np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
-        return A
+        RNA = list()
+        for i in range(len(genes)):
+            RNA.append(np.round(stats.truncnorm.rvs((low_exp-mean)/std,(high_exp-mean)/std,loc=mean,scale=std),2))
+            
+        #A= np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
+        return RNA
     
     def make_start_prot(genes=None,high_exp=1,low_exp=0.1):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         
-        return np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
-
+        mean = (high_exp+low_exp)/2
+        std = 1
+        
+        prot = list()
+        for i in range(len(genes)):
+            prot.append(np.round(stats.truncnorm.rvs((low_exp-mean)/std,(high_exp-mean)/std,loc=mean,scale=std),2))
+            
+        #A= np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
+        return prot
+        
     
-    def make_time(genes=None,time_points=10000,end_time=10):
+    def make_time(genes=None,time_points=10000,end_time=100):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         # make the timepoints in a linspace between 0 and max
@@ -122,7 +138,7 @@ class pargen:
                 # draw a random float in range 0-1 
                 P = np.random.rand()
                 # then assign 1 if P is < the proability to collaborate 
-                if P < comb_prob:
+                if P <= comb_prob:
                     combinations[names[i]][j] = combinations[names[i]][j]+":"+str(1)
                 # else assign 0 
                 else:
@@ -131,7 +147,7 @@ class pargen:
         return combinations
     
     
-    def make_alphas(network,combinations,genes=None):
+    def make_alphas(network,combinations,genes=None,maxa=1.0,mina=0.4):
         # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
         if isinstance(network, pd.DataFrame):
             # if names are not set seperatly assign the index as names 
@@ -175,6 +191,9 @@ class pargen:
                             inds.append(genes.index(reg))
                         # add these to a list and turn absolute
                         reg_strength = np.abs(network[inds,i])
+                        # then map the mean streng of these to the alpha value 
+                        alphas[comb+"_"+genes[i]] = np.round(mina+(maxa-mina)*(np.mean(np.abs(reg_strength))/np.max(np.abs(network))) ,2)
+                        """
                         # then check if this is a strong or weak regulation 
                         if any(reg_strength)>=edge_median:
                             # if strong assing a high value to the alpha 
@@ -189,38 +208,72 @@ class pargen:
                             for reg in regs:
                                 if reg+"_"+genes[i] not in alphas.keys():
                                     alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.2,0.4),2)
-            
+                        """
             # once all combinatory relations are solved add any remaning alphas
             inds = np.where(network[:,i])[0]
             for j in inds:
                 reg = genes[j]
                 # if the alpha exist do not resign it 
                 if reg+"_"+genes[i] not in alphas.keys():
-                    # if there is a strong regulator assing a high alpha 
-                    #if np.abs(network[j,i])>edge_median:
-                    alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.6,1),2)
-                    # otherwise assing a semi strong regulator as the method for determening
-                    # regultor strenght is rather poor
-                    #else:
-                    #    alphas[reg+"_"+genes[i]] = np.round(np.random.uniform(0.4,0.8),2)
+                    # map the regulator to the weight in the network
+                    alphas[reg+"_"+genes[i]] = np.round(mina+(maxa-mina)*(np.abs(network[j,i])/np.max(np.abs(network))) ,2)
         
         # and return the dict 
         return(alphas)
     
     
-    def make_dis_const(genes=None,Emax=0.4,Emin=0.1):
+    def make_dis_const(genes=None,Emax=0.6,Emin=0.3):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
-        return np.round(np.random.uniform(Emin,Emax,(len(genes))),2).tolist()
+        # get mean
+        mean = (Emax+Emin)/2
+        # and simply assign a random std
+        std = 1
+        
+        dis = list()
+        for i in range(len(genes)): 
+            dis.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
+        
+        return dis
     
     
-    def make_lambda_RNA(genes=None,Emax=0.6,Emin=0.4):
+    
+    def make_lambda_RNA(genes=None,Emax=0.8,Emin=0.4):
+        
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
-        return np.round(np.random.uniform(Emin,Emax,(len(genes))),2).tolist()
+        
+        # get mean
+        mean = (Emax+Emin)/2
+        # and simply assign a random std
+        std = 1
+        
+        deltas = list()
+        for i in range(len(genes)): 
+            deltas.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
+        
+        return deltas
     
     
-    def make_lambda_prot(genes=None,Emax=0.4,Emin=0.2):
+    def make_lambda_prot(genes=None,Emax=0.6,Emin=0.4):
+        """
+        Based on the GNW function for getting the degradation. 
+        Emax and Emin is halftime for protein in minutes 
+        """
+
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
-        return np.round(np.random.uniform(Emin,Emax,(len(genes))),2).tolist()
+        if genes is None:
+            raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
+        
+        # get mean
+        mean = (Emax+Emin)/2
+        # and simply assign a random std
+        std = 1
+        
+        deltas = list()
+        for i in range(len(genes)): 
+            deltas.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
+        
+        return deltas
+        

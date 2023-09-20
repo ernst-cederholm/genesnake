@@ -18,7 +18,7 @@ def make_FFLATnetwork(**kvargs):
     #!# this is dumb rewrite so that it takes imput in a better way and then strores that in a dict instead of what ever this is. Thomas to Thomas
     
     # start up a dict with all the keys and default values this is done both to have default
-    # values and to make sure nothing strange can be loaded from the json file if loading config
+    # values and to make sure nothing strange happens if one value is not in the config file
     settings = {"RANDOM_SEED":np.random.randint(1,100), "FFL_ENRICHED":1, "SPARSITY":2.328, "NETWORK_SIZE":100, "N_CORES_TO_USE":-1, "SHUFFLED":0, "OUTPUT":"adj_list", "NO_CYCLES":1}
 
     # if there is a file to load configs from do that  

@@ -37,7 +37,9 @@ class noise_gen:
         
         # then we use the SNR equation to find the stdE based on the relation SNR = (mean(data))/stdE(noise)
         # variance(noise) = stdE(noise)**2
-        stdE = np.mean(data)/SNR
+        # take this as absolute value as data where all values are extremely close to 0 can generate negative values
+        # which will crash things
+        stdE = np.abs(np.mean(data)/SNR)
         noise = np.random.normal(0,stdE,data.shape)       
         
         data = data+noise

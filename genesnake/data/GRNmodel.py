@@ -51,124 +51,91 @@ class GRNmodel(object):
         self.noise = None
     
     
-    def make_model(network,modtype="ODE",*args,**kwargs):
+    def make_model(network,modtype="ODE",generate_parameters=True,**kwargs):
         """
         add a bunch of documentation here
         """
         
-        if isinstance(network,GRNmodel):
-            self = network
-            
-            if self.network:
-                network = self.network
-            elif isinstance(args[0], pd.DataFrame) or isinstance(args[0], np.ndarray):
-                network = args[0]
-            else:
-                raise ValueError("Could not find network to build ODE model from in genesnake.GRNmodel.make_model. Please add a network in pandas.DataFrame pr numpy.array to either the model.network argument or provide a network as the first argument on the function call")
-            
-            i = 1
-        
-            if self.genes:
-                names = self.genes
-            elif isinstance(args[i],list):
-                names = args[i]
-                i+=1
-            else:
-                names = None
-                
-            if len(self.parameters.combinations)>0:
-                combines = self.parameters.combinations
-            elif isinstance(args[i],dict) or args[i]==False:
-                combines = args[i]
-            elif "combinations" in kwargs.keys():
-                combines = kwargs["combinations"] 
-            else:
-                if "max_comb" in kwargs.keys():
-                    max_comb = kwargs[max_comb]
-                else:
-                    max_comb = 2
-                if "comb_prob" in kwargs.keys():
-                    comb_prob = kwargs[comb_prob]
-                else:
-                    comb_prob = 0.3
-                                   
-                combines = self.parameters.generateSP("combinations",network=network,max_comb=max_comb,comb_prob=comb_prob,names=names)
-                
-            self._start_model(modtype)
-            
-        elif isinstance(network, pd.DataFrame) or isinstance(network, np.ndarray):
-            network = network
-            i = 0
-            if "genes" in kwargs.keys():
-                names = kwargs["genes"]
-            elif isinstance(network, pd.DataFrame):
-                names=list(network.columns)
-            elif i < len(args):
-                if isinstance(args[i],list):
-                    names = args[i]
-                    i+=1
-            else:
-                names = None
-                
-            # clean the names to ensure no characters that will mess with the pseduo code generation occurs
-            names = [i.replace(",","comma") for i in names]
-            names = [i.replace("-","") for i in names]
-            names = [i.replace("(","") for i in names]
-            names = [i.replace(")","") for i in names]
-            
-            if i < len(args):
-                if isinstance(args[i],dict) or args[i]==False:
-                    combines = args[i]
-            elif "combinations" in kwargs.keys():
-                combines = kwargs["combinations"] 
-            else:
-                if "max_comb" in kwargs.keys():
-                    max_comb = kwargs["max_comb"]
-                else:
-                    max_comb = 2
-                if "comb_prob" in kwargs.keys():
-                    comb_prob = kwargs["comb_prob"]
-                else:
-                    comb_prob = 0.3
-                            
-                combines = pargen.make_combinations(network,max_comb=max_comb,comb_prob=comb_prob,names=names)
-                
-            # start a model class and return that.
-            savemodel = GRNmodel.__new__(GRNmodel)
-            # start a super class of the class 
-            super(GRNmodel,savemodel).__init__()
-            # and then start the class it self
-            # a bit odd but requiered to make python behave. 
-            savemodel.__init__(savemodel)
-            # add all attributes that are known 
-            savemodel.network = network
-            savemodel.parameters.combinations = combines
-            savemodel.genes = names
-            # and the model it self
-            savemodel._start_model(modtype)
-            return(savemodel)   
+        network = network
+        i = 0
+        if "genes" in kwargs.keys():
+            names = kwargs["genes"]
+        elif isinstance(network, pd.DataFrame):
+            names=list(network.columns)
         else:
-            raise TypeError("Input to genesnake.ODEmodel.make_model must be of type numpy.ndarray or pandas.DataFrame.")
-    
+            names = ["G"+str(i) for i in range(network.shape[0])]
+
+        # clean the names to ensure no characters that will mess with the pseduo code generation occurs
+        names = [i.replace(",","") for i in names]
+        names = [i.replace("-","") for i in names]
+        names = [i.replace("(","") for i in names]
+        names = [i.replace(")","") for i in names]
+        
+        # start a model class and return that.
+        savemodel = GRNmodel.__new__(GRNmodel)
+        # start a super class of the class 
+        super(GRNmodel,savemodel).__init__()
+        # and then start the class it self
+        # a bit odd but requiered to make python behave. 
+        savemodel.__init__(savemodel)
+        # add all attributes that are known 
+        savemodel.network = network
+        savemodel.genes = names
+        
+        # then add parameters
+        if generate_parameters:
+            # if making parameters for an ODE model
+            if modtype=="ODE":
+                # check if generate_parameters is a list in which case use that as param 
+                if isinstance(generate_parameters,list):
+                    params = generate_parameters
+                    # else make a list of all possible parameters 
+                else:
+                    # start by getting all the parameters from savemodel.parameters
+                    params = list(vars(savemodel.parameters).keys())
+                    # remove _model_self as this is not generated in the same way 
+                    params.remove("_model_self")
+                
+                # then loop over each 
+                for para in params:
+                    # check if any parameter settings is in **kwargs 
+                    if para in kwargs.keys():
+                        # if so feed that dict forward to the attribut setter 
+                        savemodel.parameters.generateSP(para,**kwargs[para])
+                    # and if not simply use default parameters  
+                    else:
+                        savemodel.parameters.generateSP(para)
+            # add options for future models here
+            elif modtype=="line":
+                savemodel.parameters = None
+        
+        savemodel._start_model(modtype)
+        return(savemodel)   
+
     
     def _start_model(self,modtype):
         """
         function for adding the chosen model type to the GRNmodel object and converting the model 
         from a string to a running function
         """
-        
         # get the model
         # Note that this code is primarily here to allow future addition of new models as
         # currently ODE is the only supported model
         if modtype == "ODE":
             self.model= make_new_ODEmodel(self.network,self.parameters.combinations,self.genes)
             self.model_type = "ODE"
+        elif modtype == "line":
+            self.model="""def model():
+            expression = np.matmul(np.linalg.pinv(network),perturbation)"""
+            self.model_type = "linear"
         else:
             raise ValueError("""Unknown model type in genesnake.GRNmodel._start_model.
             Currently supported models are:
             - ODE - a differential equations model that simulates change in gene expression over time""")
         
-        # and then add this as a running function under the GRNmodel class. 
+        # and then add this as a running function under the GRNmodel class.
+        # Note that this is done regardless of model used as it will later be used to check if
+        # simulations can be ran
         # make an empty dict to store the dunction in 
         mod_func= {}
         
@@ -176,8 +143,8 @@ class GRNmodel(object):
         exec(self.model,mod_func)
         # add the function to the class name space 
         setattr(self,"_runing_model",mod_func["model"])
-    
-    
+            
+        
     def start_protein(self,start_rna):
         """
         Function for staring a GRN model with a specific RNA level. aimed at simulating based on real data with a measured RNA control. 
@@ -208,11 +175,13 @@ class GRNmodel(object):
         # currently ODE is the only supported model
         if self.model_type == "ODE":
             results = simulators._run_ODE_sim(self,restart_control,time_points=time_points,exp_type=exp_type,draw_pattern=draw_pattern)
+        elif self.model_type == "linear":
+            results = pd.DataFrame(np.matmul(np.linalg.pinv(self.network.values),self.perturbation.values),index=self.genes,columns=self.perturbation.columns)
         else:
             raise ValueError("""Unknown model type in genesnake.GRNmodel._start_model.
             Currently supported models are:
-            - ODE - a differential equations model that simulates change in gene expression over time""")        
-        
+            - ODE - a differential equations model that simulates change in gene expression over time
+            - linear - a simple linear model where change in expression = np.matmul(np.linalg.pinv(network),perturbation)""")        
         # assign the noise free simulation to the GRNmodel
         self.noise_free_data = results
         
@@ -729,7 +698,13 @@ class GRNmodel(object):
                     raise ValueError("Attempted to assign unknown parameter "+str(parameter)+" in genesnake.GRNmodel.parameters.generate_parameter. Only ["+", ".join(approved)+"] can be used.")
             
             if len(kwargs)>0:
-                setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(**kwargs))
+                if parameter == "combinations":
+                    setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,**kwargs))
+                elif parameter=="alphas":
+                    setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,self.combinations,self._model_self.genes,**kwargs))
+                else:
+                    setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.genes,**kwargs))
+                
             else:
                 if parameter == "combinations":
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network))
