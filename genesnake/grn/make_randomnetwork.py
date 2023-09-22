@@ -6,7 +6,7 @@ import networkx as nx
 import pandas as pd
 import numpy as np
 
-def make_random(nodes,degree,alpha=0.9,self_loops=True):
+def make_random(nodes,degree,alpha=0.9,self_loops=False):
     """
     Function for generating random k-out graphs with preferential attachment acts as a wraper of the networkx function 
     random_k_out_graph. It is included as a way to easily get a networkx network in to a genesnake format but any part of this 
@@ -20,12 +20,16 @@ def make_random(nodes,degree,alpha=0.9,self_loops=True):
     OUTPUT: 
         network - a graph in adjacency matrix format stored in a pandas dataframe with each gene named G1..Gn. 
     """
-
+    
+    # round the degree as it has to be an int
+    degree = int(round(degree))
+    
     # make a random graph 
     G = nx.random_k_out_graph(nodes,degree,alpha,self_loops=self_loops)
-    # and move it to pandas 
+
+    # and move it to pandas
     network = nx.to_pandas_adjacency(G)
-    
+
     # generate names for each gene 
     names = ["G"+str(i+1) for i in range(nodes)]
     
@@ -40,6 +44,11 @@ def make_random(nodes,degree,alpha=0.9,self_loops=True):
     # add sign to the network 
     network = network.multiply(sign,axis=0)
     
+    # if self loops add a -1 to all loops
+    if self_loops:
+        diag = [np.random.uniform(np.max(np.abs(network.values))/2,np.max(np.abs(network.values)))*-1 for i in range(len(names))]
+        np.fill_diagonal(network.values,diag)
+        
     # and remove -0.0s for estetics (this step does not affect anything and is added due to personal preferense)
     network = network.mask(network==0.0,0.0) 
     

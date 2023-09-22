@@ -9,7 +9,7 @@ import numpy as np
 import json
 
 
-def make_FFLATnetwork(**kvargs):
+def make_FFLATnetwork(self_loops=True,**kvargs):
     """
     function for generating a network using the FFLAT model
     """
@@ -86,5 +86,9 @@ def make_FFLATnetwork(**kvargs):
     
     # and make a pandas datafram to return this information to
     network = pd.DataFrame(tmpnet,index=names,columns=names)
+    
+    if self_loops:
+        diag = [np.random.uniform(np.max(np.abs(network.values))/2,np.max(np.abs(network.values)))*-1 for i in range(len(names))]
+        np.fill_diagonal(network.values,diag)
     
     return network
