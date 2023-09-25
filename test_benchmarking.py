@@ -15,22 +15,39 @@ Anet = scipy.io.loadmat('C:\\Users\\mateu\\Desktop\\PostDocSU\\3p_geneSNAKE\\sam
 Y = scipy.io.loadmat('C:\\Users\\mateu\\Desktop\\PostDocSU\\3p_geneSNAKE\\sample_networks_for_geneSNAKE\\y_g50_S3_snr01_rep2_1.mat')
 
 Anet2 = pd.DataFrame.from_dict(Anet['outA'])
-Y2 = -pd.DataFrame.from_dict(Y['outY'])
+sY = pd.DataFrame.from_dict(Y['outY'])
 
 # sample P matrix (sP) 50x50
-sP1 = np.eye(len(Y2), len(Y2))  # create matrix with 1's on diagonal (for 1 replicate)
+sP1 = np.eye(len(sY), len(sY))  # create matrix with 1's on diagonal (for 1 replicate)
 sP1 = pd.DataFrame(sP1)
 P = pd.concat([sP1, sP1], axis=1)  # as two replicates
 
-data_summary(Y2, P)
+from sklearn.svm import SVR
+from sklearn.inspection import permutation_importance
 
+svr_poly = SVR(kernel="poly")
+aest = []
+n = sY.shape[0]
+for i in range(0, n):
+    Y = sY.transpose()
+    print(Y)
+    svr_poly.fit(Y, Y.iloc[:,i])
+    perm_importance = permutation_importance(svr_poly, Y, Y.iloc[:,i])
+    print(perm_importance)
+
+#data_summary(Y2, P)
+#print(Y2)
 # ls for inferring networks
-zvec = np.logspace(-6, 0, 30)
-aests = infer_networks(Y2, P, 'lsco', zvec)
+#zvec = np.logspace(-10, -5, 30)
+#zvec = np.linspace(-1, 2, 30)
+#aests = infer_networks(Y2, P, 'rbfsvm', zvec)
+#print(zvec)
+#print(aests[0])
+#out = compare_networks(aests, Anet2, False, False)
 
-out = compare_networks(aests, Anet2, True, False)
+#print(out['AUROC'])
+#print(max(out['metrics']['f1']))
 
-print(out['AUROC'])
 # plot a boxplot with selected statistics
 #fig = plt.figure()
 #plt.boxplot(out[['mcc', 'f1', 'ppv', 'bm', 'fdr', 'auc']], labels=['MCC', 'F1', 'PPV', 'BM', 'FDR', "AUC"])

@@ -18,15 +18,17 @@ genes = int(sys.argv[1])
 #network = network.values
 #network = np.hstack((network,np.random.normal(0,1,(network.shape[0],1))))
 
-#network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0)
-network = gs.grn.make_DAG(genes,1.2)
+network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0)
+#network = gs.grn.make_DAG(genes,1.2)
 print(network)
 # turn that in to an adjacency matrix 
 #adj = gs.util.numpy_to_adjacency(network)
 # build a model from make_model 
-M = gs.GRNmodel.make_model(network,"line",lambda_RNA={"Emax":1,"Emin":0.8})
-print(vars(M))
-M.set_pert("diag",effect=(0.8,0.9),noise=0,multipert=3,exp=1,reps=3,sign=-1)
+M = gs.GRNmodel.make_model(network)
+for i in vars(M.parameters).keys():
+    if i != "time":
+        print(i,vars(M.parameters)[i])
+M.set_pert("diag",effect=(0.5,0.9),noise=0,multipert=3,exp=1,reps=3,sign=-1)
 
 #for i in vars(M.parameters):
 #    if i != "time":
@@ -35,7 +37,7 @@ M.set_pert("diag",effect=(0.8,0.9),noise=0,multipert=3,exp=1,reps=3,sign=-1)
 datasets = pd.DataFrame()
 noisesets = pd.DataFrame()
 nfdatasets = pd.DataFrame()
-
+print(M.model)
 pos = 0
 fig = 1
 for s in [10]:
@@ -60,7 +62,7 @@ for s in [10]:
         #lscon = infer_networks(fold_change_data,M.perturbation,"lscon",np.logspace(-6,0,100))
         #correct = gs.benchmarking.compare_networks(lscon,M.network,exclude_diagonal=True)
         #print(correct["AUPR"],correct["AUROC"])
-        
+        #gs.analysis.network_data_dyn_test(M)
 
 fig = plt.figure(constrained_layout=True)
 (subfig1, subfig2,subfig3) = fig.subfigures(3, 1)
@@ -82,16 +84,24 @@ try:
     nx.draw_planar(G,with_labels=True,ax=ax1,edgelist=edges,edge_color=colors)
 except nx.NetworkXException: 
     nx.draw_spring(G,with_labels=True,ax=ax1,edgelist=edges,edge_color=colors)
-sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2,annot=True)
-sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3,annot=True)
 
+if genes <= 20:
+    sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2,annot=True)
+    sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3,annot=True)
+else:
+    sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2)
+    sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3)
+
+    
 subfig1.suptitle("GRN")
 subfig2.suptitle("Noise free data")
 subfig3.suptitle("Noise free fold change")
 
 plt.show()
+plt.close()
 #sns.heatmap(M.data,cmap="YlGn",linecolor="k",linewidths=0.01)
-#plt.show()
+sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01)
+plt.show()
 #sns.heatmap(M.data-M.noise_free_data,cmap="YlOrRd",linecolor="k",linewidths=0.01)
 #plt.show()
 

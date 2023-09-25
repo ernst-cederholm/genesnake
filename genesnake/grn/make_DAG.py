@@ -45,7 +45,8 @@ def make_DAG(nodes,degree,self_loops=False,single_comp=True,sign_bias=0.6):
     
     # if self loops add a -1 to all loops
     if self_loops:
-        np.fill_diagonal(net,-1)
+        diag = [np.random.uniform(np.max(np.abs(net))/2,np.max(np.abs(net)))*-1 for i in range(nodes)]
+        np.fill_diagonal(net,diag)
         
     if single_comp:
         # if we want to make sure the graph is fully connected

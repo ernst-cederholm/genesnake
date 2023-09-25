@@ -82,8 +82,6 @@ def make_new_ODEmodel(network,combines,names=None):
         model+="""
     n_{}=ns[{}]""".format(g,i)
         model+="""
-    k_{}=ks[{}]""".format(g,i)
-        model+="""
     lambdaRNA_{}=lambda_RNA[{}]""".format(g,i)
         model+="""
     lambdaP_{}=lambda_P[{}]""".format(g,i)
@@ -94,24 +92,26 @@ def make_new_ODEmodel(network,combines,names=None):
         inds = np.where(network[:,i])[0]
         # get the combinations of regulators that are avalible for this gene
         # This part should be rewritten to handle a None input of comb_mat
-        gene_combs = {name.split(":")[0]:int(name.split(":")[1]) for name in combines[g]}
-
+        gene_combs = [name.split(":")[0] for name in combines[g] if int(name.split(":")[1])>0]
+        print(gene_combs)
+        
         # get the regulators for the current gene as well as the combinations of regulators
         if len(inds) > 0:
             regs = [names[ind] for ind in inds]
-            regs = regs+list(gene_combs.keys())
+            regs = regs+gene_combs
         else:
             regs = []
-
+        print(regs)
         # get an alpha for each regulation    
         for gene in regs:
             model+="""
-    alpha_{}_{}=ks[{}]""".format(g,gene,i)
+    alpha_{}_{}=alphas[\"{}_{}\"]""".format(g,gene,g,gene)
+            model+="""
+    k_{}_{}=ks[\"{}_{}\"]""".format(g,gene,g,gene)
 
         # add a white space
         model+="""
         """
-
     # loop over all genes and capture the describing features 
     for i in range(genes):
         # get the key name to match with combinations and so on 
@@ -150,44 +150,44 @@ def make_new_ODEmodel(network,combines,names=None):
                 # first gene. which gene here does not matter as they should have the same
                 # sign to colaberate. 
                 if "_" in gene:
-
+                    
                     # don't add 0 if there is no collaboration as it's just a massive equation*0
                     if gene_combs[gene]==0:
                         continue
-
+                    
                     split_coop_gene = gene.split("_")
                     sign = signs[split_coop_gene[0]]
-
+                    
                     ans_top = ["{}*alpha_{}_{}".format(gene_combs[gene],g,gene)]
                     ans_bottom = []
 
                     if sign > 0:
                         for q in split_coop_gene:
-                            ans_top.append("((prot_{}/k_{})**n_{})".format(q,g,g))
-                            ans_bottom.append("((prot_{}/k_{})**n_{})".format(q,g,g))
+                            ans_top.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
+                            ans_bottom.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
                     else:
                         for q in split_coop_gene:
-                            ans_top.append("((k_{}/prot_{})**n_{})".format(g,q,g))
-                            ans_bottom.append("((k_{}/prot_{})**n_{})".format(g,q,g))
+                            ans_top.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,q,g))
+                            ans_bottom.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,q,g))
 
                     top.append("("+"*".join(ans_top)+")")
                     bottom.append("("+"*".join(ans_bottom)+")")
                 else:
                     sign = signs[gene]
                     if sign > 0:
-                        top.append("(alpha_{}_{}*(prot_{}/k_{})**n_{})".format(g,gene,gene,g,g))
-                        bottom.append("((prot_{}/k_{})**n_{})".format(gene,g,g))
+                        top.append("(alpha_{}_{}*(prot_{}/k_{}_{})**n_{})".format(g,gene,gene,g,gene,g))
+                        bottom.append("((prot_{}/k_{}_{})**n_{})".format(gene,g,gene,g))
                     elif sign < 0:
-                        top.append("(alpha_{}_{}*(k_{}/prot_{})**n_{})".format(g,gene,g,gene,g))
-                        bottom.append("((k_{}/prot_{})**n_{})".format(g,gene,g))
+                        top.append("(alpha_{}_{}*(k_{}_{}/prot_{})**n_{})".format(g,gene,g,gene,gene,g))
+                        bottom.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,gene,g))
                         
             # and finally join these togheter in to a single equation that describes the cahnge in gene expression
             equation+="(("+"+".join(top)+")/("+"+".join(bottom)+"))-lambdaRNA_{}*RNA_{}".format(g,g)
             # add a second equation that describes the change in protein 
             prot = """dp_{} = ri_{}*RNA_{}-lambdaP_{}*prot_{}""".format(g,g,g,g,g)
-        # if there are no regulators we add 0.5*k/k to simulate an unknown effect of about half maximum transcription 
+        # if there are no regulators we add mi*0.5 as expressiob to simulate an unknown effect of about half maximum transcription 
         else:
-            equation = "d_{} = mi_{}*(0.5*k_{}/k_{})-(lambdaRNA_{}*RNA_{})".format(g,g,g,g,g,g)
+            equation = "d_{} = mi_{}*0.5-(lambdaRNA_{}*RNA_{})".format(g,g,g,g)
             prot = """dp_{} = ri_{}*RNA_{}-lambdaP_{}*prot_{}""".format(g,g,g,g,g)
             
             

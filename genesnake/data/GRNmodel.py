@@ -453,7 +453,7 @@ class GRNmodel(object):
     
     def save(self,file=None,kind=None):
         """
-        Function that acts as a wraper for the two options to save data from the model. 
+        Function that acts as a wrapper for the two options to save data from the model.
         It either creates a json file or a pickle file with all parameters. 
         INPUT: 
             file - A file name or a file path to save the data to 
@@ -473,7 +473,7 @@ class GRNmodel(object):
                 kind = "pickle"
             else:
                 raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
-        elif kind=="json":
+        elif kind == "json":
             self._json_save(file)
         elif kind == "pickle":
             self._pickle_save(file)
@@ -508,7 +508,7 @@ class GRNmodel(object):
         INPUT: 
             file - the file name or file path of the file to load
         OUTPUT: 
-            loadmodel - a GRNmodel object containg the attributes loaded from the json file
+            loadmodel - a GRNmodel object contaning the attributes loaded from the json file
         """
         file = open(file,"r")
         data = json.load(file)
@@ -610,10 +610,10 @@ class GRNmodel(object):
             self.time = list()
             self.max_rna_exp = list()
             self.max_prot_exp = list()
-            self.hill_coef = list()
+            self.hill_coef = dict()
             self.combinations = dict()
             self.alphas = dict()
-            self.dis_const = list()
+            self.dis_const = dict()
             self.lambda_RNA = list()
             self.lambda_prot = list()
             self._model_self = model
@@ -699,16 +699,20 @@ class GRNmodel(object):
             
             if len(kwargs)>0:
                 if parameter == "combinations":
+                    # if the parameter is combinations use this as it needs a special case 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,**kwargs))
-                elif parameter=="alphas":
+                elif parameter=="alphas" or parameter=="dis_const":
+                    # if it is a parameter that should have a value per regulation use this one 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,self.combinations,self._model_self.genes,**kwargs))
                 else:
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.genes,**kwargs))
                 
             else:
                 if parameter == "combinations":
+                    # if the parameter is combinations use this as it needs a special case 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network))
-                elif parameter=="alphas":
+                elif parameter=="alphas" or parameter=="dis_const":
+                    # if it is a parameter that should have a value per regulation use this one 
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.network,self.combinations,self._model_self.genes))
                 else:
                     setattr(self,parameter,getattr(pargen,'make_%s' % parameter)(self._model_self.genes))
