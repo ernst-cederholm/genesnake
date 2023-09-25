@@ -1,6 +1,6 @@
 import statistics
 import numpy as np
-from methods.grn_inference import generate_sequencing_noise
+from genesnake.data.noise_generators import noise_gen
 
 genes_ind = [100, 101, 200, 201, 300, 301, 1000, 1001, 2000, 2001,
              3000, 3001, 10100, 10101, 10200, 10201, 10300, 10301, 11000, 12000] # static
@@ -25,7 +25,10 @@ print(np.shape(X))
 # good mapping rates 0.1-0.2 (good) or 0-0.1 (very good)
 
 # very high quality data
-nois_vgq = generate_sequencing_noise(X, "very_high")
+for i in range(0, 100):
+    nois_vgq = noise_gen.make_sequencing_noise(X, "very_low")
+    print(i)
+
 print(nois_vgq["ratios"])
 print(X)
 rs = nois_vgq["ratios"]

@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import sys
 from sklearn.linear_model import Lasso, ElasticNet
+from sklearn import svm
 #from sklearn.metrics import precision_recall_curve, auc, roc_auc_score
 from scipy.stats import shapiro, kstest
 import statistics as st
@@ -11,6 +12,7 @@ import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import seaborn as sns
 from statistics import mean
+from sklearn.svm import SVR
 
 def cutoff_handler(A, zvec, zvec_auto=False):
     """
@@ -81,8 +83,62 @@ def infer_networks(Y, P, method, zvec):
             for i in P.transpose():
                 lassoMod.fit(Y.transpose(), -P.iloc[i])
                 outNetTmp.append(lassoMod.coef_)
+
             outNetTmp = pd.DataFrame(outNetTmp)
             aests.append(outNetTmp)
+
+    if method == "linsvm":  # linear SVM
+        from sklearn.svm import SVR
+        aest = []
+        for i in P.transpose():
+            svr_lin = SVR(kernel="linear", C=100, gamma="auto")
+            fitc = svr_lin.fit(Y.transpose(), -P.iloc[i]).coef_
+            aest.append(fitc)
+        aest2 = pd.DataFrame(np.concatenate(aest))
+        aests = cutoff_handler(aest2, zvec, False)
+
+    if method == "regtrees":  # regression trees
+        aest = []
+        from sklearn.tree import DecisionTreeRegressor
+
+        n = Y.shape[0]
+        for i in range(0, n):
+            # create a regressor object
+            regressor = DecisionTreeRegressor(random_state=0)
+            Y2 = Y.transpose()
+            fitc = regressor.fit(Y2, Y2.iloc[:, i])
+            aest.append(fitc.feature_importances_)
+        aest2 = pd.DataFrame(aest).transpose()
+        aests = cutoff_handler(aest2, zvec, False)
+
+    if method == "rbfsvm":  # rbf svm (nonlinear)
+        from sklearn.svm import SVR
+        from sklearn.inspection import permutation_importance
+        aest = []
+        n = Y.shape[0]
+        svrr = SVR(kernel="rbf")
+        for i in range(0, n):
+            Y2 = Y.transpose()
+            svrr.fit(Y2, Y2.iloc[:, i])
+            perm_importance = permutation_importance(svrr, Y2, Y2.iloc[:, i])
+            aest.append(perm_importance['importances_mean'])
+        aest2 = pd.DataFrame(aest)
+        aests = cutoff_handler(aest2, zvec, False)
+
+    if method == "polysvm":  # elastic net
+        from sklearn.svm import SVR
+        from sklearn.inspection import permutation_importance
+        aest = []
+        n = Y.shape[0]
+        svrp = SVR(kernel="poly")
+        for i in range(0, n):
+            Y2 = Y.transpose()
+            svrp.fit(Y2, Y2.iloc[:, i])
+            perm_importance = permutation_importance(svrp, Y2, Y2.iloc[:, i])
+            aest.append(perm_importance['importances_mean'])
+        aest2 = pd.DataFrame(aest)
+        aests = cutoff_handler(aest2, zvec, False)
+
     return aests ###
 
 def compare_networks(nets, net0, exclude_diagonal=False, signed=False):

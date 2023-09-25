@@ -7,9 +7,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 # first we create a random network of 10 genes and outdegree 2
 # netf = gs.grn.make_FFLATnetwork()
-ngenes = 10
-net = gs.grn.make_random(ngenes, 2)
-
+ngenes = 20
+#net = gs.grn.make_random(ngenes, 3)
+#net = gs.grn.make_FFLATnetwork(ngenes)
+net = gs.grn.make_DAG(ngenes, 3, self_loops=False)
 # then build an ODE model based on network
 M = gs.GRNmodel.make_model(net)
 
@@ -25,10 +26,10 @@ M.set_pert("diag", effect=(0.9, 1), noise=0, exp=1, reps=2, sign=-1)
 # run simulation of gene expression data
 # we set experiment type to steady state(ss) and data space to linear (lin) or logarithmic (log)
 # here the noise is Gaussian
-M.simulate_data(exp_type="ss", draw_pattern="lin", time_points=100, noise_model="rnaseq", SNR="very_low")
-
+#M.simulate_data(exp_type="ss", draw_pattern="lin", time_points=10, noise_model="gaussian", SNR=100)
+M.simulate_data(exp_type="ss", draw_pattern="lin", time_points=100, noise_model="normal", SNR=10)
 # our data is then stored under M.data
-#print(M.data)
+print(M.data)
 
 # but nosie free data are kept as well
 #print(M.noise_free_data)
@@ -39,11 +40,12 @@ P1 = np.eye(ngenes, ngenes)  # create matrix with 1's on diagonal (for 1 replica
 P1 = pd.DataFrame(P1)
 P = -pd.concat([P1, P1], axis=1)  # as two replicates
 
-zvec = np.logspace(-6, 0, 30)
+zvec = np.logspace(-6, 1, 30)
 
-nets = infer_networks(M.noise_free_data, P, "lsco", zvec)
+nets = infer_networks(M.noise_free_data, P, "rbfsvm", zvec)
+print(nets)
 
-out = compare_networks(nets, net, exclude_diagonal=True, signed=False)
+out = compare_networks(nets, net, exclude_diagonal=False, signed=False)
 
 print(out['AUROC'])
 print(max(out['metrics']['f1']))
@@ -60,3 +62,11 @@ ax2.title.set_text('Data')
 ax3.title.set_text('Data+Noise')
 ax4.title.set_text('Noise')
 plt.show()
+
+
+#gs.GRNmodel.save(M.model, file='C:\\Users\\mateu\\Desktop\\model.json', kind='json')
+
+# save the output as pickle
+# please note that this is Python-specific format so non-Python programs may not be able to read it
+# file can be set to a full path and/or name of the file
+# M.save(file='model.pickle', kind='pickle')
