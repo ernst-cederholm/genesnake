@@ -12,6 +12,11 @@ import json
 def make_FFLATnetwork(**kvargs):
     """
     function for generating a network using the FFLAT model
+
+    settings(dict)
+        Config file tht includes network size, sparcity, output format, and whether the resulting network should be FFL-enriched or not. 
+    random_seed (int, default=19)
+        Reproducibility parameter
     """
     #!# improve documentation when it is clear what each element does. 
 
@@ -44,28 +49,32 @@ def make_FFLATnetwork(**kvargs):
         
     # this part needs to be fixed to either take kvargs input or not have all these
     # extra options 
+
+    #load a GRN
     interaction_matrix = functions.get_interaction_matrix(settings)
     
+    #convert to vertex-based motifs network
     motifs = functions.motif_search(settings, interaction_matrix, batch_size=10000, load=True, dump=False)
-    motifs_orig = motifs["030T"]
-    
+    motifs_ids_ffl = motifs["030T"]
     ffl_nodes = list(set(sum([list(map(int, x.split("_"))) for x in motifs_orig], [])))
-    interaction_matrix_ffl = np.zeros((len(ffl_nodes), len(ffl_nodes)))
     
-    for motif in motifs_orig:
+    #initialize nucleus
+    nucleus_network = np.zeros((len(ffl_nodes), len(ffl_nodes)))
+    
+    for motif in motifs_ids_ffl:
         motif = functions.split_motif(motif)
         motif_new = list(ffl_nodes.index(x) for x in motif)
-        interaction_matrix_ffl[np.ix_(motif_new, motif_new)] = interaction_matrix[np.ix_(motif, motif)]
-    interaction_matrix_ffl.shape, interaction_matrix_ffl.sum()
+        nucleus_network[np.ix_(motif_new, motif_new)] = nucleus_network[np.ix_(motif, motif)]
+    nucleus_network.shape, nucleus_network.sum()
         
-    #Load motif space
-    motifs_network = functions.build_vmn(motifs_orig, verbose=True, load=True, dump=False)
+    #Load motif space // Vertex-based motifs network
+    motifs_network = functions.build_vmn(motifs_ids_ffl, verbose=True, load=True, dump=False)
     
     # what are all the settings here?
     artificial_matrix_ffl = generate_artificial_network(
                         interaction_matrix, settings, random_seed = np.random.randint(1,100),
-                        motifs=motifs_orig, motifs_network=motifs_network,
-                        reference_matrix=interaction_matrix_ffl, network_size=int(settings["NETWORK_SIZE"]))
+                        motifs=motifs_ids_ffl, motifs_network=motifs_network,
+                        nucleus=nucleus_network, network_size=int(settings["NETWORK_SIZE"]))
     
     # creata a numpy array to store the data in 
     tmpnet = np.zeros((int(settings["NETWORK_SIZE"]),int(settings["NETWORK_SIZE"])))
