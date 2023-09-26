@@ -954,7 +954,7 @@ def generate_artificial_network(
     p2_parameter=0.7,
     p4_parameter=0.5,
     network_size=100,
-    reference_matrix=None,
+    nucleus=None,
     cascade_transformation_num=3,
     verbose=False
 ):
@@ -1035,9 +1035,9 @@ def generate_artificial_network(
     #print(f"Nucleus matrix shape: {substrate_matrix.shape}")
     network_params = get_network_params(substrate_matrix, config_file, verbose=False)
     #print()
-    if reference_matrix is not None:
+    if nucleus is not None:
         #print("Reference matrix params")
-        fix_network_params = get_network_params(reference_matrix, config_file, verbose=False)
+        fix_network_params = get_network_params(nucleus, config_file, verbose=False)
         #print()
     else:
         fix_network_params = None
@@ -1141,10 +1141,13 @@ def generate_artificial_network(
                     network_params.substrate_motifs.append(motif_to_add)
                 
             #n_edges_to_join = 2
-            elif params.n_unique_nodes == 0 and params.n_unique_edges == 2:
-                #print('0 nodes, 2 edges')
-                attachment_pattern = get_attachment_0n2e(substrate_matrix, params)
-                
+            elif (params.n_unique_nodes == 0) and (params.n_unique_edges == 2):
+                try:
+                    attachment_pattern = get_attachment_0n2e(substrate_matrix, params)
+                    #print('0 nodes, 2 edges')
+                except ValueError:
+                    pass
+
                 #update motifs
                 if attachment_pattern is not None:
                     motif_to_add = attachment_pattern[1]

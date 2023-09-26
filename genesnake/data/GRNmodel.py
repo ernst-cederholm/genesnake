@@ -463,7 +463,7 @@ class GRNmodel(object):
     
     def save(self,file=None,kind=None):
         """
-        Function that acts as a wraper for the two options to save data from the model. 
+        Function that acts as a wrapper for the two options to save data from the model.
         It either creates a json file or a pickle file with all parameters. 
         INPUT: 
             file - A file name or a file path to save the data to 
@@ -483,7 +483,7 @@ class GRNmodel(object):
                 kind = "pickle"
             else:
                 raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
-        elif kind=="json":
+        elif kind == "json":
             self._json_save(file)
         elif kind == "pickle":
             self._pickle_save(file)
@@ -518,7 +518,7 @@ class GRNmodel(object):
         INPUT: 
             file - the file name or file path of the file to load
         OUTPUT: 
-            loadmodel - a GRNmodel object containg the attributes loaded from the json file
+            loadmodel - a GRNmodel object contaning the attributes loaded from the json file
         """
         file = open(file,"r")
         data = json.load(file)

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
-from methods.grn_inference import infer_networks
+from methods.grn_inference import infer_networks, cutoff_handler
 
 # sample Y matrix (sY) 4x4 for 1 replicate
 # 1st replicate
@@ -38,7 +38,7 @@ sP = -pd.concat([sP1, sP1], axis=1)  # as two replicates
 
 # testing the GRN inference
 zvec = np.logspace(-6, 0, 30)
-Anets = infer_networks(sY, sP, "lasso", zvec)
+Anets = infer_networks(sY, sP, "rbfsvm", zvec)
 
 # simple visualization of network
 # select n-th network and display it

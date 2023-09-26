@@ -13,7 +13,8 @@ import math
 
 
 def zinbme(data, prob_nb, sf): # sf is scaling factor (SNR like)
-    n = round(np.mean(data)-np.std(data))
+    n = round(np.mean(data)+1)
+    print(n)
     nb = np.random.negative_binomial(n, prob_nb, size=len(data))  # negative binomial distribution
     zinb = nb
     msf = np.sqrt(np.var(data) / (sf * (np.var(zinb))))  # scaling factor to adjust noise values to data
