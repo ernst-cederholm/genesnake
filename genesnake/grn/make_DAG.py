@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import random
 
-def make_DAG(nodes,degree,self_loops=False,single_comp=True,sign_bias=0.6):
+def make_DAG(nodes,degree,self_loops=False,single_comp=True,sign_bias=0.8):
     """
     Function for generating random DAG, this is not a super realistic GRN model but will work well for small systems <20 or so genes 
     after that the model will still work but may not be biologically realistic. 

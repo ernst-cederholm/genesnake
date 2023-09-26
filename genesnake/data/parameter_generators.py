@@ -11,7 +11,7 @@ import itertools
 class pargen:
     
     
-    def make_start_rna(genes=None,high_exp=1,low_exp=0.11):
+    def make_start_rna(genes=None,high_exp=10,low_exp=5):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
                 
@@ -25,7 +25,7 @@ class pargen:
         #A= np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
         return RNA
     
-    def make_start_prot(genes=None,high_exp=1,low_exp=0.1):
+    def make_start_prot(genes=None,high_exp=5,low_exp=1):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         
@@ -40,7 +40,7 @@ class pargen:
         return prot
         
     
-    def make_time(genes=None,time_points=10000,end_time=100):
+    def make_time(genes=None,time_points=10000,end_time=10):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         # make the timepoints in a linspace between 0 and max
@@ -61,14 +61,14 @@ class pargen:
         return np.round(np.random.uniform(low=Emin,high=Emax,size=(len(genes))),2).tolist()
     
     
-    def make_hill_coef(genes=None,Emax=4,Emin=2):
+    def make_hill_coef(genes=None,Emax=5,Emin=3):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         
         return np.round(np.random.randint(low=Emin,high=Emax+1,size=(len(genes))),2).tolist()
     
     
-    def make_combinations(network,max_comb=2,comb_prob=0.3,names=None):
+    def make_combinations(network,names=None,max_comb=2,comb_prob=0.5):
         """
         Function for drawing all possible combinations of genes regualting the same 
         targer in max_comb sized groups and storing this in a 
@@ -101,12 +101,7 @@ class pargen:
         # to make sure nothing strange happens check that names and rows are the same number
         if not len(names)==network.shape[0]:
             raise ValueError("The number of given names seems to be different from the number of genes in the network in genesnake.model.parameters.generateSP(combinations)")
-        
-        # make sure that combinations of length 1 is not created as this will cause issues later
-        # on and does not make sense instead return false telling the other tools that no combinations are possible
-        if max_comb < 2:
-            return {i:[] for i in names}
-        
+                
         # create an empty dict 
         combinations = dict() 
         
@@ -121,33 +116,31 @@ class pargen:
             # This is so that we do not draw a combinations of positive and
             # negative interactions as this would be impossible to explain
             # in the network.
-            posinds = [names[j] for j in np.where(network[:,i]>0)[0]]
-            neginds = [names[j] for j in np.where(network[:,i]<0)[0]]
+            inds = [names[j] for j in np.where(network[:,i]!=0)[0]]
             # then loop opver each set of interactions and make combinations of length combs
             # this is done until we reach combinations of max_comb
-            while combs<=max_comb:
+            while combs<=len(inds):
                 # draw all possible combinations of upregulators in length combs
-                combinations[names[i]] = combinations[names[i]]+["_".join(string) for string in list(itertools.combinations(posinds,combs))]
-                # do the same for inhibition 
-                combinations[names[i]] = combinations[names[i]]+["_".join(string) for string in list(itertools.combinations(neginds,combs))]
+                combinations[names[i]] = combinations[names[i]]+["_".join(string) for string in list(itertools.combinations(inds,combs))]
                 # and add one more size of combinations 
                 combs=combs+1
-           
-            # then we assign 1 or 0 to each possible combination to weight this in the model 
+
+            # then assign a 1 or 0 to collaboration constant 
             for j in range(len(combinations[names[i]])):
-                # draw a random float in range 0-1 
-                P = np.random.rand()
-                # then assign 1 if P is < the proability to collaborate 
-                if P <= comb_prob:
-                    combinations[names[i]][j] = combinations[names[i]][j]+":"+str(1)
-                # else assign 0 
-                else:
+                print(combinations[names[i]][j])
+                if len(combinations[names[i]][j].split("_")) > max_comb:
                     combinations[names[i]][j] = combinations[names[i]][j]+":"+str(0)
-                    
+                else:
+                    r = np.random.random()
+                    if r < comb_prob:
+                        combinations[names[i]][j] = combinations[names[i]][j]+":"+str(1)
+                    else:
+                        combinations[names[i]][j] = combinations[names[i]][j]+":"+str(0)
+        print(combinations)
         return combinations
     
     
-    def make_alphas(network,combinations,genes=None,maxa=1.0,mina=0.4):
+    def make_alphas(network,combinations,genes=None,maxa=1.0,mina=0.6):
         # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
         if isinstance(network, pd.DataFrame):
             # if names are not set seperatly assign the index as names 
@@ -165,12 +158,24 @@ class pargen:
         
         # assign some varaibles that we will need for all loops 
         alphas = dict()
-     
+        
+        
         # set genes to string as combinations.keys() will be string objects
         genes = [str(g) for g in genes]
         
         # for each gene get the regulators 
         for i in range(len(genes)):
+            # first add the passive expression, this is a random value between min_self and max_self
+            # define these here to make it easier to change 
+            min_self = 0.01
+            max_self = 0.1
+            mean = (min_self+max_self)/2
+            std = 0.1
+            alphas[genes[i]] = np.round(stats.truncnorm.rvs((min_self-mean)/std,(max_self-mean)/std,loc=mean,scale=std),2)
+            
+            mean = (maxa+mina)/2
+            std = 1
+            
             # check if the gene is regulated by multiple other genes
             # and if so do any of them colaberate
             # if not no aplha is added 
@@ -178,17 +183,27 @@ class pargen:
                 for comb in combinations[genes[i]]:
                     # if this is an AND relation we set
                     # the combination high and the 
-                    if comb.split(":")[-1] == '1':
+                    if float(comb.split(":")[-1]) > 0:
                         # get the genes involved in the combo
                         regs = comb.split(":")[0].split("_")
                         inds = list()
                         # get the strenght for each regulator in the network
                         for reg in regs:
                             inds.append(genes.index(reg))
-                        # add these to a list and turn absolute
-                        reg_strength = np.abs(network[inds,i])
-                        # then map the mean streng of these to the alpha value 
-                        alphas[genes[i]+"_"+comb.split(":")[0]] = np.round(mina+(maxa-mina)*(np.mean(np.abs(reg_strength))/np.max(np.abs(network))) ,2)
+                        if any(network[inds,i])<0:
+                            alphas[genes[i]+"_"+comb.split(":")[0]] = 0
+                        else:
+                            alphas[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)
+                        # finally map a weaker value for each of the combined regulators
+                        # it is arbitrarily assigned a value 10x smaller than the mapped value to
+                        # maintain some minimal effect on the system
+                        for reg in regs:
+                            reg_strength = network[genes.index(reg),i]
+                            if reg_strength < 0:
+                                alphas[genes[i]+"_"+reg] = 0
+                            else:
+                                alphas[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)
+                        
             # once all combinatory relations are solved add any remaning alphas
             inds = np.where(network[:,i])[0]
             for j in inds:
@@ -196,13 +211,16 @@ class pargen:
                 # if the alpha exist do not resign it 
                 if genes[i]+"_"+reg not in alphas.keys():
                     # map the regulator to the weight in the network
-                    alphas[genes[i]+"_"+reg] = np.round(mina+(maxa-mina)*(np.abs(network[j,i])/np.max(np.abs(network))) ,2)
-        
+                    if network[j,i] < 0:
+                        alphas[genes[i]+"_"+reg] = 0
+                    else:
+                        alphas[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)
+                                                            
         # and return the dict 
         return(alphas)
     
     
-    def make_dis_const(network,combinations,genes=None,Emax=0.6,Emin=0.3):
+    def make_dis_const(network,combinations,genes=None,Emax=1,Emin=0.5):
         
         # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
         if isinstance(network, pd.DataFrame):
@@ -229,7 +247,6 @@ class pargen:
             
         # set genes to string as combinations.keys() will be string objects
         genes = [str(g) for g in genes]
-        print(network)
         # for each gene get the regulators 
         for i in range(len(genes)):
             # check if the gene is regulated by multiple other genes
@@ -239,8 +256,7 @@ class pargen:
                 for comb in combinations[genes[i]]:
                     # if this is an AND relation we set
                     # the combination high and the 
-                    if comb.split(":")[-1] == '1':
-                        dis[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2)
+                    dis[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2)
             # once all combinatory relations are solved add any remaning alphas
             inds = np.where(network[:,i])[0]
             for j in inds:
@@ -253,7 +269,7 @@ class pargen:
         return dis
     
     
-    def make_lambda_RNA(genes=None,Emax=0.8,Emin=0.4):
+    def make_lambda_RNA(genes=None,Emax=0.8,Emin=0.5):
         
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
@@ -265,12 +281,12 @@ class pargen:
         
         deltas = list()
         for i in range(len(genes)): 
-            deltas.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
+            deltas.append(0.8) #  (np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
         
         return deltas
     
     
-    def make_lambda_prot(genes=None,Emax=0.6,Emin=0.4):
+    def make_lambda_prot(genes=None,Emax=0.8,Emin=0.5):
         """
         Based on the GNW function for getting the degradation. 
         Emax and Emin is halftime for protein in minutes 
@@ -288,7 +304,7 @@ class pargen:
         
         deltas = list()
         for i in range(len(genes)): 
-            deltas.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
+            deltas.append(0.8) #(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
         
         return deltas
         

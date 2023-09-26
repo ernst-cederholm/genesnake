@@ -85,7 +85,8 @@ def make_new_ODEmodel(network,combines,names=None):
     lambdaRNA_{}=lambda_RNA[{}]""".format(g,i)
         model+="""
     lambdaP_{}=lambda_P[{}]""".format(g,i)
-
+        model+="""
+    alpha_{}=alphas[\"{}\"]""".format(g,g)
         # get all relevant alphas for this gene:
 
         # get the genes that regulates the current genes 
@@ -156,33 +157,33 @@ def make_new_ODEmodel(network,combines,names=None):
                         continue
                     
                     split_coop_gene = gene.split("_")
-                    sign = signs[split_coop_gene[0]]
+                    #sign = signs[split_coop_gene[0]]
                     
-                    ans_top = ["{}*alpha_{}_{}".format(gene_combs[gene],g,gene)]
+                    ans_top = ["{}*alpha_{}_{}".format(float(gene_combs[gene]),g,gene)]
                     ans_bottom = []
 
-                    if sign > 0:
-                        for q in split_coop_gene:
-                            ans_top.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
-                            ans_bottom.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
-                    else:
-                        for q in split_coop_gene:
-                            ans_top.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,q,g))
-                            ans_bottom.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,q,g))
+                    #if sign > 0:
+                    for q in split_coop_gene:
+                        ans_top.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
+                        ans_bottom.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
+                    #else:
+                    #    for q in split_coop_gene:
+                    #        ans_top.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,q,g))
+                    #        ans_bottom.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,q,g))
 
                     top.append("("+"*".join(ans_top)+")")
                     bottom.append("("+"*".join(ans_bottom)+")")
                 else:
-                    sign = signs[gene]
-                    if sign > 0:
-                        top.append("(alpha_{}_{}*(prot_{}/k_{}_{})**n_{})".format(g,gene,gene,g,gene,g))
-                        bottom.append("((prot_{}/k_{}_{})**n_{})".format(gene,g,gene,g))
-                    elif sign < 0:
-                        top.append("(alpha_{}_{}*(k_{}_{}/prot_{})**n_{})".format(g,gene,g,gene,gene,g))
-                        bottom.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,gene,g))
+                    #sign = signs[gene]
+                    #if sign > 0:
+                    top.append("(alpha_{}_{}*(prot_{}/k_{}_{})**n_{})".format(g,gene,gene,g,gene,g))
+                    bottom.append("((prot_{}/k_{}_{})**n_{})".format(gene,g,gene,g))
+                    #elif sign < 0:
+                    #    top.append("(alpha_{}_{}*(k_{}_{}/prot_{})**n_{})".format(g,gene,g,gene,gene,g))
+                    #    bottom.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,gene,g))
                         
             # and finally join these togheter in to a single equation that describes the cahnge in gene expression
-            equation+="(("+"+".join(top)+")/("+"+".join(bottom)+"))-lambdaRNA_{}*RNA_{}".format(g,g)
+            equation+="(("+"alpha_{}".format(g)+"+"+"+".join(top)+")/("+"+".join(bottom)+"))-lambdaRNA_{}*RNA_{}".format(g,g)
             # add a second equation that describes the change in protein 
             prot = """dp_{} = ri_{}*RNA_{}-lambdaP_{}*prot_{}""".format(g,g,g,g,g)
         # if there are no regulators we add mi*0.5 as expressiob to simulate an unknown effect of about half maximum transcription 

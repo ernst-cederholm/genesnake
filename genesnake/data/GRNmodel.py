@@ -7,7 +7,6 @@ from .perturbation_generators import pertgen
 from .parameter_generators import pargen
 from .noise_generators import noise_gen
 from .simulators import simulators
-from methods.grn_inference import generate_sequencing_noise
 
 # import generic packages
 # note that these are seperated to make future maintenence easier as well as making requierments.txt files
@@ -53,7 +52,18 @@ class GRNmodel(object):
     
     def make_model(network,modtype="ODE",generate_parameters=True,**kwargs):
         """
-        add a bunch of documentation here
+        Function for automatically starting the GRNmodel from a network. Will create a simulation model 
+        and corresponding parameters. 
+        INPUT:
+            network - a pandas dataframe containg the network which to generate data from 
+            modtype - the type of model to generate. Currently supports: 
+                      - ODE - An ODE based model that simulates gene expression over time through enzyme kinetics - supports time series and steady state.  
+                      - line - A linear approximation model that uses the relationship Y = (A**-1)*P to simulate relative change (Y) in the system (A) after perturbation (P). - supports only steady state with output in relative change format.
+            generate_parameters - [optional] - option to turn on or off generation of all or some parameters. Takes True, False or a list of parameters to generate. 
+            kwargs - optional input to the parameter generator in the from of parameter:{\"option1\":0.1,\"option2\":3}. E.g. combinations={\"max_comb\":3,\"comb_prob\":0.8}.
+        To see all options avalible for parameter generation see GRNmodel.params and parameter_generators.py script 
+        OUTPUT: 
+            returns a running GRNmodel class with a network, a corresponding model, a running model function and all generated parameters. 
         """
         
         network = network

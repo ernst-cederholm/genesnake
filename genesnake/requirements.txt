@@ -1,13 +1,17 @@
-#base line stuff to run the git hooks and similar 
-pre-commit
-black
-flake8
-
-#tool specific stuff
-pandas
-numpy
-argparse
-scipy
-jinja2
-matplotlib
-h5py
+#packages needed to run genesnake
+# version is last known functional version but can most likely be updated without issues 
+pandas==1.5.3
+numpy==1.23.5
+argparse==1.1
+scipy==1.10.0
+jinja2==3.1.2
+matplotlib==3.6.3
+scikit-learn==1.3.0
+statsmodels==0.13.5
+numba==0.56.4
+tqdm==4.64.1
+networkx==3.0
+psutil==5.9.4
+seaborn==0.12.2
+plotly==5.16.1
+umap-learn==0.5.3
