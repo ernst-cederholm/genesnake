@@ -56,7 +56,7 @@ def make_FFLATnetwork(self_loops=True,**kvargs):
     #convert to vertex-based motifs network
     motifs = functions.motif_search(settings, interaction_matrix, batch_size=10000, load=True, dump=False)
     motifs_ids_ffl = motifs["030T"]
-    ffl_nodes = list(set(sum([list(map(int, x.split("_"))) for x in motifs_orig], [])))
+    ffl_nodes = list(set(sum([list(map(int, x.split("_"))) for x in motifs_ids_ffl], [])))
     
     #initialize nucleus
     nucleus_network = np.zeros((len(ffl_nodes), len(ffl_nodes)))
@@ -99,5 +99,6 @@ def make_FFLATnetwork(self_loops=True,**kvargs):
     if self_loops:
         diag = [np.random.uniform(np.max(np.abs(network.values))/2,np.max(np.abs(network.values)))*-1 for i in range(len(names))]
         np.fill_diagonal(network.values,diag)
-    
+    print('1')
     return network
+    
