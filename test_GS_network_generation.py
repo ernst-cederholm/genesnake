@@ -19,7 +19,7 @@ from methods.grn_inference import infer_networks
 #network = network.values
 #network = np.hstack((network,np.random.normal(0,1,(network.shape[0],1))))
 
-for i in range(1000):
+for i in range(10):
     genes = 100 #random.randint(10,1000)
     s = round(random.uniform(2,10),2)
     print("\ntest #"+str(i)+" number of genes:"+str(genes)+" sparcity:"+str(s))
