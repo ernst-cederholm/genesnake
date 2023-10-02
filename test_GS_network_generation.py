@@ -19,16 +19,16 @@ from methods.grn_inference import infer_networks
 #network = network.values
 #network = np.hstack((network,np.random.normal(0,1,(network.shape[0],1))))
 
-for i in range(1000):
+for i in range(2):
     genes = 100 #random.randint(10,1000)
     s = round(random.uniform(2,10),2)
     print("\ntest #"+str(i)+" number of genes:"+str(genes)+" sparcity:"+str(s))
-    network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,SPARSITY=s)
+    #network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,SPARSITY=s)
+    network = gs.grn.make_random(100,2)
     
-    #G = nx.from_pandas_adjacency(network,create_using=nx.DiGraph)
-    #nx.draw_spring(G,with_labels=True)
-    #plt.show()
-    
+    G = nx.from_pandas_adjacency(network,create_using=nx.DiGraph)
+    nx.draw_spring(G,with_labels=True)
+    plt.show()    
     #print(network)
     
     # build a model from make_model 
