@@ -24,8 +24,9 @@ def make_random(nodes,degree,alpha=0.9,self_loops=False):
     # round the degree as it has to be an int
     degree = int(round(degree))
     
-    # make a random graph 
-    G = nx.random_k_out_graph(nodes,degree,alpha,self_loops=self_loops)
+    # make a random graph
+    # Note that degree is x2 and half of them are then droped to make it directed 
+    G = nx.random_regular_graph(degree*2,nodes)
 
     # and move it to pandas
     network = nx.to_pandas_adjacency(G)
@@ -37,8 +38,21 @@ def make_random(nodes,degree,alpha=0.9,self_loops=False):
     network.index = names
     network.columns = names
     
+    # remove all symetric links
+    for i in range(network.shape[0]):
+        ind = np.where(network.values[i,:])[0]
+        for j in ind:
+            if network.values[i,j] != 0 and network.values[j,i] != 0:
+                r = np.random.random()
+                if r > 0.5:
+                    network.values[i,j] = 0
+                else:
+                    network.values[j,i] = 0
+    
     # scale the network to be 1.0 for all edges to fit the genesnake framework
-    network = network.where(network<1.0,1.0) 
+    network = network.where(network<1.0,1.0)
+    # and then add weights so we have more control over the range
+    network = np.multiply(network,np.random.uniform(0.2,1,network.shape))
     # and add random sign in range +/-1
     sign  = np.random.randint(2,size=(nodes,nodes))*2-1
     # add sign to the network 
@@ -52,4 +66,4 @@ def make_random(nodes,degree,alpha=0.9,self_loops=False):
     # and remove -0.0s for estetics (this step does not affect anything and is added due to personal preferense)
     network = network.mask(network==0.0,0.0) 
     
-    return network
+    return network.T

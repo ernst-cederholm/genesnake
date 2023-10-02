@@ -214,18 +214,19 @@ class simulators(object):
                                       perts),method=solver,rtol=rtol,t_eval=time_steps)
                 ss_tmin = ss_tmax
                 ss_tmax += 1
+                
                 Y = np.concatenate((Y,exp.y[:,1:]),axis=1)
                 if exp_type=="ss" or exp_type=="steady-state" or end_at_ss==True:
                     stop = simulators.converged(Y)
                 else:
                     stop = False
-                    
+            
             # if we time out and still have not found a stead-state print a warning for this experiment and then continue
             if ss_tmax > 100 and not stop and exp_type=="ss":
                 print("WARNING: Failed to find steady state for experiment: "+str(i)+" when running ODE model in geneSNAKE.GRNmodel.experiment.")
                 print("The last simulated time point will be reported for this experiment.")
                     
-                    
+
             if exp_type=="ss" or exp_type=="steady-state":
                 # add the last (and therefore steady-state) time point to the data matrix to be returned
                 # adding only the genes not protein information, as that would not be avalible in biological data  

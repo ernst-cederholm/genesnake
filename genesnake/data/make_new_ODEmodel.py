@@ -164,8 +164,8 @@ def make_new_ODEmodel(network,combines,names=None):
 
                     #if sign > 0:
                     for q in split_coop_gene:
-                        ans_top.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
-                        ans_bottom.append("((prot_{}/k_{}_{})**n_{})".format(q,g,gene,g))
+                        ans_top.append("(prot_{}/k_{}_{})**n_{}".format(q,g,gene,g))
+                        ans_bottom.append("(prot_{}/k_{}_{})**n_{}".format(q,g,gene,g))
                     #else:
                     #    for q in split_coop_gene:
                     #        ans_top.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,q,g))
@@ -177,7 +177,7 @@ def make_new_ODEmodel(network,combines,names=None):
                     #sign = signs[gene]
                     #if sign > 0:
                     top.append("(alpha_{}_{}*(prot_{}/k_{}_{})**n_{})".format(g,gene,gene,g,gene,g))
-                    bottom.append("((prot_{}/k_{}_{})**n_{})".format(gene,g,gene,g))
+                    bottom.append("(prot_{}/k_{}_{})**n_{}".format(gene,g,gene,g))
                     #elif sign < 0:
                     #    top.append("(alpha_{}_{}*(k_{}_{}/prot_{})**n_{})".format(g,gene,g,gene,gene,g))
                     #    bottom.append("((k_{}_{}/prot_{})**n_{})".format(g,gene,gene,g))

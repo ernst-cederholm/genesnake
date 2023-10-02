@@ -11,7 +11,7 @@ import itertools
 class pargen:
     
     
-    def make_start_rna(genes=None,high_exp=10,low_exp=5):
+    def make_start_rna(genes=None,high_exp=1,low_exp=0.5):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
                 
@@ -25,7 +25,7 @@ class pargen:
         #A= np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
         return RNA
     
-    def make_start_prot(genes=None,high_exp=5,low_exp=1):
+    def make_start_prot(genes=None,high_exp=1,low_exp=0.5):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         
@@ -136,7 +136,6 @@ class pargen:
                         combinations[names[i]][j] = combinations[names[i]][j]+":"+str(1)
                     else:
                         combinations[names[i]][j] = combinations[names[i]][j]+":"+str(0)
-        print(combinations)
         return combinations
     
     
@@ -167,8 +166,8 @@ class pargen:
         for i in range(len(genes)):
             # first add the passive expression, this is a random value between min_self and max_self
             # define these here to make it easier to change 
-            min_self = 0.01
-            max_self = 0.1
+            min_self = 0.1
+            max_self = 0.15
             mean = (min_self+max_self)/2
             std = 0.1
             alphas[genes[i]] = np.round(stats.truncnorm.rvs((min_self-mean)/std,(max_self-mean)/std,loc=mean,scale=std),2)
@@ -281,7 +280,7 @@ class pargen:
         
         deltas = list()
         for i in range(len(genes)): 
-            deltas.append(0.8) #  (np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
+            deltas.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
         
         return deltas
     
@@ -304,7 +303,7 @@ class pargen:
         
         deltas = list()
         for i in range(len(genes)): 
-            deltas.append(0.8) #(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
+            deltas.append(np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2))
         
         return deltas
         
