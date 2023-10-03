@@ -23,8 +23,8 @@ for i in range(2):
     genes = 100 #random.randint(10,1000)
     s = round(random.uniform(2,10),2)
     print("\ntest #"+str(i)+" number of genes:"+str(genes)+" sparcity:"+str(s))
-    #network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,SPARSITY=s)
-    network = gs.grn.make_random(100,2)
+    network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,SPARSITY=s)
+    #network = gs.grn.make_random(100,2)
     
     G = nx.from_pandas_adjacency(network,create_using=nx.DiGraph)
     nx.draw_spring(G,with_labels=True)

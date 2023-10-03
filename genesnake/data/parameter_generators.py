@@ -189,19 +189,32 @@ class pargen:
                         # get the strenght for each regulator in the network
                         for reg in regs:
                             inds.append(genes.index(reg))
-                        if any(network[inds,i])<0:
+                        
+                        if any(val<0 for val in network[inds,i]):
+                            print("should be 0")
                             alphas[genes[i]+"_"+comb.split(":")[0]] = 0
+                            
+                            # finally map a weaker value for each of the combined regulators
+                            # it is arbitrarily assigned a value 10x smaller than the mapped value to
+                            # maintain some minimal effect on the system
+                            for reg in regs:
+                                reg_strength = network[genes.index(reg),i]
+                                if reg_strength < 0:
+                                    alphas[genes[i]+"_"+reg] = 0
+                                else:
+                                    alphas[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)                   
                         else:
                             alphas[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)
-                        # finally map a weaker value for each of the combined regulators
-                        # it is arbitrarily assigned a value 10x smaller than the mapped value to
-                        # maintain some minimal effect on the system
-                        for reg in regs:
-                            reg_strength = network[genes.index(reg),i]
-                            if reg_strength < 0:
-                                alphas[genes[i]+"_"+reg] = 0
-                            else:
-                                alphas[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)
+                            for reg in regs:
+                                reg_strength = network[genes.index(reg),i]
+                                if reg_strength < 0:
+                                    alphas[genes[i]+"_"+reg] = 0
+                                else:
+                                    new_mina = mina*0.1
+                                    new_maxa = maxa*0.1
+                                    new_mean = (new_maxa+new_mina)/2
+                                    new_std = 0.1
+                                    alphas[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((new_mina-new_mean)/std,(new_maxa-new_mean)/new_std,loc=new_mean,scale=std),2)
                         
             # once all combinatory relations are solved add any remaning alphas
             inds = np.where(network[:,i])[0]

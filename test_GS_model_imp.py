@@ -12,11 +12,11 @@ import genesnake as gs
 from methods.grn_inference import infer_networks
 
 # a cheat way to use a random or set network 
-A = -1
+A = 0
 if A>0:
     # make a pre defeind network  
     genes = 5
-    network = np.array([[0,0,0,0,0],[-1,0,0,0,0],[0,0,0,1,0],[0,1,0,0,0],[0,0,0,-1,0]])
+    network = np.array([[0,0,0,0,0],[-1,0,0,0,0],[0,0,0,1,0],[0,1,0,0,0],[0,0,0,1,0]])
     network = pd.DataFrame(network)
     network.columns=["G"+str(i+1) for i in range(genes)]
     network.index = network.columns
@@ -40,18 +40,20 @@ else:
     network = gs.grn.make_DAG(genes,1.2,sign_bias=0.5)
     
 # build a model from make_model 
-M = gs.GRNmodel.make_model(network,combinations={"comb_prob":1})
+M = gs.GRNmodel.make_model(network,combinations={"comb_prob":0.5})
 
-for key in M.parameters.alphas.keys():
-    if M.parameters.alphas[key]!=0 and len(key.split("_"))>1:
-        M.parameters.alphas[key]=1
-    elif M.parameters.alphas[key]!=0:
-        M.parameters.alphas[key]=0.1
+set_param = 0
+if set_param>0:
+    for key in M.parameters.alphas.keys():
+        if M.parameters.alphas[key]!=0 and len(key.split("_"))>1:
+            M.parameters.alphas[key]=1
+        elif M.parameters.alphas[key]!=0:
+            M.parameters.alphas[key]=0.1
 
-M.parameters.hill_coef = [4 for _ in range(genes)]
-M.parameters.dis_const = {key:0.8 for key in M.parameters.dis_const.keys()}
-M.parameters.lambda_RNA = [0.8 for _ in range(genes)]
-M.parameters.lambda_prot = [0.6 for _ in range(genes)]
+        M.parameters.hill_coef = [4 for _ in range(genes)]
+        M.parameters.dis_const = {key:0.8 for key in M.parameters.dis_const.keys()}
+        M.parameters.lambda_RNA = [0.8 for _ in range(genes)]
+        M.parameters.lambda_prot = [0.6 for _ in range(genes)]
 
 for i in vars(M.parameters).keys():
     if i != "time":

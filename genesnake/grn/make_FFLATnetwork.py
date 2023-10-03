@@ -9,7 +9,7 @@ import numpy as np
 import json
 
 
-def make_FFLATnetwork(self_loops=True,**kvargs):
+def make_FFLATnetwork(self_loops=False,**kvargs):
     """
     function for generating a network using the FFLAT model
 
@@ -46,31 +46,29 @@ def make_FFLATnetwork(self_loops=True,**kvargs):
             settings[key.upper()] = kvargs[key]
         else:
             raise TypeError("Unknown input option in genesnake.network.make_FFLATnetwork. For avalible input options see documentation at e.g print(gs.network.make_FFLATnetwork.__doc__) or any other place the documentation is avalible")
-        
-    # this part needs to be fixed to either take kvargs input or not have all these
-    # extra options 
-
-    #load a GRN
+    # extra options  
+ 
+    # load a GRN
     interaction_matrix = functions.get_interaction_matrix(settings)
     
-    #convert to vertex-based motifs network
+    # convert to vertex-based motifs network
     motifs = functions.motif_search(settings, interaction_matrix, batch_size=10000, load=True, dump=False)
-    motifs_ids_ffl = motifs["030T"]
-    ffl_nodes = list(set(sum([list(map(int, x.split("_"))) for x in motifs_orig], [])))
-    
+    motifs_ids_ffl = motifs["030T"]  
+    ffl_nodes = list(set(sum([list(map(int, x.split("_"))) for x in motifs_ids_ffl], [])))
+
     #initialize nucleus
     nucleus_network = np.zeros((len(ffl_nodes), len(ffl_nodes)))
     
     for motif in motifs_ids_ffl:
         motif = functions.split_motif(motif)
         motif_new = list(ffl_nodes.index(x) for x in motif)
-        nucleus_network[np.ix_(motif_new, motif_new)] = nucleus_network[np.ix_(motif, motif)]
+        nucleus_network[np.ix_(motif_new, motif_new)] = interaction_matrix[np.ix_(motif, motif)]
     nucleus_network.shape, nucleus_network.sum()
         
     #Load motif space // Vertex-based motifs network
     motifs_network = functions.build_vmn(motifs_ids_ffl, verbose=True, load=True, dump=False)
     
-    # what are all the settings here?
+    # generate FFL-network
     artificial_matrix_ffl = generate_artificial_network(
                         interaction_matrix, settings, random_seed = np.random.randint(1,100),
                         motifs=motifs_ids_ffl, motifs_network=motifs_network,
@@ -99,5 +97,5 @@ def make_FFLATnetwork(self_loops=True,**kvargs):
     if self_loops:
         diag = [np.random.uniform(np.max(np.abs(network.values))/2,np.max(np.abs(network.values)))*-1 for i in range(len(names))]
         np.fill_diagonal(network.values,diag)
-    
     return network
+    
