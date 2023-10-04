@@ -19,3 +19,4 @@ Any tool that is not on the master branch will not be cloned by git and therefor
 ## GeneSNAKE tutorial
 [Visit the website with the GeneSNAKE tutorial](https://sonnhammer-tutorials.bitbucket.io/genesnake.html)
 
+An example script of how to use most function in genesnake is avalible in the example.py script. For more detailed instructions most of the complex functions to use are in the GRNmodel.py script which contains detailed instruction on how to use it in the doc-header. 
