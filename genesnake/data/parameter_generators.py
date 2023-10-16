@@ -127,7 +127,6 @@ class pargen:
 
             # then assign a 1 or 0 to collaboration constant 
             for j in range(len(combinations[names[i]])):
-                print(combinations[names[i]][j])
                 if len(combinations[names[i]][j].split("_")) > max_comb:
                     combinations[names[i]][j] = combinations[names[i]][j]+":"+str(0)
                 else:
@@ -191,7 +190,6 @@ class pargen:
                             inds.append(genes.index(reg))
                         
                         if any(val<0 for val in network[inds,i]):
-                            print("should be 0")
                             alphas[genes[i]+"_"+comb.split(":")[0]] = 0
                             
                             # finally map a weaker value for each of the combined regulators

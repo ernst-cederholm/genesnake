@@ -1,4 +1,4 @@
-import psutil
+#import psutil
 import os
 import numpy as np
 import pandas as pd
@@ -7,7 +7,6 @@ import joblib
 #sys.path.insert(0, "../src")
 
 from . import auxilary_functions as f
-# from generation_algorithm import * # this is just bad coding, why not just put the functions in the order they are called..? 
 
 from copy import deepcopy
 import networkx as nx
@@ -1061,7 +1060,7 @@ def generate_artificial_network(
             print(f"num of nodes: {edges}")
             print(f"memory usage (MB): {f.get_memory_usage()}")
             print(f"free memory left (MB): {f.get_free_memory()}")
-            print(f"The CPU usage is:: {psutil.cpu_percent()}")
+            #print(f"The CPU usage is:: {psutil.cpu_percent()}")
         
         #decide between node and motif preferrential attachment
 

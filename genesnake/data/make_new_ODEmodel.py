@@ -94,7 +94,6 @@ def make_new_ODEmodel(network,combines,names=None):
         # get the combinations of regulators that are avalible for this gene
         # This part should be rewritten to handle a None input of comb_mat
         gene_combs = [name.split(":")[0] for name in combines[g] if int(name.split(":")[1])>0]
-        print(gene_combs)
         
         # get the regulators for the current gene as well as the combinations of regulators
         if len(inds) > 0:
@@ -102,7 +101,7 @@ def make_new_ODEmodel(network,combines,names=None):
             regs = regs+gene_combs
         else:
             regs = []
-        print(regs)
+            
         # get an alpha for each regulation    
         for gene in regs:
             model+="""
