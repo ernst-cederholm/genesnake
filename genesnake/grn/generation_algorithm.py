@@ -993,6 +993,7 @@ def generate_artificial_network(
     shuffled=config_file["SHUFFLED"]
     output_format=config_file["OUTPUT"]
     disrupt_cycles=config_file["NO_CYCLES"]
+    disrupt_other_motifs=config_file["OTHER_MOTIF_DEPLETION"]
 
     import timeit
     start_time = timeit.default_timer()
@@ -1178,11 +1179,13 @@ def generate_artificial_network(
     #check for sparsity
     if disrupt_cycles:
         loop_edges, substrate_matrix = filter_for_loops(substrate_matrix, config_file)
-        
+    
+    if disrupt_other_motifs:
         ################DELETE CASCADES OPTION###################
         two_edge_edges, substrate_matrix = filter_for_two_edge_motif(substrate_matrix, config_file,\
                                                                      cascade_transformation_num=3)
         #print(f"two_edge_edges: {two_edge_edges}")
+        loop_edges = 0
         loop_edges += two_edge_edges
         #############################################
         
