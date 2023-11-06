@@ -122,7 +122,7 @@ class GRNmodel(object):
         savemodel._start_model(modtype)
         return(savemodel)   
 
-    
+
     def _start_model(self,modtype):
         """
         function for adding the chosen model type to the GRNmodel object and converting the model 
@@ -138,6 +138,10 @@ class GRNmodel(object):
             self.model="""def model():
             expression = np.matmul(np.linalg.pinv(network),perturbation)"""
             self.model_type = "linear"
+        elif modtype == "load":
+            # if we are loading an exists model we don't need to create a model
+            # but need a way to handle this case so we pass on it 
+            pass
         else:
             raise ValueError("""Unknown model type in genesnake.GRNmodel._start_model.
             Currently supported models are:
@@ -199,7 +203,7 @@ class GRNmodel(object):
         # first generate noise with the selected noise model
         if noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
-        elif noise_model == "micro_array_like" or noise_model == "array_like" or noise_model == "array":
+        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
             noise = data-self.noise_free_data
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
@@ -215,7 +219,7 @@ class GRNmodel(object):
         # set all values less than 0 to 0 as counts cannot be negative
         data[np.where(data<0)] = 0
         
-        # and assign the noisy data to the GNRmodels data parameter
+        # and assign the noisy data to the GRNmodels data parameter
         self.data = pd.DataFrame(data,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
         self.noise = pd.DataFrame(noise,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
     
@@ -478,14 +482,14 @@ class GRNmodel(object):
             elif file.endswith(".pickle"):
                 kind = "pickle"
             else:
-                raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
+                raise ValueError("Unknown file type in genesnake.GRNmodel.save(). Can only save to json or pickle.")
 
         if kind == "json":
             self._json_save(file)
         elif kind == "pickle":
             self._pickle_save(file)
         else:
-            raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
+            raise ValueError("Unknown file type in genesnake.GRNmodel.save(). Can only save to json or pickle.")
     
     
     def _pickle_load(file):
@@ -571,7 +575,7 @@ class GRNmodel(object):
         
         # if there is a model and steady state values start the model up 
         if loadmodel.model is not None and loadmodel.steady_state_RNA is not None:
-            loadmodel._start_model()
+            loadmodel._start_model("load")
         
         return loadmodel
     
@@ -593,16 +597,14 @@ class GRNmodel(object):
             elif file.endswith(".pickle"):
                 kind = "pickle"
             else:
-                raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
-        elif kind != "json" or kind != "pickle":
-            raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
+                raise ValueError("Unknown file type in genesnake.GRNmodel.load(). Can only load json or pickle files.")
         
         if kind == "json":
             loadmodel = GRNmodel._json_load(file)
         elif kind == "pickle":
             loadmodel = GRNmodel._pickle_load(file)
         else:
-            raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
+            raise ValueError("Unknown file type in genesnake.GRNmodel.load(). Can only load json or pickle files.")
         
         return loadmodel
     
