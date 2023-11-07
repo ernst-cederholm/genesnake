@@ -116,12 +116,18 @@ class pargen:
             # This is so that we do not draw a combinations of positive and
             # negative interactions as this would be impossible to explain
             # in the network.
-            inds = [names[j] for j in np.where(network[:,i]!=0)[0]]
+            inds = np.where(network[:,i]!=0)[0]
             # then loop opver each set of interactions and make combinations of length combs
             # this is done until we reach combinations of max_comb
             while combs<=len(inds):
+                new_comb = None
+                for string in list(itertools.combinations(inds,combs)):
+                    if all([val>0 for val in string]) or all([val<0 for val in string]):
+                        add = [names[j] for j in string]
+                        new_comb = "_".join(add)
+                    
                 # draw all possible combinations of upregulators in length combs
-                combinations[names[i]] = combinations[names[i]]+["_".join(string) for string in list(itertools.combinations(inds,combs))]
+                combinations[names[i]].append(new_comb)
                 # and add one more size of combinations 
                 combs=combs+1
 
