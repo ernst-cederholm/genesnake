@@ -175,7 +175,7 @@ def make_new_ODEmodel(network,combines,names=None):
                 else:
                     #sign = signs[gene]
                     #if sign > 0:
-                    top.append("(alpha_{}_{}*(prot_{}/k_{}_{})**n_{})".format(g,gene,gene,g,gene,g))
+                    top.append("(alpha_{}_{}*((prot_{}/k_{}_{})**n_{}))".format(g,gene,gene,g,gene,g))
                     bottom.append("((prot_{}/k_{}_{})**n_{})".format(gene,g,gene,g))
                     #elif sign < 0:
                     #    top.append("(alpha_{}_{}*(k_{}_{}/prot_{})**n_{})".format(g,gene,g,gene,gene,g))

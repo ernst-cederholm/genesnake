@@ -138,7 +138,7 @@ class pargen:
         return combinations
     
     
-    def make_alphas(network,combinations,genes=None,maxa=1.0,mina=0.6):
+    def make_alphas(network,combinations,genes=None,maxa=1.0,mina=0.9):
         # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
         if isinstance(network, pd.DataFrame):
             # if names are not set seperatly assign the index as names 
@@ -181,7 +181,7 @@ class pargen:
                 for comb in combinations[genes[i]]:
                     # if this is an AND relation we set
                     # the combination high and the 
-                    if float(comb.split(":")[-1]) > 0:
+                    if float(comb.split(":")[-1]) != 0:
                         # get the genes involved in the combo
                         regs = comb.split(":")[0].split("_")
                         inds = list()
@@ -195,14 +195,22 @@ class pargen:
                             # finally map a weaker value for each of the combined regulators
                             # it is arbitrarily assigned a value 10x smaller than the mapped value to
                             # maintain some minimal effect on the system
+                            val = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)                   
                             for reg in regs:
                                 reg_strength = network[genes.index(reg),i]
                                 if reg_strength < 0:
                                     alphas[genes[i]+"_"+reg] = 0
                                 else:
-                                    alphas[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)                   
+                                    alphas[genes[i]+"_"+reg] = val
                         else:
                             alphas[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)
+                            
+                            new_mina = mina*0.1
+                            new_maxa = maxa*0.1
+                            new_mean = (new_maxa+new_mina)/2
+                            new_std = 0.1
+                            val = np.round(stats.truncnorm.rvs((new_mina-new_mean)/std,(new_maxa-new_mean)/new_std,loc=new_mean,scale=std),2)
+                            
                             for reg in regs:
                                 reg_strength = network[genes.index(reg),i]
                                 if reg_strength < 0:
@@ -212,8 +220,22 @@ class pargen:
                                     new_maxa = maxa*0.1
                                     new_mean = (new_maxa+new_mina)/2
                                     new_std = 0.1
-                                    alphas[genes[i]+"_"+reg] = np.round(stats.truncnorm.rvs((new_mina-new_mean)/std,(new_maxa-new_mean)/new_std,loc=new_mean,scale=std),2)
-                        
+                                    alphas[genes[i]+"_"+reg] = val
+                    else:
+                        regs = comb.split(":")[0].split("_")
+                        inds = list()
+                        # get the strenght for each regulator in the network
+                        for reg in regs:
+                            inds.append(genes.index(reg))
+                            
+                        val = np.round(stats.truncnorm.rvs((mina-mean)/std,(maxa-mean)/std,loc=mean,scale=std),2)                   
+                        for reg in regs:
+                            reg_strength = network[genes.index(reg),i]
+                            if reg_strength < 0:
+                                alphas[genes[i]+"_"+reg] = 0
+                            else:
+                                alphas[genes[i]+"_"+reg] = val
+                            
             # once all combinatory relations are solved add any remaning alphas
             inds = np.where(network[:,i])[0]
             for j in inds:
@@ -230,7 +252,7 @@ class pargen:
         return(alphas)
     
     
-    def make_dis_const(network,combinations,genes=None,Emax=1,Emin=0.5):
+    def make_dis_const(network,combinations,genes=None,Emax=0.8,Emin=0.5):
         
         # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
         if isinstance(network, pd.DataFrame):
@@ -265,8 +287,9 @@ class pargen:
             if len(combinations[genes[i]])>0:
                 for comb in combinations[genes[i]]:
                     # if this is an AND relation we set
-                    # the combination high and the 
-                    dis[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2)
+                    # the combination high and the
+                    if float(comb.split(":")[-1]) != 0:
+                        dis[genes[i]+"_"+comb.split(":")[0]] = np.round(stats.truncnorm.rvs((Emin-mean)/std,(Emax-mean)/std,loc=mean,scale=std),2)
             # once all combinatory relations are solved add any remaning alphas
             inds = np.where(network[:,i])[0]
             for j in inds:
@@ -279,7 +302,7 @@ class pargen:
         return dis
     
     
-    def make_lambda_RNA(genes=None,Emax=0.8,Emin=0.5):
+    def make_lambda_RNA(genes=None,Emax=0.8,Emin=0.7):
         
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
@@ -296,7 +319,7 @@ class pargen:
         return deltas
     
     
-    def make_lambda_prot(genes=None,Emax=0.8,Emin=0.5):
+    def make_lambda_prot(genes=None,Emax=0.8,Emin=0.7):
         """
         Based on the GNW function for getting the degradation. 
         Emax and Emin is halftime for protein in minutes 
