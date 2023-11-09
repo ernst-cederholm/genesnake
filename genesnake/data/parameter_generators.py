@@ -122,12 +122,11 @@ class pargen:
             while combs<=len(inds):
                 new_comb = None
                 for string in list(itertools.combinations(inds,combs)):
-                    if all([val>0 for val in string]) or all([val<0 for val in string]):
+                    if all([val>0 for val in network[string,i]]) or all([val<0 for val in network[string,i]]):
                         add = [names[j] for j in string]
                         new_comb = "_".join(add)
-                    
-                # draw all possible combinations of upregulators in length combs
-                combinations[names[i]].append(new_comb)
+                        # draw all possible combinations of upregulators in length combs
+                        combinations[names[i]].append(new_comb)
                 # and add one more size of combinations 
                 combs=combs+1
 
@@ -171,8 +170,8 @@ class pargen:
         for i in range(len(genes)):
             # first add the passive expression, this is a random value between min_self and max_self
             # define these here to make it easier to change 
-            min_self = 0.1
-            max_self = 0.15
+            min_self = 0.01
+            max_self = 0.015
             mean = (min_self+max_self)/2
             std = 0.1
             alphas[genes[i]] = np.round(stats.truncnorm.rvs((min_self-mean)/std,(max_self-mean)/std,loc=mean,scale=std),2)
