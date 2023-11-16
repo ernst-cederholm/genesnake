@@ -37,6 +37,7 @@ class GRNmodel(object):
                     - str_object - a ODE modle in the form of a string object. It will be stored in model.model. 
         """
         self.steady_state_RNA = None
+        self.noise_free_steady_state_RNA = None
         self.steady_state_prot = None
         self.model_type = None
         self.model = None    
@@ -197,7 +198,8 @@ class GRNmodel(object):
             - ODE - a differential equations model that simulates change in gene expression over time
             - linear - a simple linear model where change in expression = np.matmul(np.linalg.pinv(network),perturbation)""")        
         # assign the noise free simulation to the GRNmodel
-        self.noise_free_data = results
+        self.noise_free_data = round(results,4)
+        self.noise_free_steady_state_RNA = pd.Series(round(self.steady_state_RNA,4),index=self.noise_free_data.index)
         
         # add noise based on selected models
         # first generate noise with the selected noise model
@@ -217,12 +219,32 @@ class GRNmodel(object):
             data = self.noise_free_data.values
                 
         # set all values less than 0 to 0 as counts cannot be negative
-        data[np.where(data<0)] = 0
-        
+        data[np.where(data<0)] = 0        
         # and assign the noisy data to the GRNmodels data parameter
-        self.data = pd.DataFrame(data,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
-        self.noise = pd.DataFrame(noise,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
-    
+        self.data = pd.DataFrame(data.round(4),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
+        self.noise = pd.DataFrame(noise.round(4),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
+        
+        # do the same for the control
+        self.steady_state_RNA = pd.Series(self.steady_state_RNA,index=self.noise_free_data.index)
+        # add noise based on selected models
+        # first generate noise with the selected noise model
+        if noise_model == "gaussian" or noise_model == "normal":
+            [data,noise] = noise_gen.make_gaussian(self.steady_state_RNA.values,SNR)
+        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
+            data = noise_gen.make_micro_array_like(self.steady_state_RNA.values,SNR)
+            #noise = data-self.noise_free_data
+        elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
+            noise = noise_gen.make_sequencing_noise(self.steady_state_RNA.values, SNR)
+            data = noise["ratios"] * self.steady_state_RNA
+            data = data.to_numpy()
+            noise = noise["ratios"].values
+        else:
+            if noise_model != None:
+                print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
+            data = self.noise_free_data.values
+
+        self.steady_state_RNA = pd.Series(data.round(4),index=self.noise_free_data.index)
+        
     def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
         """
         Function for generating perturbation design matrices with n reps of x experiemnts in various schemes.
@@ -358,6 +380,72 @@ class GRNmodel(object):
             - scheme - Will print the avalible perturbation designs.""")
     
     
+    def export(self,file=None,sep=",",kind="csv",seperate_control=False):
+        """
+        Function for exporting the data, noise_free_data, controls, noise_free_control and network to csv files.
+        The function will merge the data and control such that the first column will be the control unless
+        seperate_control == True.
+        INPUT:
+             - self - the GRNmodel will be added automatically when called.
+             - file - the file names to prepend each outfile with. Can also be a file path. 
+             - sep - the character to seperate each column with in the output file.
+             - kind - the type of file to create, will simply be appended to the end of each file name.
+             - seperate_control - if set to True two seperate files called file_control.kind and
+                                  file_nonoise_control.kind will be created
+        OUTPUT:
+            None - 4-6 files will be created at the specified file path 
+        """
+        if file==None:
+            raise ValueError("genesnake.GRNmodel.export file name must be defined")
+        
+        # make sure kind starts with a .
+        if not kind.startswith("."):
+            kind="."+kind
+            
+        # if saving the control seperate start by doing that 
+        if seperate_control == True:
+            self.noise_free_steady_state_RNA.to_csv(file+"_nonoise_control"+kind,sep=sep,header=None)
+            self.steady_state_RNA.to_csv(file+"_control"+kind,sep=sep,header=None)
+            data = self.data
+            nonoise_data = self.noise_free_data
+            perts = self.perturbation
+        # if not then add the control to the corresponding data 
+        else:
+            columns = self.data.columns.tolist()
+            columns = ["control"]+columns
+            # first add a column of all 0 to the perturbation
+            perts = self.perturbation
+            perts["control"] = 0
+            perts = perts[columns]
+            
+            # the do the same to the data
+            data = self.data
+            data["control"] = self.steady_state_RNA
+            data = data[columns]
+            
+            # and the noise free data
+            nonoise_data = self.noise_free_data
+            nonoise_data["control"] = self.noise_free_steady_state_RNA
+            nonoise_data = nonoise_data[columns]
+            
+        # then save the data and everything else to file
+        perts.to_csv(file+"_pertrubation_design"+kind,sep=sep)
+        data.to_csv(file+"_data"+kind,sep=sep)
+        nonoise_data.to_csv(file+"_nonoise_data"+kind,sep=sep)
+        
+        # finally output the corresponding GRN as an edge list
+        # start by transforming the network in to an adjacencymatrix
+        edglst = self.network.rename_axis('Source').reset_index().melt('Source', value_name='Weight', var_name='Target').reset_index(drop=True)
+        # remove any column without an edge
+        edglst = edglst[edglst["Weight"]!=0].reset_index(drop=True)
+    
+        # round the weight column as we don't need 16 bits in the file
+        edglst["Weight"] = edglst["Weight"].round(2)
+    
+        # finally save the edge list
+        edglst.to_csv(file+"_network"+kind,sep=sep,index=False)           
+        
+            
     def _json_save(self,file=None):
         """
         Function to save the model to a json file that can later be loaded in to the model. This can both be used 
