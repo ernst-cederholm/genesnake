@@ -22,6 +22,9 @@ import json
 import sys
 import os
 
+# import genesnake
+from genesnake.data import GRNmodel as GRNmodel
+
 # apply a trick to let the relative path .bin needed for importing the script in to geneSNAKE
 # and the direct path bin needed to run the script from terminal both exist at the same time
 if __name__ == "__main__":
@@ -337,14 +340,21 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
     """
     
     tables = list() # create an empty list to store the html objects with stats for each file in file list. This will later be added to the report in a for loop based fashion. 
-
+        
     # first determine what the data is
-    if isinstance(data,type(pd.DataFrame)):
+    if isinstance(data,type(pd.DataFrame())) or isinstance(data,GRNmodel.GRNmodel):
+        if isinstance(data,GRNmodel.GRNmodel):
+            M = data
+            data = M.data
+            perts = M.perturbation
+            
         # need to get the perts if not availeble
         df = data
-        # check if perturbation exists and should do so 
+        # check if perturbation exists and should do so
         if not norep:
-            if perts:
+            if isinstance(perts,type(pd.DataFrame())):
+                rep_mat = shrink_pert(perts) 
+            elif isinstance(data,str):
                 # if perts exist do the same thing as with the data
                 pert = pd.read_csv(perts,sep=None,header=None,engine="python")
                 # check what the format of the perturbation matrix is
@@ -358,26 +368,25 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
                         pert = pd.DataFrame(pert.values[1:], columns=headers)
                         # then check if the first column are strings and set this to the index 
                     if is_string_dtype(pert[pert.columns[0]]):
-                        pert = pert.set_index(pert.columns[0])        
+                        rep_mat = pert.set_index(pert.columns[0])        
                 else:
                     if all(isinstance(i,str) for i in pert.iloc[0].values):
                         headers = pert.iloc[0].values
                         # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-                        pert = pd.DataFrame(pert.values[1:], columns=headers)
+                        rep_mat = pd.DataFrame(pert.values[1:], columns=headers)
                     if is_string_dtype(pert[pert.columns[0]]):
-                        pert = pert.set_index(pert.columns[0])
-
+                        rep_mat = pert.set_index(pert.columns[0])
                 if direct == "col":
-                    pert = pert.T
-                    pert = pert.astype(float)
-                    pert = shrink_pert(pert)
+                    rep_mat = rep_mat.T
+                    rep_mat = rep_mat.astype(float)
+                rep_mat = shrink_pert(rep_mat)
             elif "perturbation" in json_data.keys() or "perturbations" in json_data.keys():
                 pert = pd.DataFrame(json_data["perturbation"])
                 pert = pert.astype(float)
-                pert = shrink_pert(pert)
-
+                rep_mat = shrink_pert(pert)
+                
             else:
-                pert = make_pert(data)
+                rep_mat = make_pert(data)
         else:
             # if not using perts just return nothing 
             pert=None
@@ -390,9 +399,9 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
             [df,rep_mat] = json_preper(data,perts,norep,direct)
         else:
             # if the file is neither csv or json perform controlled crash. 
-            raise("\n\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, or a file of type .csv or .json\n\n")
+            raise TypeError("\n\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, or a file of type .csv or .json\n\n")
     else:
-        raise("\n\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, or a file of type .csv or .json\n\n")
+        raise TypeError("\n\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, or a file of type .csv or .json\n\n")
 
     # make sure the row and column headers are strings 
     df.index = [str(i) for i in df.index.to_list()]
@@ -415,8 +424,8 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         str(df.values.shape[0])+", "+str(df.values.shape[1]),
     ],"%":[
         "",
-        (len(np.unique(df.values))/(df.values.shape[0]*df.values.shape[1]))*100, # "elems" "uniq"     
-        (np.count_nonzero(df.values==0)/(df.values.shape[0]*df.values.shape[1]))*100, # "elems" "zeroes"
+        round((len(np.unique(df.values))/(df.values.shape[0]*df.values.shape[1]))*100,2), # "elems" "uniq"     
+        round((np.count_nonzero(df.values==0)/(df.values.shape[0]*df.values.shape[1]))*100,2), # "elems" "zeroes"
         "", # "elems" "nozero"
     ]} 
     
@@ -511,7 +520,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         stats_df = pd.DataFrame(stats1, index=["mean","median","max","min"])
         stats1_html = stats_df.to_html()
         
-        stats_df = pd.DataFrame(stats2, index=["variance","stdev","skewness","mat size"])
+        stats_df = pd.DataFrame(stats2, index=["variance","stdev","skewness","SNR"])
         stats2_html = stats_df.to_html()
         
         stats_df = pd.DataFrame(stats3, index=["condition value","max SVD","median SVD","min SVD"])
@@ -524,7 +533,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         stats5_html = stats_df.to_html()
 
         # create a name this is done if data is a pandas.dataframe
-        if isinstance(data,type(pd.DataFrame)):
+        if isinstance(data,type(pd.DataFrame())):
             name = "matrix"
         else:
             name = data
