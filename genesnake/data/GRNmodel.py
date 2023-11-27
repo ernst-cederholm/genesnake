@@ -203,7 +203,9 @@ class GRNmodel(object):
         
         # add noise based on selected models
         # first generate noise with the selected noise model
-        if noise_model == "gaussian" or noise_model == "normal":
+        if noise_model == "repcor":
+            [data,noise] = noise_gen.make_repcor(self.noise_free_data.values,self.perturbation,SNR)
+        elif noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
@@ -217,6 +219,7 @@ class GRNmodel(object):
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
             data = self.noise_free_data.values
+
                 
         # set all values less than 0 to 0 as counts cannot be negative
         data[np.where(data<0)] = 0        
@@ -228,9 +231,13 @@ class GRNmodel(object):
         self.steady_state_RNA = pd.Series(self.steady_state_RNA,index=self.noise_free_data.index)
         # add noise based on selected models
         # first generate noise with the selected noise model
-        if noise_model == "gaussian" or noise_model == "normal":
+        if noise_model == "repcor":
+            [data,noise] = noise_gen.make_repcor(self.steady_state_RNA.values,self.perturbation,SNR)
+        elif noise_model == "gaussia" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.steady_state_RNA.values,SNR)
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
+            print(data.shape)
+            print(self.noise_free_data.shape)
             data = noise_gen.make_micro_array_like(self.steady_state_RNA.values,SNR)
             #noise = data-self.noise_free_data
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":

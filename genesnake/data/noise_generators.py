@@ -14,7 +14,7 @@ import math
 
 def zinbme(data, prob_nb, sf): # sf is scaling factor (SNR like)
     n = round(np.mean(data)+1)
-    print(n)
+    #print(n)
     nb = np.random.negative_binomial(n, prob_nb, size=len(data))  # negative binomial distribution
     zinb = nb
     msf = np.sqrt(np.var(data) / (sf * (np.var(zinb))))  # scaling factor to adjust noise values to data
@@ -23,6 +23,67 @@ def zinbme(data, prob_nb, sf): # sf is scaling factor (SNR like)
 
 class noise_gen:
     
+    def make_repcor(data,perts,corr):
+        """
+        Function that sets the average replicate correlation in data through a simple optimization scheme.
+        INPUT:
+            data - numpy.array, the data to add noise to. This is used both to get magnitude of noise and size of noise matrix
+            perts - the perturbation design corresponding to the data, replicates will be lifted from this. 
+            corr - the wanted average correlation value. Note that as noise is randomly genreated it will only be on average this.
+        OUTPUT:
+            data - the input data + noise
+            noise - the noise that were added 
+        """
+        
+        perts = perts.T.values
+        sets = list()
+        for i in range(data.shape[0]):     
+            rep_set = [j for j in range(perts.shape[0]) if (perts[j,:]==perts[i,:]).all()]
+            sets.append(rep_set)
+            
+        noise = np.zeros(data.shape)
+        # for each replicate set we pick the first two
+        for i in sets:
+            # and find an aproximate value for how much we must change the mean of the two to get the correlation we want
+            # while this will not be enough to actually set the value it can be used as a starting point 
+            cov = np.cov(data[:,i[0]],data[:,i[1]])[0][0]
+            new_mean = round(np.sqrt(corr/cov),4)
+            use_mean = new_mean-np.mean(data[:,i])
+            
+            tmp_noise = np.random.normal(1,use_mean,(data.shape[0],len(i)))
+            tmp_noise[np.where(tmp_noise<0.01)] = 0.01
+            tmp_data = np.multiply(data[:,i],tmp_noise)
+            corrs = np.triu(np.corrcoef(tmp_data.T)[0],k=1)
+            print(tmp_data)
+            c = 0
+            opt_mean = use_mean
+            while np.mean(corrs[np.where(corrs)])>corr+0.05 or np.mean(corrs[np.where(corrs)])<corr-0.05:
+                print(corrs,np.mean(corrs[np.where(corrs)]),corrs[np.where(corrs)])
+                c+=1
+                print(opt_mean)
+                if np.mean(corrs[np.where(corrs)])>corr+0.05:
+                    print("inner")
+                    opt_mean = 1+opt_mean+0.05 #(np.mean(corrs[np.where(corrs)])-corr)
+                    print(opt_mean)
+                    
+                    tmp_noise = np.random.normal(1,opt_mean,(data.shape[0],len(i)))
+                    tmp_noise[np.where(tmp_noise<0.01)] = 0.01
+                    
+                    tmp_data = np.multiply(data[:,i],tmp_noise)
+                    print(tmp_data)
+                    corrs = np.triu(np.corrcoef(tmp_data.T)[0],k=1)
+                elif np.mean(corrs[np.where(corrs)])<corr-0.05:
+                    opt_mean = opt_mean-0.05 #(corr-np.mean(corrs[np.where(corrs)]))
+                    tmp_noise = np.random.normal(1,opt_mean,(data.shape[0],len(i)))
+                    tmp_noise[np.where(tmp_noise<0.01)] = 0.01
+                    tmp_data = np.multiply(data[:,i],tmp_noise)
+                    corrs = np.triu(np.corrcoef(tmp_data.T)[0],k=1)
+
+            print(corrs)
+                        
+            exit()
+
+        
     
     def make_gaussian(data,SNR):
         """
@@ -40,15 +101,24 @@ class noise_gen:
         # variance(noise) = stdE(noise)**2
         # take this as absolute value as data where all values are extremely close to 0 can generate negative values
         # which will crash things
-        stdE = np.abs(np.mean(data)/SNR)
-        noise = np.random.normal(0,stdE,data.shape)       
+        noise = np.zeros(data.shape)
+        elems = data.size
+        for i in range(data.shape[0]):
+            if len(data.shape)>1:
+                for j in range(data.shape[1]):
+                    stdE = data[i,j]/SNR
+                    stdE = np.sqrt((stdE**2)+np.std(data)**2) #np.abs(data[i,j]/SNR)
+                    noise[i,j] = np.random.normal(1,stdE)
+            else:
+                stdE = np.abs(data[i]/SNR)
+                noise[i] = np.random.normal(1,stdE)
+        noise[np.where(noise<=0.0)]=0.0001        
+        data = np.multiply(data,noise)
+        #mask = data<=0
+        #mask = mask*np.random.uniform(0,min(1e-4,np.min(abs(data))),data.shape)
         
-        data = data+noise
-        mask = data<=0
-        mask = mask*np.random.uniform(0,min(1e-5,np.min(abs(data))),data.shape)
-        
-        data[np.where(data<=0)] = 0
-        data = data+mask
+        #data[np.where(data<=0)] = 0
+        #data = data+mask
         
         return data, noise
     
@@ -97,7 +167,10 @@ class noise_gen:
         # e.g. here for ENCODE project mismatch counting is 0.45-073
                 
         """
-        nsamp = np.shape(data)[1]
+        try:
+            nsamp = np.shape(data)[1]
+        except IndexError:
+            nsamp = 1
         ng = np.shape(data)[0]
         if SNR == "very_low":
             ermin = 0.7

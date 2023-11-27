@@ -11,7 +11,7 @@ import itertools
 class pargen:
     
     
-    def make_start_rna(genes=None,high_exp=1,low_exp=0.5):
+    def make_start_rna(genes=None,high_exp=10,low_exp=5):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
                 
@@ -25,7 +25,7 @@ class pargen:
         #A= np.round(np.random.uniform(low=low_exp,high=high_exp,size=(len(genes))),2).tolist()
         return RNA
     
-    def make_start_prot(genes=None,high_exp=1,low_exp=0.5):
+    def make_start_prot(genes=None,high_exp=10,low_exp=5):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         

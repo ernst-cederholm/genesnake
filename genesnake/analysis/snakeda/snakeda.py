@@ -420,7 +420,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
     stats = {"value":[
         df.shape[0]*df.shape[1], # "elems"
         len(np.unique(df.values)), # "uniq"     
-        np.count_nonzero(df.values==0), # "zeroes"
+        np.count_nonzero(df.values==0.0), # "zeroes"
         str(df.values.shape[0])+", "+str(df.values.shape[1]),
     ],"%":[
         "",
@@ -568,7 +568,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         # if not making a html file simply merge all stast tables and print them. 
         stats_df = pd.DataFrame(stats, index=["Elements","Unique values","#zeros","matmatrix size"])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats1, index=["mean","median","max","min"])])
-        stats_df = pd.concat([stats_df,pd.DataFrame(stats2, index=["variance","stdev","skewness","mat size"])])
+        stats_df = pd.concat([stats_df,pd.DataFrame(stats2, index=["variance","stdev","skewness","SNR"])])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats3, index=["condition value","max SVD","median SVD","min SVD"])])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats4, index=["median pertrank","median percentile pertrank","# pertrank lowest","# pertrank highest"])])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats5, index=["mediand replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])])

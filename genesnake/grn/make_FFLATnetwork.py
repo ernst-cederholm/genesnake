@@ -9,7 +9,7 @@ import numpy as np
 import json
 
 
-def make_FFLATnetwork(self_loops=False,**kvargs):
+def make_FFLATnetwork(self_loops=False,edge_bias=0.6,**kvargs):
     """
     function for generating a network using the FFLAT model
 
@@ -80,7 +80,7 @@ def make_FFLATnetwork(self_loops=False,**kvargs):
         # randomly sign the network
         #!# this needs to be improved still! 
         p = np.random.random()
-        if p > 0.5:
+        if p <= edge_bias:
             tmpnet[i[0],i[1]] = 1
         else:
             tmpnet[i[0],i[1]] = -1
