@@ -502,8 +502,6 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         base = env.get_template("base_report.html")
         stat_section = env.get_template("stats_and_images.html")
 
-        tables = list() # create an empty list to store the html objects with stats for each file in file list. This will later be added to the report in a for loop based fashion. 
-
         hist_html = None
         rpca_html = None
         cpca_html = None

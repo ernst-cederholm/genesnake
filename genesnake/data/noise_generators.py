@@ -22,9 +22,13 @@ def zinbme(data, prob_nb, sf): # sf is scaling factor (SNR like)
 
 
 class noise_gen:
-    
+    """
+    Class that holds all predefined noise generators. A noise generator should is possible take data and SNR as input and return data+noise and noise. Both should be a numpy array of size data.shape. 
+    """
     def make_repcor(data,perts,corr):
         """
+        NOTE this function does most likely not work and was replaced by the make_gaussian. It is left here in the hope that it can be
+        made functional sometime in the future as it fills an important role in controling replicate correlation. 
         Function that sets the average replicate correlation in data through a simple optimization scheme.
         INPUT:
             data - numpy.array, the data to add noise to. This is used both to get magnitude of noise and size of noise matrix

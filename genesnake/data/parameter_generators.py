@@ -10,7 +10,6 @@ import itertools
 
 class pargen:
     
-    
     def make_start_rna(genes=None,high_exp=10,low_exp=5):
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
@@ -144,6 +143,17 @@ class pargen:
     
     
     def make_alphas(network,combinations,genes=None,maxa=1.0,mina=0.9):
+        """
+        Function for generating alpha values which controls how strong effect a regulator has on it's targets.
+        INPUT:
+            - network - the network which determines regulator target relationship
+            - combinations - a dictonary that contains information on what regulators have a combinatory effect and thus need an alhpa for this
+            - genes - the names to use for the generated alpha values. Only needed if you for some reason use different names for the network and the model.
+            - maxa - the maximum float value alpha can take.
+            - mina - the minimum float value alpha can take.
+        OUTPUT:
+            - alphas - dictonary which contains the alpha for each regulator per target
+        """
         # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
         if isinstance(network, pd.DataFrame):
             # if names are not set seperatly assign the index as names 
@@ -258,7 +268,18 @@ class pargen:
     
     
     def make_dis_const(network,combinations,genes=None,Emax=0.8,Emin=0.5):
-        
+        """
+        Function for generating the disociation constant (k) values which controls regulation strenght by modeling a molecule releasing rather then regulating.
+        INPUT:
+            - network - the network which determines regulator target relationship
+            - combinations - a dictonary that contains information on what regulators have a combinatory effect and thus need an alhpa for this
+            - genes - the names to use for the generated alpha values. Only needed if you for some reason use different names for the network and the model.
+            - Emax - the maximum float value k can take.
+            - Emin - the minimum float value k can take.
+        OUTPUT:
+            - dis_const - dictonary which contains the k values for each regulator per target
+        """
+
         # if network is pandas dataframe turn that in to a numpy along with gene names in a list.
         if isinstance(network, pd.DataFrame):
             # if names are not set seperatly assign the index as names 
@@ -308,7 +329,11 @@ class pargen:
     
     
     def make_lambda_RNA(genes=None,Emax=0.8,Emin=0.7):
-        
+        """
+        Based on the GNW function for getting the degradation. 
+        Emax and Emin is halftime for protein in minutes 
+        """
+
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         

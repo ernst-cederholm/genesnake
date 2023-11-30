@@ -127,7 +127,7 @@ class GRNmodel(object):
     def _start_model(self,modtype):
         """
         function for adding the chosen model type to the GRNmodel object and converting the model 
-        from a string to a running function
+        from a string to a running function. Should really only be used internally in the GRNmodel class. 
         """
         # get the model
         # Note that this code is primarily here to allow future addition of new models as
@@ -255,7 +255,6 @@ class GRNmodel(object):
     def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
         """
         Function for generating perturbation design matrices with n reps of x experiemnts in various schemes.
-        #!# add more detailed documentation somewhere. 
         INPUT: 
             scheme - String which determines design of the perturbations should have. Currently, avalible are:
                      - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
@@ -705,7 +704,12 @@ class GRNmodel(object):
     
     
     class param(object):
-        
+        """
+        A subclass used in the GRNmodel to assign values to each parameter needed for the simulation. The main functionalliy is in the add_parameters function. Each generator is imported from the parameter_generators.py script
+        which should be in the same folder as this script is in. 
+
+        The function is rather conveludted and really should be rewriten to follow a simpler and esier to use format. 
+        """
         
         def __init__(self,model):
             # start up all the parameters needed
@@ -725,9 +729,8 @@ class GRNmodel(object):
         
         def add_parameters(self,param_dict,fill=False):
             """
-            add documentation here
+            function that acts as the primary entery point to the param class, mostly just loops over a dict and add any user provided values. 
             """
-            
             # make a list of keys we expect to see
             approved = list(vars(self).keys())
             approved.remove("_model_self")
@@ -764,29 +767,14 @@ class GRNmodel(object):
             # the generate_parameter wraper to be further feed to the right function 
             if fill == True:
                 add = list(set(seen).symmetric_difference(approved))
-                
                 for attr in add:
                     self.generateSP(attr)
-        
-        
-        def generateMP(self):
-            """
-            Wrapper for lazely adding all parameters with default values
-            """
-            
-            # make a list of keys we expect to see
-            approved = list(vars(self).keys())
-            approved.remove("_model_self")
-            
-            for attr in approved:
-                if len(getattr(self,attr))==0:
-                    self.generateSP(attr)
-        
+                
         
         def generateSP(self,parameter,**kwargs):
             """
-            Wrapper function to generate and assign parameters from a number of different functions
-            based on an input string 
+            Function that acts as a primary entery point to the parameter_generators.py. For more details on the generation look at the parameter_generators scripts which covers each
+            generator and it's options. 
             INPUT: 
                 parameter - a string with the name of the parameter to be generated 
                 **kwargs -[optional]- number of values for the generator to use in format arrg=value,arrg1=value1 

@@ -9,7 +9,7 @@ import numpy as np
 import json
 
 
-def make_FFLATnetwork(self_loops=False,edge_bias=0.6,**kvargs):
+def make_FFLATTnetwork(self_loops=False,edge_bias=0.6,**kvargs):
     """
     function for generating a network using the FFLAT model
 
