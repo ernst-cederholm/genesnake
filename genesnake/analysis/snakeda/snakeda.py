@@ -527,7 +527,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         stats_df = pd.DataFrame(stats4, index=["median pertrank","median percentile pertrank","# pertrank lowest","# pertrank highest"])
         stats4_html = stats_df.to_html()
         
-        stats_df = pd.DataFrame(stats5, index=["mediand replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])
+        stats_df = pd.DataFrame(stats5, index=["median replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])
         stats5_html = stats_df.to_html()
 
         # create a name this is done if data is a pandas.dataframe
@@ -569,7 +569,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         stats_df = pd.concat([stats_df,pd.DataFrame(stats2, index=["variance","stdev","skewness","SNR"])])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats3, index=["condition value","max SVD","median SVD","min SVD"])])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats4, index=["median pertrank","median percentile pertrank","# pertrank lowest","# pertrank highest"])])
-        stats_df = pd.concat([stats_df,pd.DataFrame(stats5, index=["mediand replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])])
+        stats_df = pd.concat([stats_df,pd.DataFrame(stats5, index=["median replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])])
         print(stats_df)
 
 
