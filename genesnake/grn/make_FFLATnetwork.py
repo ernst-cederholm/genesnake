@@ -9,7 +9,7 @@ import numpy as np
 import json
 
 
-def make_FFLATnetwork(self_loops=False,**kvargs):
+def make_FFLATTnetwork(self_loops=False,edge_bias=0.6,**kvargs):
     """
     function for generating a network using the FFLAT model
 
@@ -24,7 +24,7 @@ def make_FFLATnetwork(self_loops=False,**kvargs):
     
     # start up a dict with all the keys and default values this is done both to have default
     # values and to make sure nothing strange happens if one value is not in the config file
-    settings = {"RANDOM_SEED":np.random.randint(1,100), "FFL_ENRICHED":1, "SPARSITY":2.328, "NETWORK_SIZE":100, "N_CORES_TO_USE":-1, "SHUFFLED":0, "OUTPUT":"adj_list", "NO_CYCLES":1}
+    settings = {"RANDOM_SEED":np.random.randint(1,100), "FFL_ENRICHED":1, "SPARSITY":2.328, "NETWORK_SIZE":100, "N_CORES_TO_USE":-1, "SHUFFLED":0, "OUTPUT":"adj_list", "NO_CYCLES":1, "OTHER_MOTIF_DEPLETION":1}
 
     # if there is a file to load configs from do that  
     if "LOAD" in kvargs.keys() or "load" in kvargs.keys():
@@ -80,7 +80,7 @@ def make_FFLATnetwork(self_loops=False,**kvargs):
         # randomly sign the network
         #!# this needs to be improved still! 
         p = np.random.random()
-        if p > 0.5:
+        if p <= edge_bias:
             tmpnet[i[0],i[1]] = 1
         else:
             tmpnet[i[0],i[1]] = -1

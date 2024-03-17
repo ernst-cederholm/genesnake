@@ -32,7 +32,7 @@ import genesnake as gs
 
 # if using a static network select from a 5 or 10 gene network
 # This will result in a network defined in the numpy matrix here and is
-# usefull for testing what the different parameters have for effect as it will be
+# useful for testing what the different parameters have for effect as it will be
 # a static network.
 if use_static_network:
     genes = 5
@@ -42,7 +42,7 @@ if use_static_network:
     network.index = network.columns
 # a network can also be loaded using the gs.grn.load_network functon to easily load a csv file in to a genesnake friendly format
 # can also be easily done with pd.load_csv(file)
-elif load_netowork:
+elif load_network:
     network = gs.grn.load_network(load_network,net_type="edgelist",sep=",",header="True",index=False)
 # or created using one of the algorithms in gs.grn.func
 # currently gs.grn.make_DAG, gs.grn.make_random and gs.grn.make_FFLATnetwork can be used for this
@@ -111,7 +111,7 @@ M2 = gs.GRNmodel.load("genesnake_test_model.pickle",kind="pickle")
 
 ### benchmarking ### 
 
-# Currently there are not function in genesnake to calculate change e.g fold change but it can be
+# Currently there is no function in genesnake to calculate change e.g fold change but it can be
 # easily done by the following snippet 
 fold_change_data = np.zeros((genes,genes*3))
 for i in range(genes*3):
@@ -120,7 +120,7 @@ for i in range(genes*3):
 fold_change_data = pd.DataFrame(fold_change_data,index=M.data.index,columns=M.data.columns)
 
 
-# once a simulation is completed and inference is performed genesnake can also be used to benchmark the results
+# once a simulation is completed and inference is performed, genesnake can also be used to benchmark the results
 # run some form of inference 
 results = infer_networks(fold_change_data,M.perturbation,"lscon",np.logspace(-6,0,100))
 # and load this in to the benchmarking function 
@@ -128,7 +128,7 @@ benchmark = gs.benchmarking.compare_networks(results,M.network,exclude_diagonal=
 print("\n The LSCON method peformance are; AUPR:"+str(benchmark["AUPR"])+", AUROC:"+str(benchmark["AUROC"]))
 
 
-# Currently there are not function in genesnake to calculate change e.g fold change but it can be
+# Currently there is no function in genesnake to calculate change e.g fold change but it can be
 # easily done by the following snippet 
 fold_change_data = np.zeros((genes,genes*3))
 for i in range(genes*3):
@@ -168,7 +168,7 @@ if plot_results:
         sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2,annot=True)
         sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3,annot=True)
     else:
-        sns.heatmap(M.steady_state_RNA,cmap="vlag",linecolor="k",linewidths=0.01,ax=ax4,annot=True)
+        sns.heatmap(pd.DataFrame(M.steady_state_RNA),cmap="vlag",linecolor="k",linewidths=0.01,ax=ax4,annot=True)
         sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2)
         sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3)
         

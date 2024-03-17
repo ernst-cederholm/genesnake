@@ -37,6 +37,7 @@ class GRNmodel(object):
                     - str_object - a ODE modle in the form of a string object. It will be stored in model.model. 
         """
         self.steady_state_RNA = None
+        self.noise_free_steady_state_RNA = None
         self.steady_state_prot = None
         self.model_type = None
         self.model = None    
@@ -122,11 +123,11 @@ class GRNmodel(object):
         savemodel._start_model(modtype)
         return(savemodel)   
 
-    
+
     def _start_model(self,modtype):
         """
         function for adding the chosen model type to the GRNmodel object and converting the model 
-        from a string to a running function
+        from a string to a running function. Should really only be used internally in the GRNmodel class. 
         """
         # get the model
         # Note that this code is primarily here to allow future addition of new models as
@@ -138,6 +139,10 @@ class GRNmodel(object):
             self.model="""def model():
             expression = np.matmul(np.linalg.pinv(network),perturbation)"""
             self.model_type = "linear"
+        elif modtype == "load":
+            # if we are loading an exists model we don't need to create a model
+            # but need a way to handle this case so we pass on it 
+            pass
         else:
             raise ValueError("""Unknown model type in genesnake.GRNmodel._start_model.
             Currently supported models are:
@@ -193,13 +198,16 @@ class GRNmodel(object):
             - ODE - a differential equations model that simulates change in gene expression over time
             - linear - a simple linear model where change in expression = np.matmul(np.linalg.pinv(network),perturbation)""")        
         # assign the noise free simulation to the GRNmodel
-        self.noise_free_data = results
+        self.noise_free_data = round(results,4)
+        self.noise_free_steady_state_RNA = pd.Series(round(self.steady_state_RNA,4),index=self.noise_free_data.index)
         
         # add noise based on selected models
         # first generate noise with the selected noise model
-        if noise_model == "gaussian" or noise_model == "normal":
+        if noise_model == "repcor":
+            [data,noise] = noise_gen.make_repcor(self.noise_free_data.values,self.perturbation,SNR)
+        elif noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
-        elif noise_model == "micro_array_like" or noise_model == "array_like" or noise_model == "array":
+        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
             noise = data-self.noise_free_data
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
@@ -211,18 +219,42 @@ class GRNmodel(object):
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
             data = self.noise_free_data.values
+
                 
         # set all values less than 0 to 0 as counts cannot be negative
-        data[np.where(data<0)] = 0
+        data[np.where(data<0)] = 0        
+        # and assign the noisy data to the GRNmodels data parameter
+        self.data = pd.DataFrame(data.round(4),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
+        self.noise = pd.DataFrame(noise.round(4),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
         
-        # and assign the noisy data to the GNRmodels data parameter
-        self.data = pd.DataFrame(data,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
-        self.noise = pd.DataFrame(noise,index=self.noise_free_data.index,columns=self.noise_free_data.columns)
-    
+        # do the same for the control
+        self.steady_state_RNA = pd.Series(self.steady_state_RNA,index=self.noise_free_data.index)
+        # add noise based on selected models
+        # first generate noise with the selected noise model
+        if noise_model == "repcor":
+            [data,noise] = noise_gen.make_repcor(self.steady_state_RNA.values,self.perturbation,SNR)
+        elif noise_model == "gaussia" or noise_model == "normal":
+            [data,noise] = noise_gen.make_gaussian(self.steady_state_RNA.values,SNR)
+        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
+            print(data.shape)
+            print(self.noise_free_data.shape)
+            data = noise_gen.make_micro_array_like(self.steady_state_RNA.values,SNR)
+            #noise = data-self.noise_free_data
+        elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
+            noise = noise_gen.make_sequencing_noise(self.steady_state_RNA.values, SNR)
+            data = noise["ratios"] * self.steady_state_RNA
+            data = data.to_numpy()
+            noise = noise["ratios"].values
+        else:
+            if noise_model != None:
+                print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
+            data = self.noise_free_data.values
+
+        self.steady_state_RNA = pd.Series(data.round(4),index=self.noise_free_data.index)
+        
     def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
         """
         Function for generating perturbation design matrices with n reps of x experiemnts in various schemes.
-        #!# add more detailed documentation somewhere. 
         INPUT: 
             scheme - String which determines design of the perturbations should have. Currently, avalible are:
                      - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
@@ -354,6 +386,72 @@ class GRNmodel(object):
             - scheme - Will print the avalible perturbation designs.""")
     
     
+    def export(self,file=None,sep=",",kind="csv",seperate_control=False):
+        """
+        Function for exporting the data, noise_free_data, controls, noise_free_control and network to csv files.
+        The function will merge the data and control such that the first column will be the control unless
+        seperate_control == True.
+        INPUT:
+             - self - the GRNmodel will be added automatically when called.
+             - file - the file names to prepend each outfile with. Can also be a file path. 
+             - sep - the character to seperate each column with in the output file.
+             - kind - the type of file to create, will simply be appended to the end of each file name.
+             - seperate_control - if set to True two seperate files called file_control.kind and
+                                  file_nonoise_control.kind will be created
+        OUTPUT:
+            None - 4-6 files will be created at the specified file path 
+        """
+        if file==None:
+            raise ValueError("genesnake.GRNmodel.export file name must be defined")
+        
+        # make sure kind starts with a .
+        if not kind.startswith("."):
+            kind="."+kind
+            
+        # if saving the control seperate start by doing that 
+        if seperate_control == True:
+            self.noise_free_steady_state_RNA.to_csv(file+"_nonoise_control"+kind,sep=sep,header=None)
+            self.steady_state_RNA.to_csv(file+"_control"+kind,sep=sep,header=None)
+            data = self.data
+            nonoise_data = self.noise_free_data
+            perts = self.perturbation
+        # if not then add the control to the corresponding data 
+        else:
+            columns = self.data.columns.tolist()
+            columns = ["control"]+columns
+            # first add a column of all 0 to the perturbation
+            perts = self.perturbation
+            perts["control"] = 0
+            perts = perts[columns]
+            
+            # the do the same to the data
+            data = self.data
+            data["control"] = self.steady_state_RNA
+            data = data[columns]
+            
+            # and the noise free data
+            nonoise_data = self.noise_free_data
+            nonoise_data["control"] = self.noise_free_steady_state_RNA
+            nonoise_data = nonoise_data[columns]
+            
+        # then save the data and everything else to file
+        perts.to_csv(file+"_pertrubation_design"+kind,sep=sep)
+        data.to_csv(file+"_data"+kind,sep=sep)
+        nonoise_data.to_csv(file+"_nonoise_data"+kind,sep=sep)
+        
+        # finally output the corresponding GRN as an edge list
+        # start by transforming the network in to an adjacencymatrix
+        edglst = self.network.rename_axis('Source').reset_index().melt('Source', value_name='Weight', var_name='Target').reset_index(drop=True)
+        # remove any column without an edge
+        edglst = edglst[edglst["Weight"]!=0].reset_index(drop=True)
+    
+        # round the weight column as we don't need 16 bits in the file
+        edglst["Weight"] = edglst["Weight"].round(2)
+    
+        # finally save the edge list
+        edglst.to_csv(file+"_network"+kind,sep=sep,index=False)           
+        
+            
     def _json_save(self,file=None):
         """
         Function to save the model to a json file that can later be loaded in to the model. This can both be used 
@@ -455,13 +553,13 @@ class GRNmodel(object):
             # anything else is just a list so it can be saved directly in the save_dict
             else:
                 save_dict[key] = self.__dict__[key]
-        
+        print(file)
         file = open(file,"wb+")
         pickle.dump(save_dict,file)
         file.close()
     
     
-    def save(self,file=None,kind=None):
+    def save(self,file,kind=None):
         """
         Function that acts as a wrapper for the two options to save data from the model.
         It either creates a json file or a pickle file with all parameters. 
@@ -471,24 +569,21 @@ class GRNmodel(object):
         OUTPUT:
             Function creates a file on the hardrive based on file input 
         """
-        
-        # make sure the file to save to is defined 
-        if file is None:
-            raise ValueError("Attempted to save to None in genesnake.GRNmodel.save. Add a file name to save model.")
-        
+                
         if kind is None:
             if file.endswith(".json"):
                 kind = "json"
             elif file.endswith(".pickle"):
                 kind = "pickle"
             else:
-                raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
-        elif kind == "json":
+                raise ValueError("Unknown file type in genesnake.GRNmodel.save(). Can only save to json or pickle.")
+
+        if kind == "json":
             self._json_save(file)
         elif kind == "pickle":
             self._pickle_save(file)
         else:
-            raise ValueError("Unknown file type in genesnake.GNRmodel.save(). Can only save to json or pickle.")
+            raise ValueError("Unknown file type in genesnake.GRNmodel.save(). Can only save to json or pickle.")
     
     
     def _pickle_load(file):
@@ -574,7 +669,7 @@ class GRNmodel(object):
         
         # if there is a model and steady state values start the model up 
         if loadmodel.model is not None and loadmodel.steady_state_RNA is not None:
-            loadmodel._start_model()
+            loadmodel._start_model("load")
         
         return loadmodel
     
@@ -596,22 +691,25 @@ class GRNmodel(object):
             elif file.endswith(".pickle"):
                 kind = "pickle"
             else:
-                raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
-        elif kind != "json" or kind != "pickle":
-            raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
+                raise ValueError("Unknown file type in genesnake.GRNmodel.load(). Can only load json or pickle files.")
         
         if kind == "json":
             loadmodel = GRNmodel._json_load(file)
         elif kind == "pickle":
             loadmodel = GRNmodel._pickle_load(file)
         else:
-            raise ValueError("Unknown file type in genesnake.GNRmodel.load(). Can only load json or pickle files.")
+            raise ValueError("Unknown file type in genesnake.GRNmodel.load(). Can only load json or pickle files.")
         
         return loadmodel
     
     
     class param(object):
-        
+        """
+        A subclass used in the GRNmodel to assign values to each parameter needed for the simulation. The main functionalliy is in the add_parameters function. Each generator is imported from the parameter_generators.py script
+        which should be in the same folder as this script is in. 
+
+        The function is rather conveludted and really should be rewriten to follow a simpler and esier to use format. 
+        """
         
         def __init__(self,model):
             # start up all the parameters needed
@@ -631,9 +729,8 @@ class GRNmodel(object):
         
         def add_parameters(self,param_dict,fill=False):
             """
-            add documentation here
+            function that acts as the primary entery point to the param class, mostly just loops over a dict and add any user provided values. 
             """
-            
             # make a list of keys we expect to see
             approved = list(vars(self).keys())
             approved.remove("_model_self")
@@ -670,29 +767,14 @@ class GRNmodel(object):
             # the generate_parameter wraper to be further feed to the right function 
             if fill == True:
                 add = list(set(seen).symmetric_difference(approved))
-                
                 for attr in add:
                     self.generateSP(attr)
-        
-        
-        def generateMP(self):
-            """
-            Wrapper for lazely adding all parameters with default values
-            """
-            
-            # make a list of keys we expect to see
-            approved = list(vars(self).keys())
-            approved.remove("_model_self")
-            
-            for attr in approved:
-                if len(getattr(self,attr))==0:
-                    self.generateSP(attr)
-        
+                
         
         def generateSP(self,parameter,**kwargs):
             """
-            Wrapper function to generate and assign parameters from a number of different functions
-            based on an input string 
+            Function that acts as a primary entery point to the parameter_generators.py. For more details on the generation look at the parameter_generators scripts which covers each
+            generator and it's options. 
             INPUT: 
                 parameter - a string with the name of the parameter to be generated 
                 **kwargs -[optional]- number of values for the generator to use in format arrg=value,arrg1=value1 

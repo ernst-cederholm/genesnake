@@ -1,24 +1,12 @@
-import psutil
-import os
 import numpy as np
 import pandas as pd
-import sys
-import joblib
-#sys.path.insert(0, "../src")
-
 from . import auxilary_functions as f
-# from generation_algorithm import * # this is just bad coding, why not just put the functions in the order they are called..? 
-
 from copy import deepcopy
 import networkx as nx
 from collections import namedtuple
 from itertools import product, combinations
-from matplotlib import pyplot as pltthe
 from datetime import datetime
-from tqdm import tqdm
 from time import sleep
-import multiprocessing as mp
-import tracemalloc
 
 
 def get_network_nucleus(interaction_matrix, motifs, motifs_network, min_size, random_seed):
@@ -37,11 +25,11 @@ def get_network_nucleus(interaction_matrix, motifs, motifs_network, min_size, ra
     substrate_motifs = np.array([motifs[i] for i in substrate_motif_idxs])
     substrate_size = len(set(sum([f.split_motif(motif) for motif in substrate_motifs], [])))
     
-    #print(motifs_network.shape)
-    # grow network nucleus while required size obtained
+    # grow network nucleus until the required size obtained
     while substrate_size < min_size:
         neighbors = np.where(motifs_network[:, substrate_motif_idxs].sum(axis=1) != 0)[0]
         neighbors = np.array(list(set(neighbors) - set(substrate_motif_idxs)))
+        
         # assignment of weights to candidate motifs by their connectivity
         # with already selected motifs grown substrate network
         weights = motifs_network[neighbors, :][:, substrate_motif_idxs].sum(axis=1)
@@ -62,10 +50,8 @@ def get_network_nucleus(interaction_matrix, motifs, motifs_network, min_size, ra
 
 #### Parametrization
 #Motif types and number of shared nodes distributions inference. 
-
 #The support set for FFL motif type by TF/TG content is {TTT, TTG} where T and G are for TF and TG respectively.
-
-#The support set for the number of shared nodes is {1, 2}. We are not considering 0 as we focus only on the largest connected component of FFL VMN which actually contains all of the FFLs in the yeast Tnet and nearly all (99%) in E.coli Tnet
+#The support set for the number of shared nodes is {1, 2}. We are not considering 0 as we focus only on the largest connected component of FFL VMN
 
 def get_network_params(interaction_matrix, config_file, verbose=False,motif_search=True,known_motifs=False):
     # motif search
@@ -80,27 +66,25 @@ def get_network_params(interaction_matrix, config_file, verbose=False,motif_sear
     # TF/TG recognition
     tf_nodes = np.where(interaction_matrix.sum(axis=0) != 0)[0]
     tg_nodes = np.where(interaction_matrix.sum(axis=0) == 0)[0]
+    
     # motif type distribution
     n_tg_nodes_list = np.array(
         [len(set(f.split_motif(motif)) - set(tf_nodes)) for motif in motifs]
     )
     mtype_probs = pd.Series(n_tg_nodes_list).value_counts(normalize=True).sort_index()
-    if verbose:
-        prob = len(tf_nodes)/interaction_matrix.shape[0]
-        #print(f"TF content: {prob}")
-        #print("Number of TG in motif distribution:")
-        #print(mtype_probs)
-        #print()
+
     # nodes participation in FFL
     node_part = np.zeros(interaction_matrix.shape[0])
     for triad in motifs:
         for x in map(int, triad.split("_")):
             node_part[x] += 1
+            
     node_part = pd.Series(node_part)
     if verbose:
         print("Node patricipation distribution:")
         print(node_part.value_counts(normalize=True).head())
         print()
+        
     # Distribution of X-unique nodes motifs number
     edges_1 = []
     motifs_0 = []
@@ -112,7 +96,7 @@ def get_network_params(interaction_matrix, config_file, verbose=False,motif_sear
             res += node_part[x] == 1
             if node_part[x] == 1:
                 i = x
-        #####
+
         try:
             types[res] += 1
             if res == 1:
@@ -121,13 +105,14 @@ def get_network_params(interaction_matrix, config_file, verbose=False,motif_sear
                 motifs_0.append(triad)
         except KeyError:
             pass
-        ####
+
     types = pd.Series(types)
     unique_nodes = types/sum(types)
     if verbose:
         print("Unique nodes number distribution")
         print(unique_nodes)
         print()
+        
     #  Is edge unique? (for 1-unique node motifs)
     edges_1_part = {"_".join(map(str, sorted(edge))): 0 for edge in edges_1}
     for triad in motifs:
@@ -137,12 +122,14 @@ def get_network_params(interaction_matrix, config_file, verbose=False,motif_sear
                 edges_1_part[edge_1] += 1
             except KeyError:
                 pass
+            
     edges_1_part = pd.Series(edges_1_part)
     unique_edges_1 = (edges_1_part == 1).value_counts(normalize=True)
     if verbose:
         print("Is edge unique? (for 1-unique node motifs)")
         print(unique_edges_1)
         print()
+        
     # Distribution of X-unique edges motifs (for 0-unique nodes motifs)
     edges_0_part = {}
     for triad in motifs_0:
@@ -152,6 +139,7 @@ def get_network_params(interaction_matrix, config_file, verbose=False,motif_sear
                 edges_0_part[edge_0] += 1
             except KeyError:
                 edges_0_part[edge_0] = 1
+                
     edges_0_part = pd.Series(edges_0_part)
     edge_types = {i: 0 for i in range(4)}
     for triad in motifs_0:
@@ -160,6 +148,7 @@ def get_network_params(interaction_matrix, config_file, verbose=False,motif_sear
             edge_0 = "_".join(map(str, sorted(x)))
             res += edges_0_part[edge_0] == 1
         edge_types[res] += 1
+        
     edge_types = pd.Series(edge_types)
     unique_edges_0 = edge_types/sum(edge_types)
     if verbose:
@@ -167,6 +156,7 @@ def get_network_params(interaction_matrix, config_file, verbose=False,motif_sear
         print(edge_types)
         print(unique_edges_0)
         print()
+        
     Params = namedtuple(
         "Params", "substrate_motifs tf_nodes tg_nodes mtype_probs unique_nodes unique_edges_1 unique_edges_0"
     )
@@ -188,29 +178,19 @@ def get_attachment_params(substrate_matrix, params, p2_parameter, p4_parameter):
     """
     p2_parameter = float(p2_parameter)
     p4_parameter = float(p4_parameter)
-    # number of unique nodes in the outer motif
     normal_unique_nodes = params.unique_nodes.loc[[0, 1]]
     unique_nodes = normal_unique_nodes
-    #print('uniq nodes')
-    #print(unique_nodes)
-    #unique_nodes = unique_nodes/sum(unique_nodes)
     unique_nodes[1] = (p2_parameter)
     unique_nodes[0] = (1 - p2_parameter)
-    #print(unique_nodes.values)
 	
     n_unique_nodes = np.random.choice(
         unique_nodes.index, p=unique_nodes.values
     )
-#     n_unique_nodes = np.random.choice(
-#         params.unique_nodes.index, p=params.unique_nodes.values
-#     )
-    # number of unique edges in the outer motif
+
     n_unique_edges = None
     if n_unique_nodes == 1:
         n_unique_edges = 0
-#         n_unique_edges = int(np.random.choice(
-#             params.unique_edges_1.index, p=params.unique_edges_1.values
-#         ))
+
     elif n_unique_nodes == 0:
         unique_edges_0 = params.unique_edges_0.loc[[1, 2]]
         unique_edges_0 = unique_edges_0/sum(unique_edges_0)
@@ -221,14 +201,9 @@ def get_attachment_params(substrate_matrix, params, p2_parameter, p4_parameter):
         n_unique_edges = int(np.random.choice(
             unique_edges_0.index, p=unique_edges_0.values
         ))
-        #         n_unique_edges = int(np.random.choice(
-        #             params.unique_edges_0.index, p=params.unique_edges_0.values
-        #         ))
     
     # buiding VMN for motifs
     substrate_vmn = f.build_vmn(params.substrate_motifs)
-    
-    #print(substrate_vmn.shape)
     
     # motif selection for 1 node/2 edges attachment case
     if n_unique_nodes == 1 and n_unique_edges == 0:
@@ -238,6 +213,7 @@ def get_attachment_params(substrate_matrix, params, p2_parameter, p4_parameter):
         weights /= sum(weights)
         inner_motif_1_idx = np.random.choice(substrate_type_idxs, p=weights)
         inner_motif_2_idx = None
+        
     # motif selection for 0 nodes/1 edges attachment case
     elif n_unique_nodes == 0 and n_unique_edges == 1:
         substrate_type_idxs = np.where((substrate_vmn==1)|(substrate_vmn==2))[0]
@@ -245,8 +221,8 @@ def get_attachment_params(substrate_matrix, params, p2_parameter, p4_parameter):
         #substrate_type_vmn = substrate_vmn[substrate_type_idxs, :]
         weights = substrate_type_vmn.sum(axis=1)
         weights /= sum(weights)
+        
         while True:
-#             inner_motif_1_idx = np.random.choice(substrate_type_idxs, p=weights)
             inner_motif_1_idx = np.random.choice(substrate_type_idxs)
             line = substrate_vmn[inner_motif_1_idx, :]
             inner_motif_2_idx = np.random.choice(np.where((line==1)|(line==2))[0])
@@ -262,14 +238,14 @@ def get_attachment_params(substrate_matrix, params, p2_parameter, p4_parameter):
     elif n_unique_nodes == 0 and n_unique_edges == 2:
         substrate_type_idxs = np.where((substrate_vmn==1)|(substrate_vmn==0))[0]
         substrate_type_vmn = substrate_vmn
-        #substrate_type_vmn = substrate_vmn[substrate_type_idxs, :]
         weights = substrate_type_vmn.sum(axis=1)
         weights /= sum(weights)
+        
         while True:
-            # inner_motif_1_idx = np.random.choice(substrate_type_idxs, p=weights)
             inner_motif_1_idx = np.random.choice(substrate_type_idxs)
             line = substrate_vmn[inner_motif_1_idx, :]
             inner_motif_2_idx = np.random.choice(np.where((line==1)|(line==0))[0])
+            
             # check if there at least one node with no links with two others
             inner_motif_1 = f.split_motif(params.substrate_motifs[inner_motif_1_idx])
             inner_motif_2 = f.split_motif(params.substrate_motifs[inner_motif_2_idx])
@@ -285,9 +261,9 @@ def get_attachment_params(substrate_matrix, params, p2_parameter, p4_parameter):
         intype_2 = len(set(f.split_motif(params.substrate_motifs[inner_motif_2_idx])) - set(params.tf_nodes))
     else:
         intype_2 = None
+        
     # incoming motif type selection
     outtype = np.random.binomial(1, p=0.5)
-#     outtype = np.random.binomial(1, p=len(params.tg_nodes)/substrate_matrix.shape[0])
     # results packing
     Params = namedtuple(
         "Params", "substrate_motifs inner_motif_1_idx inner_motif_2_idx intype_1 intype_2 outtype n_unique_nodes n_unique_edges"
@@ -295,13 +271,9 @@ def get_attachment_params(substrate_matrix, params, p2_parameter, p4_parameter):
     params = Params(
         *[params.substrate_motifs, inner_motif_1_idx, inner_motif_2_idx, intype_1, intype_2, outtype, n_unique_nodes, n_unique_edges]
     )
-    #print(params)
     return params
 
 #### Attach 1 node and 2 edges
-
-#<img src="./pics/shared_edge_pattern.png" width=600 height=20/>
-
 #Results of isoforms diversity analysis:
 
 #(inner motif type / outer motif type / isoforms number)
@@ -330,41 +302,23 @@ def get_attachment_1n2e(substrate_matrix, params):
     params - attachment parameters from previous stage of analysis (see get_attachment_params)
     """
     try:
-        #print('substrate_matrix: '+str(substrate_matrix))
         tg_total = np.where(substrate_matrix.sum(axis=0) == 0)[0]
-        #print('tg total: '+str(tg_total))
-        #print('tg_inner_motif_1_idx: '+str(params.substrate_motifs[params.inner_motif_1_idx]))
         inner_motif = f.split_motif(params.substrate_motifs[params.inner_motif_1_idx])
-        #print('tg inner_motif: '+str(inner_motif))
         for parental_motif in inner_motif:
-            #print('things_u_sum: '+str(i[parental_motif] for i in substrate_matrix))
-            #print('out_degree_for_node: '+str(sum(i[parental_motif] for i in substrate_matrix)/substrate_matrix.shape[0]))
             if sum(i[parental_motif] for i in substrate_matrix)/substrate_matrix.shape[0] >= 0.5:
                 attachment_matrix = None
                 return attachment_matrix
         graph_nx = nx.DiGraph(substrate_matrix)
-        #for node in graph_nx.nodes:
-            #if node in inner_motif:
-                #print('node: '+str(node))
-                #print(list(nx.all_neighbors(graph_nx, node)))
-        #print('size: '+str(substrate_matrix.shape[0]))
-
-
         inner_motif_matrix = substrate_matrix[inner_motif, :][:, inner_motif]
-        #print("inner_motif_matrix: ")
-        #print(inner_motif_matrix)
         inner_nodes_roles = list(inner_motif_matrix.sum(axis=0).astype(int))
-        #print('inner nodes roles: '+str(inner_nodes_roles))
 
         # check if there is a target gene
         tg_in = inner_nodes_roles.index(0) if params.intype_1 == 1 else None
-        #print(tg_in)
+
         # assignment roles and corresponding identifiers to the edges
         role_edges = list(combinations(range(2, -1, -1), 2))
         idx_by_role = lambda x: inner_nodes_roles.index(x)
         idx_edges_in = [(idx_by_role(source), idx_by_role(target)) for source, target in role_edges]
-        #print('idx_edges_in:')
-        #print(idx_edges_in)
         patterns = []
 
         prob = len(tg_total)/substrate_matrix.shape[0]
@@ -376,9 +330,11 @@ def get_attachment_1n2e(substrate_matrix, params):
         for idx_edge_in, role_edge_out in product(idx_edges_in, role_edges):
             outer_motif_matrix = get_outer_motif_matrix(role_edge_out)
             outer_nodes_roles = list(outer_motif_matrix.sum(axis=0).astype(int))
+            
             # reveal positions by known edges roles
             idx_by_role = lambda x: outer_nodes_roles.index(x)
             idx_edge_out = tuple(idx_by_role(v) for v in role_edge_out)
+            
             # check if there is a target gene
             tg_out = outer_motif_matrix.sum(axis=0).argmin() if params.outtype == 1 else None
 
@@ -406,24 +362,19 @@ def get_attachment_1n2e(substrate_matrix, params):
             compounded_matrix = nx.convert_matrix.to_numpy_array(C)
             patterns.append(compounded_matrix)
         if patterns:
-            #print(f"(len patterns: {len(patterns)}")
-            #print(f"rule update: {patterns}")
             attachment_matrix = patterns[np.random.randint(len(patterns))]
         else:
             attachment_matrix = None
-        #print(attachment_matrix)
 
         try:
             all_nodes = []
             for num, node in enumerate(inner_motif):
-                #print(inner_nodes_roles[num])
                 if inner_nodes_roles[num] == 2 or inner_nodes_roles[num] == 1:
                     all_nodes.append(node)
             all_nodes.append(int(substrate_matrix.shape[0])-1)
             all_nodes = sorted(all_nodes)
 
             key_to_update = '_'.join([str(i) for i in all_nodes])
-            #print(key_to_update)
             return attachment_matrix, key_to_update
 
         except AttributeError or ValueError:
@@ -461,24 +412,23 @@ def get_attachment_0n1e(substrate_matrix, params):
     substrate_matrix - the netwotk we are growing
     params - attachment parameters from previous stage of analysis (see get_attachment_params)
     """
-    #print('substrate_matrix: '+str(substrate_matrix))
     dl_lib, ul_lib, cs_lib = prepare_motif_libs()
     inner_motif_1 = f.split_motif(params.substrate_motifs[params.inner_motif_1_idx])
     inner_motif_2 = f.split_motif(params.substrate_motifs[params.inner_motif_2_idx])
     tf_total = np.where(substrate_matrix.sum(axis=0) != 0)[0]
     tg_total = np.where(substrate_matrix.sum(axis=0) == 0)[0]
-#     print("Motifs:", inner_motif_1, inner_motif_2)
-    # if there tg nodes in this motif pair
     tg_nodes = (set(inner_motif_1) | set(inner_motif_2)) & set(tg_total)
+    
     # separate nodes by motif they belong to (or both of them)
     shared_nodes = list(set(inner_motif_1) & set(inner_motif_2))
     unique_nodes_1 = list(set(inner_motif_1) - set(inner_motif_2))
     unique_nodes_2 = list(set(inner_motif_2) - set(inner_motif_1))
+    
     # construct all possible triads (common vertex - node in 1st motif - node in 2nd motif)
     triads = product(shared_nodes, product(unique_nodes_1, unique_nodes_2))
     get_type = lambda triad: len(set(triad) - set(tf_total))
     triads = [(x, y, z) for x, (y, z) in triads if get_type((x, y, z))==params.outtype]
-#     print(triads)
+
     # accumulate possible links upon base motif
     possible_links = []
     for triad in triads:
@@ -502,7 +452,6 @@ def get_attachment_0n1e(substrate_matrix, params):
     possible_links = list(set(possible_links))
     
     if possible_links:
-        #print(f"rule update: {possible_links}")
         link_to_attach = possible_links[np.random.choice(range(len(possible_links)))]
     else:
         link_to_attach = None
@@ -520,8 +469,6 @@ def get_attachment_0n1e(substrate_matrix, params):
         try:
             all_nodes = sorted([link_to_attach[0], link_to_attach[1], common_node[0]])
             for node in all_nodes:
-                #print('things_u_sum: '+str(i[node] for i in substrate_matrix))
-                #print('out_degree_for_node: '+str(sum(i[node] for i in substrate_matrix)/substrate_matrix.shape[0]))
                 if sum(i[node] for i in substrate_matrix)/substrate_matrix.shape[0] >= 0.7:
                     link_to_attach = None
                     return link_to_attach
@@ -546,22 +493,17 @@ def get_attachment_0n2e(substrate_matrix, params):
     substrate_matrix - the netwotk we are growing
     params - attachment parameters from previous stage of analysis (see get_attachment_params)
     """
-    #print('substrate_matrix: '+str(substrate_matrix))
     inner_motif_1 = f.split_motif(params.substrate_motifs[params.inner_motif_1_idx])
     inner_motif_2 = f.split_motif(params.substrate_motifs[params.inner_motif_2_idx])
     tf_total = np.where(substrate_matrix.sum(axis=0) != 0)[0]
     tg_total = np.where(substrate_matrix.sum(axis=0) == 0)[0]
-#     print("Motifs:", inner_motif_1, inner_motif_2)
-    # if there tg nodes in this motif pair
     tg_nodes = (set(inner_motif_1) | set(inner_motif_2)) & set(tg_total)
-#     print("TG nodes", tg_nodes)
+
     # separate nodes by motif they belong to (or both of them)
     shared_nodes = list(set(inner_motif_1) & set(inner_motif_2))
-#     print("Shared nodes:", shared_nodes)
     unique_nodes_1 = list(set(inner_motif_1) - set(inner_motif_2))
-#     print("Unique nodes 1:", unique_nodes_1)
     unique_nodes_2 = list(set(inner_motif_2) - set(inner_motif_1))
-#     print("Unique nodes 2:", unique_nodes_2)
+
     # triads construction
     triads = []
     if len(shared_nodes) == 1:
@@ -569,6 +511,7 @@ def get_attachment_0n2e(substrate_matrix, params):
         for i in range(2):
             y, z =  unique_nodes[i-1]
             for x in unique_nodes[i]:
+                
                 # check if there is a place for two new links
                 if substrate_matrix[(x, y, z), :][:, (x, y, z)].sum() == 1:
                     triads.append((x, y, z))
@@ -580,7 +523,6 @@ def get_attachment_0n2e(substrate_matrix, params):
             nodes = nodes_total[i-1]
             for y, z in edges:
                 for x in nodes:
-                    # check if there is a place for two new links
                     if substrate_matrix[(x, y, z), :][:, (x, y, z)].sum() == 1:
                         triads.append((x, y, z))
     get_type = lambda triad: len(set(triad) - set(tf_total))
@@ -588,15 +530,11 @@ def get_attachment_0n2e(substrate_matrix, params):
     possible_link_pairs = []
     
     for triad in triads:
-    #     print(triad)
         triad_matrix = substrate_matrix[triad, :][:, triad]
-    #     print(triad_matrix)
         target, source = map(lambda x: x[0], np.where(triad_matrix == 1))
         outer = list(set(range(3)) - set([target, source]))[0]
         triad = tuple(triad[i] for i in [source, target, outer])
-    #     print(triad)
         triad_matrix = substrate_matrix[triad, :][:, triad]
-    #     print(triad_matrix)
         link_pairs = [
             [(2, 0), (2, 1)], [(2, 0), (1, 2)], [(0, 2), (1, 2)]
         ]
@@ -607,12 +545,9 @@ def get_attachment_0n2e(substrate_matrix, params):
         possible_link_pairs += link_pairs
         
     if possible_link_pairs:
-        #print(f"rule update: {possible_link_pairs}")
         link_pair = possible_link_pairs[np.random.choice(range(len(possible_link_pairs)))]
         for link in link_pair:
             for node in link:
-                #print('things_u_sum: '+str(i[node] for i in substrate_matrix))
-                #print('out_degree_for_node: '+str(sum(i[node] for i in substrate_matrix)/substrate_matrix.shape[0]))
                 if sum(i[node] for i in substrate_matrix)/substrate_matrix.shape[0] >= 0.5:
                     link_pair = None
                     return link_pair
@@ -633,12 +568,9 @@ def update_edge_list(art_matrix, edge_list_update=None, num_of_nodes=1, power_la
     art_matrix - adjacency matrix
     power_law_degree - power for in/out degree parameter
     num_of_nodes - number of iterations"""
-    #also limit out-degree for barabasi nodes?? yes // for candidate node
-    #art_matrix = art_matrix.transpose()
+    
+    #limit out-degree for non-ffl nodes
     counter = 0
-    #print('art mat')
-    #print(art_matrix)
-#     print(f"starting num of edges: {art_matrix.sum()}")
     
     #list of added nodes
     if edge_list_update==None:
@@ -646,21 +578,15 @@ def update_edge_list(art_matrix, edge_list_update=None, num_of_nodes=1, power_la
         edge_list_outs = []
     else:
         edge_list_ins = edge_list_update[0]
-  #      print(f"edge_list_ins: {edge_list_ins}")
         edge_list_outs = edge_list_update[1]
-  #      print(f"edge_list_outs: {edge_list_outs}")
-    
- #   print(type(barabasi_list))
     while counter <= num_of_nodes:
-        # calculate in/out degree
+        
+        # check in/out degree
         out_degree_arr = art_matrix.sum(axis=0)
-#         print(f"starting out_degree_arr: {out_degree_arr}")
         in_degree_arr = art_matrix.sum(axis=1)
-#         print(f"starting in_degree_arr: {in_degree_arr}")
 
         # take candidate node randomly
         candidate = np.random.choice(range(art_matrix.shape[0]))
-        #idea for diameter
         while sum(i[candidate] for i in art_matrix)/art_matrix.shape[0] >= 0.5:
             candidate = np.random.choice(range(art_matrix.shape[0]))
         random_node = candidate
@@ -673,16 +599,11 @@ def update_edge_list(art_matrix, edge_list_update=None, num_of_nodes=1, power_la
         variants = np.linspace(0, 100, 101).astype(int)
         probs = f.repeats_density(variants)/2
         n_repeats = np.random.choice(variants, size=1, p=probs)[0]
-        #print(f"n_repeats: {n_repeats}")
         if n_repeats:
-    #     print(candidate)
-    #        print(out_prob, in_prob, n_repeats)
             for i in range(n_repeats):
+                
                 # drop random number from (0, 1)
                 seed = np.random.rand()
-#                 print(f"seed: {seed}")
-#                 print(f"in-prob: {in_prob}")
-#                 print(f"out-prob: {out_prob}")
             
                 # compare with kernel value and add or do not add out node+link
                 if seed < out_prob:
@@ -694,16 +615,8 @@ def update_edge_list(art_matrix, edge_list_update=None, num_of_nodes=1, power_la
                     edge_list_ins.append(['in',candidate])
                     counter += 1
         out_degree_arr = art_matrix.sum(axis=0)
-#         print(f"final out_degree_arr: {out_degree_arr}")
-#         in_degree_arr = art_matrix.sum(axis=1)
-#         print(f"final in_degree_arr: {in_degree_arr}")
         
-        
-#     print(f"final num of edges: {art_matrix.sum()}")
     edge_list_update = [edge_list_ins, edge_list_outs]
- #   print(f"edge_list_update: {edge_list_update}")
- #   print(len(edge_list_ins)+len(edge_list_outs))
-    #print(edge_list_update)
     return edge_list_update, len(edge_list_ins)+len(edge_list_outs)
 
 def update_substrate_matrix(substrate_matrix, attachment_pattern, inner_motif, nodes_attach=False):
@@ -725,6 +638,7 @@ def update_substrate_matrix(substrate_matrix, attachment_pattern, inner_motif, n
                 (substrate_matrix_upd, np.zeros((substrate_matrix_upd.shape[0], n_nodes_to_join))), axis=1
             )
             shape = substrate_matrix_upd.shape[0]
+            
             # interaction matrix update
             substrate_matrix_upd[
                 np.ix_(range(shape-n_nodes_to_join, shape), range(shape-n_nodes_to_join, shape))
@@ -754,7 +668,6 @@ def contatenate_matrices(matrix, edge_list):
     """
     #retrieve node numbers from ffl-component network
     num = matrix.shape[0]
-   #print(f"num start: {num}")
     
     #name new nodes that need to be attached
     for inner_list in edge_list:
@@ -765,13 +678,9 @@ def contatenate_matrices(matrix, edge_list):
             elif element[1] == 'out':
                 inner_list[inner_index][1] = num
                 num+=1
-  
-    #print(f"num end: {num}")
+
     edge_list_flatten = f.flatten(edge_list)
     f_list = list(f.flatten(edge_list_flatten))
-    
-    #print(f"max(f_list): {max(f_list)}")
-    #print(f"f_list: {f_list}")
 
     #create template for resulting network
     final_mat = np.zeros((max(f_list)+1, max(f_list)+1))
@@ -793,10 +702,12 @@ def filter_for_loops(substrate_matrix, config_file):
     
     #iterate over all 3-node loops in network
     for motif in matrix_motifs['030C']:
+        
         #iterate over all nodes in motif
         nodes = motif.split('_')
         out_degrees = {}
         for node in nodes:
+            
             #calculate out-degree
             out_degrees[node] = substrate_matrix[int(node),:].sum()
         
@@ -817,95 +728,40 @@ def filter_for_two_edge_motif(substrate_matrix, config_file, cascade_transformat
     original_sum = substrate_matrix.sum()
     
     cascade_transformation_num = int(cascade_transformation_num)
-    #iterate over all 3-node loops in network
-    #!Note
-    #deletion of 021C leads to 
-    #for motif_type in [matrix_motifs['021U'], matrix_motifs['021C'], matrix_motifs['021D']]:
     FFLs = matrix_motifs['030T']
     motif_type = matrix_motifs['021C']
     inner_counts = 0
-    #print(motif_type)
     for motif in motif_type:
-        #print(motif)
+
         #iterate over all nodes in motif
         nodes = motif.split('_')
         out_degrees = {}
         in_degrees = {}
         for node in nodes:
+            
             #calculate out-degree
             out_degrees[node] = substrate_matrix[int(node),:].sum()
             in_degrees[node] = substrate_matrix[:,int(node)].sum()
                 
         #sort by out-degree
         out_degrees = {k: v for k, v in sorted(out_degrees.items(), key=lambda item: item[1])}
-        in_degrees = {k: v for k, v in sorted(in_degrees.items(), key=lambda item: item[1])}
-            
+        in_degrees = {k: v for k, v in sorted(in_degrees.items(), key=lambda item: item[1])}     
         all_degrees = {k: in_degrees.get(k, 0) + out_degrees.get(k, 0) for k in set(in_degrees) | set(out_degrees)}
-        all_degrees = {k: v for k, v in sorted(all_degrees.items(), key=lambda item: item[1])}
-            
+        all_degrees = {k: v for k, v in sorted(all_degrees.items(), key=lambda item: item[1])}          
         nodes_all = list(all_degrees.keys())
             
         #convert 021U to FFL
         checker = 0
         for FFL in FFLs:
             FFL = FFL.split('_')
-            #print('FFL len')
-            #print(len([i for i, j in zip(FFL, nodes_all) if i == j]))
             if len([i for i, j in zip(FFL, nodes_all) if i == j])>=2:
-                checker += 1
-                
+                checker += 1                
         if checker==0:
             substrate_matrix[int(nodes_all[1]),int(nodes_all[2])] = 1
             inner_counts +=1
         if inner_counts >= substrate_matrix.shape[0]/cascade_transformation_num:
             break
-            
-            #substrate_matrix[int(nodes_out[0]),int(nodes_out[2])] = 0
-            
-            #counter // do sum of the matrix instead to calculate the number of added edges
-            
-        #print(f"number_of_motif_substitutions in 021C: {inner_counts}")
-        
-# =============================================================================
-#     for motif_type in [matrix_motifs['021D']]:
-#         inner_counts = 0
-#         print(motif_type)
-#         for motif in motif_type:
-#             #print(motif)
-#             #iterate over all nodes in motif
-#             nodes = motif.split('_')
-#             out_degrees = {}
-#             in_degrees = {}
-#             for node in nodes:
-#                 #calculate out-degree
-#                 out_degrees[node] = substrate_matrix[int(node),:].sum()
-#                 in_degrees[node] = substrate_matrix[:,int(node)].sum()
-#                 
-#             #sort by out-degree
-#             out_degrees = {k: v for k, v in sorted(out_degrees.items(), key=lambda item: item[1])}
-#             in_degrees = {k: v for k, v in sorted(in_degrees.items(), key=lambda item: item[1])}
-#             
-#             nodes_out = list(out_degrees.keys())
-#             nodes_in = list(in_degrees.keys())
-#             
-#             all_degrees = {k: in_degrees.get(k, 0) + out_degrees.get(k, 0) for k in set(in_degrees) | set(out_degrees)}
-#             all_degrees = {k: v for k, v in sorted(all_degrees.items(), key=lambda item: item[1])}
-#             
-#             nodes_all = list(all_degrees.keys())
-#             
-#             #convert 021U to FFL
-#             substrate_matrix[int(nodes_in[1]),int(nodes_in[2])] = 1
-#             inner_counts +=1
-#             if inner_counts >= motifs_stats['021D']/5:
-#                 break
-#             
-#             #substrate_matrix[int(nodes_out[0]),int(nodes_out[2])] = 0
-#             
-#             #counter // do sum of the matrix instead to calculate the number of added edges
-#             
-#         print(f"number_of_motif_substitutions in 021D: {inner_counts}")
-# =============================================================================
-        
+                  
     loops_edges = substrate_matrix.sum() - original_sum
         
     return loops_edges, substrate_matrix
@@ -918,7 +774,7 @@ def print_unique_nodes_two_edge_motif(substrate_matrix, config_file):
     nodes_021 = []
     for motif_type in [matrix_motifs['021C']]:
         for motif in motif_type:
-            #print(motif)
+            
             #iterate over all nodes in motif
             nodes = motif.split('_')
             for node in nodes:
@@ -928,7 +784,7 @@ def print_unique_nodes_two_edge_motif(substrate_matrix, config_file):
     nodes_030 = []
     for motif_type in [matrix_motifs['030T']]:
         for motif in motif_type:
-            #print(motif)
+
             #iterate over all nodes in motif
             nodes = motif.split('_')
             for node in nodes:
@@ -941,9 +797,7 @@ def print_unique_nodes_two_edge_motif(substrate_matrix, config_file):
     return unique_021, nodes_021, nodes_030
 
 
-
 # Stack all in the pipeline
-
 def generate_artificial_network(
     interaction_matrix,
     config_file,
@@ -994,6 +848,7 @@ def generate_artificial_network(
     shuffled=config_file["SHUFFLED"]
     output_format=config_file["OUTPUT"]
     disrupt_cycles=config_file["NO_CYCLES"]
+    disrupt_other_motifs=config_file["OTHER_MOTIF_DEPLETION"]
 
     import timeit
     start_time = timeit.default_timer()
@@ -1032,25 +887,20 @@ def generate_artificial_network(
     	substrate_matrix = get_network_nucleus(
         	interaction_matrix, motifs, motifs_network, min_size=nucleus_size, random_seed=random_seed
     	)
-    #print(f"Nucleus matrix shape: {substrate_matrix.shape}")
     network_params = get_network_params(substrate_matrix, config_file, verbose=False)
-    #print()
+
     if nucleus is not None:
-        #print("Reference matrix params")
         fix_network_params = get_network_params(nucleus, config_file, verbose=False)
-        #print()
     else:
         fix_network_params = None
     sleep(2)
     
-    # preferencial attachment start
-    substrate_size = substrate_matrix.shape[0]
+    # preferencial attachment starts
     i = 0
     edges = 0
     barabasi_entering = 0
     two_edge_edges = 0
 
-    N_CORES = mp.cpu_count() if config_file["N_CORES_TO_USE"] == -1 else config_file["N_CORES_TO_USE"]
     while substrate_matrix.shape[0]+edges < network_size:
         
         i += 1
@@ -1061,14 +911,11 @@ def generate_artificial_network(
             print(f"num of nodes: {edges}")
             print(f"memory usage (MB): {f.get_memory_usage()}")
             print(f"free memory left (MB): {f.get_free_memory()}")
-            print(f"The CPU usage is:: {psutil.cpu_percent()}")
         
         #decide between node and motif preferrential attachment
-
         ffl_desired = growth_barabasi
 	
         ffl_perc = ((ffl_desired*network_size)-nucleus_size)/(network_size-nucleus_size)
-        #ffl_perc = 1 - ffl_perc
         if ffl_perc <= 0:
             ffl_perc = 0
         else:
@@ -1079,7 +926,6 @@ def generate_artificial_network(
         your_choise = np.random.choice(['ffl', 'barabasi'], p=[ffl_perc,1-ffl_perc])
         if your_choise == 'barabasi':
             barabasi_entering += 1
-            #print(f"edges: {edges}")
             try:
                 out_edge_list, edge_counter = update_edge_list(substrate_matrix, edge_list)
                 
@@ -1115,46 +961,34 @@ def generate_artificial_network(
                                            p4_parameter=p4_parameter)
 
             if params.n_unique_nodes == 1:
-                #print('1 node')
                 attachment_pattern = get_attachment_1n2e(substrate_matrix, params)
-    
-                #             n_edges_to_join = 1
+
                 if attachment_pattern is not None:
                     motif_to_add = attachment_pattern[1]
-                    #print(motif_to_add)
                     attachment_pattern = attachment_pattern[0]
     
-                    #print(network_params.substrate_motifs)
                     network_params.substrate_motifs.append(motif_to_add)        
                 
             elif params.n_unique_nodes == 0 and params.n_unique_edges == 1:
-                #print('0 node, 1 edges')
                 attachment_pattern = get_attachment_0n1e(substrate_matrix, params)
                 
                 #update motifs
                 if attachment_pattern is not None:
                     motif_to_add = attachment_pattern[1]
-                    #print(motif_to_add)
                     attachment_pattern = attachment_pattern[0]
-    
-                    #print(network_params.substrate_motifs)
                     network_params.substrate_motifs.append(motif_to_add)
                 
             #n_edges_to_join = 2
             elif (params.n_unique_nodes == 0) and (params.n_unique_edges == 2):
                 try:
                     attachment_pattern = get_attachment_0n2e(substrate_matrix, params)
-                    #print('0 nodes, 2 edges')
                 except ValueError:
                     pass
 
                 #update motifs
                 if attachment_pattern is not None:
                     motif_to_add = attachment_pattern[1]
-                    #print(motif_to_add)
                     attachment_pattern = attachment_pattern[0]
-    
-                    #print(network_params.substrate_motifs)
                     network_params.substrate_motifs.append(motif_to_add)
                     
             #n_edges_to_join = 2
@@ -1163,12 +997,7 @@ def generate_artificial_network(
             substrate_matrix = update_substrate_matrix(
             substrate_matrix, attachment_pattern, inner_motif, nodes_attach
             )
-            if nodes_attach and attachment_pattern is not None:
-                substrate_size = substrate_matrix.shape[0]
-                n_nodes_to_join = int(attachment_pattern.shape[0] - 3)
-        #print(f"step: {i}\tnodes: {substrate_matrix.shape[0]}\tedeges: {substrate_matrix.sum()}")
     sleep(2)
-    #print()
     
     nodes_in_ffl = substrate_matrix.shape[0]
     
@@ -1179,23 +1008,18 @@ def generate_artificial_network(
     #check for sparsity
     if disrupt_cycles:
         loop_edges, substrate_matrix = filter_for_loops(substrate_matrix, config_file)
-        
-        ################DELETE CASCADES OPTION###################
+    
+    #delete cascades
+    if disrupt_other_motifs:
         two_edge_edges, substrate_matrix = filter_for_two_edge_motif(substrate_matrix, config_file,\
                                                                      cascade_transformation_num=3)
-        #print(f"two_edge_edges: {two_edge_edges}")
+        loop_edges = 0
         loop_edges += two_edge_edges
-        #############################################
-        
-        #unique021, all021, all030 = print_unique_nodes_two_edge_motif(substrate_matrix, config_file)
-        #print(f"unique021: {unique021}")
-        #print(len(unique021))
     else:
         loop_edges = 0
     compensated_edges = 0
     
     #check if loops were deleted
-
     sparsity = sparsity+(np.random.uniform(-1,1)*0.1)
 
     while links_per_node < sparsity or compensated_edges < loop_edges:
@@ -1217,26 +1041,19 @@ def generate_artificial_network(
         if regulatee == regulator:
             while regulatee == regulator:
                 regulatee = np.random.choice(in_probs.index)
-        #print([regulator, regulatee])
     
         #add edge
         substrate_matrix_upd[regulator,regulatee] = 1
-        
-        #loop_edges, substrate_no_loops = filter_for_loops(substrate_matrix_upd)
-        #print(f"loop_edges while sparsity: {loop_edges}")
-        #if loop_edges == 0:
         graph_nx = nx.DiGraph(substrate_matrix_upd.T)
         link_to_attach = [regulator,regulatee]
         neighbours = []
         
         for node in graph_nx.nodes:
             if node in link_to_attach:
-            #print('node: '+str(node))
                 neighbours.append(list(nx.all_neighbors(graph_nx, node)))
         if len(neighbours) > 1:
          #   print(neighbours)
             common_node = list(set(neighbours[0]).intersection(set(neighbours[1])))
-        #print(f"common_node: {common_node}")
         
         #check if 3-node loop is not created
         if len(common_node) > 0:
@@ -1246,20 +1063,16 @@ def generate_artificial_network(
                     safe_to_add = False
                     
             if safe_to_add:
-                #print(f"no loop created, your pair (and their neighbour): {link_to_attach, node}")
                 compensated_edges += 1
                 substrate_matrix = substrate_matrix_upd
                     
             else:
-                #print(f"trouble! troubled pair: {link_to_attach}")
                 substrate_matrix_upd = substrate_matrix
         else:
-            #print(f"no common node, your pair: {link_to_attach}")
             compensated_edges += 1
             substrate_matrix = substrate_matrix_upd
             
         links_per_node = substrate_matrix.sum()/substrate_matrix.shape[0]
-        #
         
     #check final size
     while substrate_matrix.shape != (network_size, network_size):
@@ -1280,7 +1093,6 @@ def generate_artificial_network(
     #calculate loops once again
     matrix_motifs = f.motif_search(config_file, substrate_matrix, batch_size=10000)
     if verbose:
-        #print(matrix_motifs['030C'])
         print(f"ffl_perc: {ffl_perc}")
         print(f"links_per_node: {links_per_node}")
         print(f"Network has been successfully generated!\nTotal time spent: {datetime.now() - init_time}")
@@ -1290,16 +1102,13 @@ def generate_artificial_network(
     for i in range(substrate_matrix.shape[0]):
         in_degree.append(substrate_matrix[i:].sum()/substrate_matrix.shape[0])
     p3 = sum(in_degree)/len(in_degree)
-    #print(f"in_degree: {p3}")
 
     #out-degree
     out_degree = []
     for i in range(substrate_matrix.shape[0]):
         out_degree.append(substrate_matrix[:i].sum()/substrate_matrix.shape[0])
     p4 = sum(out_degree)/len(out_degree)
-    #print(f"out_degree: {p4}")
     
-
     adj_list = []
 
     for name_regulatee, i in enumerate(substrate_matrix.T):
