@@ -187,7 +187,7 @@ class simulators(object):
         for i in range(model.perturbation.shape[1]):
             
             # merge RNA and prot in to a single list so that both can be updated with each ODE time step
-            Y = np.array(model.steady_state_RNA.tolist()+model.steady_state_prot.tolist())
+            Y = np.array(model.steady_state_RNA+model.steady_state_prot)
             Y = np.reshape(Y,(-1,1))            
             # select the perturbation for this simulation
             perts = model.perturbation[model.perturbation.columns[i]].values     
@@ -222,7 +222,7 @@ class simulators(object):
                     stop = False
             
             # if we time out and still have not found a stead-state print a warning for this experiment and then continue
-            if ss_tmax > 100 and not stop and exp_type=="ss":
+            if ss_tmax > 1000 and not stop and exp_type=="ss":
                 print("WARNING: Failed to find steady state for experiment: "+str(i)+" when running ODE model in geneSNAKE.GRNmodel.experiment.")
                 print("The last simulated time point will be reported for this experiment.")
                     

@@ -199,8 +199,8 @@ class GRNmodel(object):
             - linear - a simple linear model where change in expression = np.matmul(np.linalg.pinv(network),perturbation)""")        
         # assign the noise free simulation to the GRNmodel
         self.noise_free_data = round(results,4)
-        self.noise_free_steady_state_RNA = pd.Series(round(self.steady_state_RNA,4),index=self.noise_free_data.index)
-        
+        self.noise_free_steady_state_RNA = pd.Series(np.round(np.array(self.steady_state_RNA),4),index=self.noise_free_data.index)
+        print(noise_model)
         # add noise based on selected models
         # first generate noise with the selected noise model
         if noise_model == "repcor":
@@ -233,10 +233,9 @@ class GRNmodel(object):
         # first generate noise with the selected noise model
         if noise_model == "repcor":
             [data,noise] = noise_gen.make_repcor(self.steady_state_RNA.values,self.perturbation,SNR)
-        elif noise_model == "gaussia" or noise_model == "normal":
+        elif noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.steady_state_RNA.values,SNR)
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
-            print(data.shape)
             print(self.noise_free_data.shape)
             data = noise_gen.make_micro_array_like(self.steady_state_RNA.values,SNR)
             #noise = data-self.noise_free_data
@@ -249,7 +248,7 @@ class GRNmodel(object):
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
             data = self.noise_free_data.values
-
+        print(data)
         self.steady_state_RNA = pd.Series(data.round(4),index=self.noise_free_data.index)
         
     def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
