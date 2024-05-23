@@ -55,14 +55,15 @@ def snr(y,p,norep):
             work_data = y.values[:,cols]
 
             # and find the variance and mean square 
-            sd[counter] = abs(np.var(work_data))
-            m[counter] = abs(np.mean(work_data)**2)
+            sd[counter] = abs(np.std(work_data))
+            m[counter] = np.mean(np.abs(work_data))#abs(np.mean(work_data)**2)
             counter+=1
             
-        SNR = round((np.median(m)/np.median(sd)),4)
+        SNR = round((np.median(m)/np.median(sd)),4) 
     # if no replicates exist simply take the SNR for the whole data at once
     else:
-        SNR = (np.mean(y.values)**2)/np.var(y.values)
+        #SNR = (np.mean(y.values)**2)/np.var(y.values) ORIGINAL
+        SNR = np.mean(np.abs(y))/np.var(y)
         
     return(SNR)
 
@@ -408,7 +409,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
     df.columns = [str(i) for i in df.columns.to_list()]
     
     # make some plots 
-    distrubution = make_hist.plot(df.values,out)
+    distribution = make_hist.plot(df.values,out)
     heatmap = make_heatmap.plot(df.values,out)
     if not norep:
         col_pca = make_PCA.plot(df,rep_mat,out,"col")
@@ -420,7 +421,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
     stats = {"value":[
         df.shape[0]*df.shape[1], # "elems"
         len(np.unique(df.values)), # "uniq"     
-        np.count_nonzero(df.values==0.0), # "zeroes"
+        np.count_nonzero(df.values==0), # "zeroes"
         str(df.values.shape[0])+", "+str(df.values.shape[1]),
     ],"%":[
         "",
@@ -506,7 +507,7 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         rpca_html = None
         cpca_html = None
         heat_html = None
-        hist_html = '<img src="data:image/png;base64, {}">'.format(distrubution.decode('utf-8'))
+        hist_html = '<img src="data:image/png;base64, {}">'.format(distribution.decode('utf-8'))
         rpca_html = '<img src="data:image/png;base64, {}">'.format(row_pca.decode('utf-8'))
         cpca_html = '<img src="data:image/png;base64, {}">'.format(col_pca.decode('utf-8'))
         heat_html = '<img src="data:image/png;base64, {}">'.format(heatmap.decode('utf-8'))
@@ -521,13 +522,13 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         stats_df = pd.DataFrame(stats2, index=["variance","stdev","skewness","SNR"])
         stats2_html = stats_df.to_html()
         
-        stats_df = pd.DataFrame(stats3, index=["condition value","max SVD","median SVD","min SVD"])
+        stats_df = pd.DataFrame(stats3, index=["condition number","max singular value","median singular value","min singular value"])
         stats3_html = stats_df.to_html()
         
         stats_df = pd.DataFrame(stats4, index=["median pertrank","median percentile pertrank","# pertrank lowest","# pertrank highest"])
         stats4_html = stats_df.to_html()
         
-        stats_df = pd.DataFrame(stats5, index=["mediand replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])
+        stats_df = pd.DataFrame(stats5, index=["median replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])
         stats5_html = stats_df.to_html()
 
         # create a name this is done if data is a pandas.dataframe
@@ -570,7 +571,8 @@ def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
         stats_df = pd.concat([stats_df,pd.DataFrame(stats3, index=["condition value","max SVD","median SVD","min SVD"])])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats4, index=["median pertrank","median percentile pertrank","# pertrank lowest","# pertrank highest"])])
         stats_df = pd.concat([stats_df,pd.DataFrame(stats5, index=["mediand replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])])
-        print(stats_df)
+        
+        return stats_df
 
 
 if __name__ == "__main__":

@@ -118,8 +118,8 @@ class simulators(object):
             raise GeneratorExit("Failed to find steady state for initial conditions (controls) for ODE model in geneSNAKE.GRNmodel.experiment")
         # split the RNA and protein back up again for human readability
         # and store these in the GNRmodel
-        model.steady_state_RNA = Y[0:len(model.genes),-1].tolist()
-        model.steady_state_prot = Y[len(model.genes):,-1].tolist()
+        model.noise_free_steady_state_RNA = Y[0:len(model.genes),-1].tolist()
+        model.noise_free_steady_state_prot = Y[len(model.genes):,-1].tolist()
     
     
     def _run_ODE_sim(model,restart_control,time_points=10,exp_type="ss",draw_pattern="log",end_at_ss=False):
@@ -139,7 +139,7 @@ class simulators(object):
         rtol = 1e-8
         
         # if steady_state_RNA is not set create a starting point. 
-        if isinstance(model.steady_state_RNA,type(None)) or restart_control == True:
+        if isinstance(model.noise_free_steady_state_RNA,type(None)) or restart_control == True:
             # make a "perturbation" list of 1s to ensure the max expression is at 100% 
             perts = np.zeros(len(model .genes)).tolist()
             # make a y with RNA and protein start points 
@@ -173,8 +173,8 @@ class simulators(object):
 
             # split the RNA and protein back up again for human readability
             # and store these in the GNRmodel
-            model.steady_state_RNA = pd.Series(Y[0:len(model.genes),-1].tolist(),index=model.genes)
-            model.steady_state_prot = pd.Series(Y[len(model.genes):,-1].tolist(),index=model.genes)
+            model.noise_free_steady_state_RNA = pd.Series(Y[0:len(model.genes),-1].tolist(),index=model.genes)
+            model.noise_free_steady_state_prot = pd.Series(Y[len(model.genes):,-1].tolist(),index=model.genes)
                                                         
         if model.perturbation is None:
             raise ValueError("Attempted to run the experiment function on a modle without a perturbation matrix in genesnake.GRNmodel.experiment This will not work as there is no experiment describe and thus nothing to simulate. Please run GRNmodel.get_pert befor attempting to run this function.")
@@ -187,8 +187,8 @@ class simulators(object):
         for i in range(model.perturbation.shape[1]):
             
             # merge RNA and prot in to a single list so that both can be updated with each ODE time step
-            Y = np.array(model.steady_state_RNA.tolist()+model.steady_state_prot.tolist())
-            Y = np.reshape(Y,(-1,1))            
+            Y =  np.array(model.noise_free_steady_state_RNA.tolist()+model.noise_free_steady_state_prot.tolist()) #(model.steady_state_RNA+model.steady_state_prot)
+            Y = np.reshape(Y,(-1,1))      
             # select the perturbation for this simulation
             perts = model.perturbation[model.perturbation.columns[i]].values     
             
@@ -222,7 +222,7 @@ class simulators(object):
                     stop = False
             
             # if we time out and still have not found a stead-state print a warning for this experiment and then continue
-            if ss_tmax > 100 and not stop and exp_type=="ss":
+            if ss_tmax > 1000 and not stop and exp_type=="ss":
                 print("WARNING: Failed to find steady state for experiment: "+str(i)+" when running ODE model in geneSNAKE.GRNmodel.experiment.")
                 print("The last simulated time point will be reported for this experiment.")
                     

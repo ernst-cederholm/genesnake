@@ -198,9 +198,9 @@ class GRNmodel(object):
             - ODE - a differential equations model that simulates change in gene expression over time
             - linear - a simple linear model where change in expression = np.matmul(np.linalg.pinv(network),perturbation)""")        
         # assign the noise free simulation to the GRNmodel
-        self.noise_free_data = round(results,4)
-        self.noise_free_steady_state_RNA = pd.Series(round(self.steady_state_RNA,4),index=self.noise_free_data.index)
-        
+        self.noise_free_data = round(results,6)
+        self.noise_free_steady_state_RNA = pd.Series(np.round(np.array(self.noise_free_steady_state_RNA),6),index=self.noise_free_data.index)
+        #print(noise_model)
         # add noise based on selected models
         # first generate noise with the selected noise model
         if noise_model == "repcor":
@@ -222,35 +222,35 @@ class GRNmodel(object):
 
                 
         # set all values less than 0 to 0 as counts cannot be negative
-        data[np.where(data<0)] = 0        
+        data[np.where(data<=0.000001)] = 0.000001        
         # and assign the noisy data to the GRNmodels data parameter
-        self.data = pd.DataFrame(data.round(4),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
-        self.noise = pd.DataFrame(noise.round(4),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
+        self.data = pd.DataFrame(data.round(6),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
+        self.noise = pd.DataFrame(noise.round(6),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
         
         # do the same for the control
-        self.steady_state_RNA = pd.Series(self.steady_state_RNA,index=self.noise_free_data.index)
+        self.noise_free_steady_state_RNA = pd.Series(self.noise_free_steady_state_RNA,index=self.noise_free_data.index)
         # add noise based on selected models
         # first generate noise with the selected noise model
         if noise_model == "repcor":
-            [data,noise] = noise_gen.make_repcor(self.steady_state_RNA.values,self.perturbation,SNR)
-        elif noise_model == "gaussia" or noise_model == "normal":
-            [data,noise] = noise_gen.make_gaussian(self.steady_state_RNA.values,SNR)
+            [data,noise] = noise_gen.make_repcor(self.noise_free_steady_state_RNA.values,self.perturbation,SNR)
+        elif noise_model == "gaussian" or noise_model == "normal":
+            [data,noise] = noise_gen.make_gaussian(self.noise_free_steady_state_RNA.values,SNR)
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
-            print(data.shape)
             print(self.noise_free_data.shape)
-            data = noise_gen.make_micro_array_like(self.steady_state_RNA.values,SNR)
+            data = noise_gen.make_micro_array_like(self.noise_free_steady_state_RNA.values,SNR)
             #noise = data-self.noise_free_data
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
-            noise = noise_gen.make_sequencing_noise(self.steady_state_RNA.values, SNR)
-            data = noise["ratios"] * self.steady_state_RNA
+            noise = noise_gen.make_sequencing_noise(self.noise_free_steady_state_RNA.values, SNR)
+            data = noise["ratios"] * self.noise_free_steady_state_RNA
             data = data.to_numpy()
             noise = noise["ratios"].values
         else:
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
             data = self.noise_free_data.values
-
-        self.steady_state_RNA = pd.Series(data.round(4),index=self.noise_free_data.index)
+        #print(data)
+        data[np.where(data<=0.000001)] = 0.000001 
+        self.steady_state_RNA = pd.Series(data.round(6),index=self.noise_free_data.index)
         
     def set_pert(self,scheme,effect=0.5,reps=3,exp=None,noise=None,multipert=2,targets=None,sign=-1):
         """

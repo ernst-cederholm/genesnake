@@ -38,54 +38,25 @@ class noise_gen:
             data - the input data + noise
             noise - the noise that were added 
         """
-        
-        perts = perts.T.values
-        sets = list()
-        for i in range(data.shape[0]):     
-            rep_set = [j for j in range(perts.shape[0]) if (perts[j,:]==perts[i,:]).all()]
-            sets.append(rep_set)
-            
-        noise = np.zeros(data.shape)
-        # for each replicate set we pick the first two
-        for i in sets:
-            # and find an aproximate value for how much we must change the mean of the two to get the correlation we want
-            # while this will not be enough to actually set the value it can be used as a starting point 
-            cov = np.cov(data[:,i[0]],data[:,i[1]])[0][0]
-            new_mean = round(np.sqrt(corr/cov),4)
-            use_mean = new_mean-np.mean(data[:,i])
-            
-            tmp_noise = np.random.normal(1,use_mean,(data.shape[0],len(i)))
-            tmp_noise[np.where(tmp_noise<0.01)] = 0.01
-            tmp_data = np.multiply(data[:,i],tmp_noise)
-            corrs = np.triu(np.corrcoef(tmp_data.T)[0],k=1)
-            print(tmp_data)
-            c = 0
-            opt_mean = use_mean
-            while np.mean(corrs[np.where(corrs)])>corr+0.05 or np.mean(corrs[np.where(corrs)])<corr-0.05:
-                print(corrs,np.mean(corrs[np.where(corrs)]),corrs[np.where(corrs)])
-                c+=1
-                print(opt_mean)
-                if np.mean(corrs[np.where(corrs)])>corr+0.05:
-                    print("inner")
-                    opt_mean = 1+opt_mean+0.05 #(np.mean(corrs[np.where(corrs)])-corr)
-                    print(opt_mean)
-                    
-                    tmp_noise = np.random.normal(1,opt_mean,(data.shape[0],len(i)))
-                    tmp_noise[np.where(tmp_noise<0.01)] = 0.01
-                    
-                    tmp_data = np.multiply(data[:,i],tmp_noise)
-                    print(tmp_data)
-                    corrs = np.triu(np.corrcoef(tmp_data.T)[0],k=1)
-                elif np.mean(corrs[np.where(corrs)])<corr-0.05:
-                    opt_mean = opt_mean-0.05 #(corr-np.mean(corrs[np.where(corrs)]))
-                    tmp_noise = np.random.normal(1,opt_mean,(data.shape[0],len(i)))
-                    tmp_noise[np.where(tmp_noise<0.01)] = 0.01
-                    tmp_data = np.multiply(data[:,i],tmp_noise)
-                    corrs = np.triu(np.corrcoef(tmp_data.T)[0],k=1)
+        if len(data.shape) == 2:
+            noise = np.zeros(data.shape)
+            for i in range(data.shape[0]):
+                reps_index = np.where(perts.values[i,:]!=0)[0]
+                print(reps_index)
+                num_reps = len(reps_index)
 
-            print(corrs)
-                        
-            exit()
+                covar = np.cov(data[:,reps_index].transpose())[0,0]
+                target_var = covar/corr
+                noise_target_var = target_var - covar
+                noise[:,reps_index] = np.sqrt(noise_target_var)*np.random.normal(0,1,(data.shape[0],num_reps))
+                data[:,reps_index] += noise[:,reps_index]  
+        else:
+            data = data
+            noise = np.zeros(data.shape)
+        
+        return data, noise  
+                
+        
 
         
     
@@ -107,17 +78,30 @@ class noise_gen:
         # which will crash things
         noise = np.zeros(data.shape)
         elems = data.size
+        mean_val = np.mean(data) #NILS EDIT
+        stdE = mean_val/SNR #NILS EDIT
         for i in range(data.shape[0]):
             if len(data.shape)>1:
+                L = np.zeros(data.shape[1])
                 for j in range(data.shape[1]):
+                    L[j] = np.random.lognormal(0.2,0.2)
+
                     stdE = data[i,j]/SNR
-                    stdE = np.sqrt((stdE**2)+np.std(data)**2) #np.abs(data[i,j]/SNR)
+                    #stdE = np.sqrt((stdE**2)+np.std(data)**2) #np.abs(data[i,j]/SNR)
                     noise[i,j] = np.random.normal(1,stdE)
             else:
+                #L = np.random.lognormal(0.1,0.1)
+
                 stdE = np.abs(data[i]/SNR)
                 noise[i] = np.random.normal(1,stdE)
-        noise[np.where(noise<=0.0)]=0.0001        
-        data = np.multiply(data,noise)
+        #data = data + noise
+        #data[np.where(data <= 0)]=0.0001
+        noise[np.where(noise<=0.000001)]=0.000001   
+       # data = np.multiply(data,L) 
+        if len(data.shape)>1:
+            data = np.multiply(data, L) 
+          
+        data = np.multiply(data,noise) + np.random.normal(0, 0.00008, data.shape)      
         #mask = data<=0
         #mask = mask*np.random.uniform(0,min(1e-4,np.min(abs(data))),data.shape)
         
