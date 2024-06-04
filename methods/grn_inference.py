@@ -46,16 +46,16 @@ def infer_networks(Y, P, method, zvec):
         method - inference method to apply
         zvec - vector of zeta values for cutoff
     """
-    if method == "lsco":  # least squares
+    if method == "lsco":  # least squares, works OK
         aest = np.matmul(-P, np.linalg.pinv(Y))
         aests = cutoff_handler(aest, zvec, False)
-    if method == "lscon":  # normalized least squares
+    if method == "lscon":  # normalized least squares, works OK
         aest = np.matmul(-P, np.linalg.pinv(Y))
         aest = pd.DataFrame(aest)
         for column in aest:
             aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
         aests = cutoff_handler(aest, zvec, False)
-    if method == "zscore":  # Z-score
+    if method == "zscore":  # Z-score, works OK
         outNet = []
         P2 = P.transpose()
         for i in P2:
@@ -63,9 +63,9 @@ def infer_networks(Y, P, method, zvec):
             Y2 = Y.transpose()
             tmpAest = np.divide((np.mean(Y2.iloc[inds], axis=0) - np.mean(Y, axis=1)), np.std(Y, axis=1))
             outNet.append(tmpAest)
-        aest = pd.DataFrame(outNet).transpose()
+        aest = pd.DataFrame(outNet)
         aests = cutoff_handler(aest, zvec, False)
-    if method == "lasso":  # lasso
+    if method == "lasso":  # lasso, works ok
         aests = []
         for z in zvec:
             lasso_mod = Lasso(alpha=z)
@@ -75,7 +75,7 @@ def infer_networks(Y, P, method, zvec):
                 out_net_tmp.append(lasso_mod.coef_)
             out_net_tmp = pd.DataFrame(out_net_tmp)
             aests.append(out_net_tmp)
-    if method == "elnet":  # elastic net
+    if method == "elnet":  # elastic net, works semi ok
         aests = []
         for z in zvec:
             lassoMod = ElasticNet(alpha=z, random_state=0)
@@ -87,7 +87,7 @@ def infer_networks(Y, P, method, zvec):
             outNetTmp = pd.DataFrame(outNetTmp)
             aests.append(outNetTmp)
 
-    if method == "linsvm":  # linear SVM
+    if method == "linsvm":  # linear SVM, works ok
         from sklearn.svm import SVR
         aest = []
         for i in P.transpose():
@@ -97,7 +97,7 @@ def infer_networks(Y, P, method, zvec):
         aest2 = pd.DataFrame(np.concatenate(aest))
         aests = cutoff_handler(aest2, zvec, False)
 
-    if method == "regtrees":  # regression trees
+    if method == "regtrees":  # regression trees, works not ok
         aest = []
         from sklearn.tree import DecisionTreeRegressor
 
@@ -111,7 +111,7 @@ def infer_networks(Y, P, method, zvec):
         aest2 = pd.DataFrame(aest).transpose()
         aests = cutoff_handler(aest2, zvec, False)
 
-    if method == "rbfsvm":  # rbf svm (nonlinear)
+    if method == "rbfsvm":  # rbf svm (nonlinear), works not ok
         from sklearn.svm import SVR
         from sklearn.inspection import permutation_importance
         aest = []
@@ -125,7 +125,7 @@ def infer_networks(Y, P, method, zvec):
         aest2 = pd.DataFrame(aest)
         aests = cutoff_handler(aest2, zvec, False)
 
-    if method == "polysvm":  # elastic net
+    if method == "polysvm":  # polynomial svm, works not ok
         from sklearn.svm import SVR
         from sklearn.inspection import permutation_importance
         aest = []
