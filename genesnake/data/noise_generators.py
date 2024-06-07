@@ -80,8 +80,6 @@ class noise_gen:
         """
         Function for generating sequencing-based noise based on coverage, GC-content and sequencing error rates
         INPUT:
-            ng - number of genes
-            nsamp - number of samples
             genes_ind - indices of genes
             c - coverage
             L - read length [bp]

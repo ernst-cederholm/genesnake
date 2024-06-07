@@ -50,7 +50,7 @@ def compare_networks(nets, net0, exclude_diagonal=False, signed=False):
 
         So.append(S)
 
-        if (signed):  # if sign should be considered
+        if (signed):  # when sign is considered
             net1[net1 > 0] = 1
             net1[net1 < 0] = -1
             net2[net2 > 0] = 1
