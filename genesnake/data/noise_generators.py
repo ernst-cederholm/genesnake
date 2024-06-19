@@ -1,6 +1,6 @@
 """
 A collection of functions that are used to generate noise for the GRNmodle.py script.
-Note that they are not imported in to the data namespace only the model class. 
+Note that they are not imported in to the data namespace only the model class.
 """
 
 from pathlib import Path
@@ -23,20 +23,20 @@ def zinbme(data, prob_nb, sf): # sf is scaling factor (SNR like)
 
 class noise_gen:
     """
-    Class that holds all predefined noise generators. A noise generator should is possible take data and SNR as input and return data+noise and noise. Both should be a numpy array of size data.shape. 
+    Class that holds all predefined noise generators. A noise generator should is possible take data and SNR as input and return data+noise and noise. Both should be a numpy array of size data.shape.
     """
     def make_repcor(data,perts,corr):
         """
         NOTE this function does most likely not work and was replaced by the make_gaussian. It is left here in the hope that it can be
-        made functional sometime in the future as it fills an important role in controling replicate correlation. 
+        made functional sometime in the future as it fills an important role in controling replicate correlation.
         Function that sets the average replicate correlation in data through a simple optimization scheme.
         INPUT:
             data - numpy.array, the data to add noise to. This is used both to get magnitude of noise and size of noise matrix
-            perts - the perturbation design corresponding to the data, replicates will be lifted from this. 
+            perts - the perturbation design corresponding to the data, replicates will be lifted from this.
             corr - the wanted average correlation value. Note that as noise is randomly genreated it will only be on average this.
         OUTPUT:
             data - the input data + noise
-            noise - the noise that were added 
+            noise - the noise that were added
         """
         if len(data.shape) == 2:
             noise = np.zeros(data.shape)
@@ -49,29 +49,29 @@ class noise_gen:
                 target_var = covar/corr
                 noise_target_var = target_var - covar
                 noise[:,reps_index] = np.sqrt(noise_target_var)*np.random.normal(0,1,(data.shape[0],num_reps))
-                data[:,reps_index] += noise[:,reps_index]  
+                data[:,reps_index] += noise[:,reps_index]
         else:
             data = data
             noise = np.zeros(data.shape)
-        
-        return data, noise  
-                
-        
 
-        
-    
+        return data, noise
+
+
+
+
+
     def make_gaussian(data,SNR):
         """
-        Function that wraps the numpy.random.normal function for easy use with the geneSNAKE GNRmodel data generation 
-        for adding white noise to experiemnts. 
-        INPUT: 
-            data - numpy.array, the data to add noise to. This is used both to get magnitude of noise and size of noise matrix  
-            SNR - int or float, the requested SNR. This value will be used to determine the standard deviation needed to be added 
-                  to get approximately that SNR in the output data. 
-        OUTPUT: 
-            noise - a numpy array of size data with the data+noise. 
+        Function that wraps the numpy.random.normal function for easy use with the geneSNAKE GNRmodel data generation
+        for adding white noise to experiemnts.
+        INPUT:
+            data - numpy.array, the data to add noise to. This is used both to get magnitude of noise and size of noise matrix
+            SNR - int or float, the requested SNR. This value will be used to determine the standard deviation needed to be added
+                  to get approximately that SNR in the output data.
+        OUTPUT:
+            noise - a numpy array of size data with the data+noise.
         """
-        
+
         # then we use the SNR equation to find the stdE based on the relation SNR = (mean(data))/stdE(noise)
         # variance(noise) = stdE(noise)**2
         # take this as absolute value as data where all values are extremely close to 0 can generate negative values
@@ -96,46 +96,46 @@ class noise_gen:
                 noise[i] = np.random.normal(1,stdE)
         #data = data + noise
         #data[np.where(data <= 0)]=0.0001
-        noise[np.where(noise<=0.000001)]=0.000001   
-       # data = np.multiply(data,L) 
+        noise[np.where(noise<=0.000001)]=0.000001
+       # data = np.multiply(data,L)
         if len(data.shape)>1:
-            data = np.multiply(data, L) 
-          
-        data = np.multiply(data,noise) + np.random.normal(0, 0.00008, data.shape)      
+            data = np.multiply(data, L)
+
+        data = np.multiply(data,noise) + np.random.normal(0, 0.00008, data.shape)
         #mask = data<=0
         #mask = mask*np.random.uniform(0,min(1e-4,np.min(abs(data))),data.shape)
-        
+
         #data[np.where(data<=0)] = 0
         #data = data+mask
-        
+
         return data, noise
-    
-    
+
+
     def make_micro_array_like(data,SNR):
         """
-        Model for creating micro array like noise based on the implementation of a similar nature in the GeneNetWeaver paper and the 
-        Statistical analysis of MPSS measurements: Application to the study of LPS-activated macrophage gene expression paper by 
-        Stolovitzky et al 2005. 
-        Note that the output SNR will not be in line with the requested SNR but they will depend on one another in a way such that 
-        a lower SNR will lead to higher noise. 
+        Model for creating micro array like noise based on the implementation of a similar nature in the GeneNetWeaver paper and the
+        Statistical analysis of MPSS measurements: Application to the study of LPS-activated macrophage gene expression paper by
+        Stolovitzky et al 2005.
+        Note that the output SNR will not be in line with the requested SNR but they will depend on one another in a way such that
+        a lower SNR will lead to higher noise.
         INPUT:
-            data - numpy.array, the data to add noise to. This is used both to get magnitude of noise and size of noise matrix 
-            SNR - int or float, the requested SNR. This value will be used to determine the standard deviation needed to be added 
-                  to get approximately that SNR in the output data. 
-        OUTPUT: 
-            noise - a numpy array of size data with the data+noise. 
+            data - numpy.array, the data to add noise to. This is used both to get magnitude of noise and size of noise matrix
+            SNR - int or float, the requested SNR. This value will be used to determine the standard deviation needed to be added
+                  to get approximately that SNR in the output data.
+        OUTPUT:
+            noise - a numpy array of size data with the data+noise.
         """
-        
+
         # create a vectorized function that will be applied to each cell of the numpy array seperatly
         # the noise model is built around finding a variance value dependent on x and multiplying x with this.
-        # meaning that small x values will have low noise and large x values have larger noise. 
+        # meaning that small x values will have low noise and large x values have larger noise.
         f = lambda x: x*np.exp(np.random.normal(0,x/SNR))
-        # then feed the data in to this function 
+        # then feed the data in to this function
         noise = f(data)
-        
+
         return noise
-    
-    
+
+
     def make_sequencing_noise(data, SNR, genes_ind="random",  c=5, L=75, techrep=2, ermin=0.45, ermax=0.73, prob_zi=0.1, prob_nb=0.5, sf=0.05):
         """
         Function for generating sequencing-based noise based on coverage, GC-content and sequencing error rates
@@ -153,7 +153,7 @@ class noise_gen:
             sf - scaling factor that adjusts variance in data to variance in noise
         # default settings based on: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-13-185
         # e.g. here for ENCODE project mismatch counting is 0.45-073
-                
+
         """
         try:
             nsamp = np.shape(data)[1]
@@ -190,40 +190,40 @@ class noise_gen:
             prob_zi = 0.05
             prob_nb = 0.7
             sf = 0.5
-        
-        
+
+
         # code block 3
         p = Path(__file__).with_name("pc_genes_start_end_gc.txt")
         df = pd.read_csv(p, sep='\t', header=0)
-        
+
         # genes lengths
         g_length = df["end_position"]-df["start_position"]
         # genes gc content
         gc_cont = df["percentage_gene_gc_content"]
-        
+
         # randomize genes
         rand_genes_ind = genes_ind
         if genes_ind == "random":
             rand_genes_ind = np.random.randint(1, len(g_length), size=ng)
         else:
             rand_genes_ind = genes_ind
-            
+
         g_start = df["start_position"][rand_genes_ind].to_frame()
         g_end = df["end_position"][rand_genes_ind].to_frame()
         # total length of the sequenced genome or genome fragment
         # in this code, it is a sum of all N genes lengths
         G = sum(g_length[rand_genes_ind])
-        
+
         # now we use Lander-Waterman equation to estimate number of reads N for a given coverage
         N = round((c*G)/L)
-        
+
         # randomize read positions from unif distribution
         sr = pd.Series(1-gc_cont[rand_genes_ind]/100)
         prbs = sr.repeat(g_length[rand_genes_ind])
         prbs /= prbs.sum()  # need to normalize it so it sums to 1
         frag = np.arange(0,G) # fragment of sequenced genome
         g_length_set = g_length[rand_genes_ind] # subset of genes lengths
-        
+
         for t in range(0, techrep):
             allCounts = []
             allNoErrorCounts = []
@@ -248,7 +248,7 @@ class noise_gen:
                     counts_samp.append(sum(tmp_counts))
                 counts = pd.Series(counts_samp)
                 necounts = pd.Series(c * g_length_set / L)
-                
+
                 allCounts[s].append(np.transpose(counts))
                 allNoErrorCounts[s].append(np.transpose(necounts))
             out_counts = np.transpose(pd.DataFrame(np.concatenate(allCounts)))  # samples in columns, genes in rows
@@ -258,10 +258,10 @@ class noise_gen:
         # zero inflation negative binomial noise to genes
         # zero inflation simulates dropouts
         # negative binomial simulates noise strength in counts
-        
+
         out_counts = pd.DataFrame(round(out_counts/techrep))
         out_error = out_counts.apply(lambda x: zinbme(x, prob_nb, sf), axis=1)
-        
+
         ratios = np.divide(out_counts+out_error, out_necounts / techrep)
         ratios = ratios.apply(lambda x: np.multiply(x, np.random.choice([0, 1], p=[prob_zi, 1 - prob_zi], size=len(x), replace=True)), axis=1)
         ratios[ratios == inf] = 0
@@ -271,5 +271,5 @@ class noise_gen:
         op['seq_counts'] = round(out_counts)
         op['noerror_counts'] = round(out_necounts / techrep)
         op['zinb_counts'] = out_error
-        
+
         return op

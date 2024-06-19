@@ -2,7 +2,7 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 import seaborn as sns
-import networkx as nx 
+import networkx as nx
 import pandas as pd
 import numpy as np
 import itertools
@@ -11,10 +11,10 @@ import sys
 import genesnake as gs
 from methods.grn_inference import infer_networks
 
-# a cheat way to use a random or set network 
+# a cheat way to use a random or set network
 A = 0
 if A>0:
-    # make a pre defeind network  
+    # make a pre defeind network
     genes = 5
     network = np.array([[0,0,0,0,0],[-1,0,0,0,0],[0,0,0,1,0],[0,1,0,0,0],[0,0,0,1,0]])
     network = pd.DataFrame(network)
@@ -38,8 +38,8 @@ else:
     # or creat a random one using the gs functions
     #network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0,self_loops=True)
     network = gs.grn.make_DAG(genes,1.2,sign_bias=0.5)
-    
-# build a model from make_model 
+
+# build a model from make_model
 M = gs.GRNmodel.make_model(network,combinations={"comb_prob":0.5})
 
 set_param = 0
@@ -74,8 +74,8 @@ fig = 1
 for s in [10]:
     print("Noise",s)
     for i in range(1):
-        M.simulate_data(exp_type="ss",SNR=s,noise_model="normal")
-        
+        M.simulate_data(exp_type="ss",time_points=8,noise_model="normal")
+
         noise = M.noise
         data = M.data
         noise_free_data = M.noise_free_data
@@ -116,7 +116,7 @@ for w in weights:
         colors.append("b")
 try:
     nx.draw_planar(G,with_labels=True,ax=ax1,edgelist=edges,edge_color=colors)
-except nx.NetworkXException: 
+except nx.NetworkXException:
     nx.draw_spring(G,with_labels=True,ax=ax1,edgelist=edges,edge_color=colors)
 
 if genes <= 20:
@@ -128,7 +128,7 @@ else:
     sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2)
     sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3)
 
-    
+
 subfig1.suptitle("GRN")
 subfig2.suptitle("inital steady_state_RNA")
 subfig3.suptitle("Noise free data")
