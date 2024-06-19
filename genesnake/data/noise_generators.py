@@ -14,11 +14,9 @@ import math
 
 def zinbme(data, prob_nb, sf): # sf is scaling factor (SNR like)
     n = round(np.mean(data)+1)
-    #print(n)
     nb = np.random.negative_binomial(n, prob_nb, size=len(data))  # negative binomial distribution
-    zinb = nb
-    msf = np.sqrt(np.var(data) / (sf * (np.var(zinb))))  # scaling factor to adjust noise values to data
-    return pd.Series(zinb*msf)
+    msf = np.sqrt(np.var(data) / (sf*(np.var(nb))))  # scaling factor to adjust noise values to data
+    return pd.Series(nb*msf) #zinb*msf
 
 
 class noise_gen:
@@ -140,8 +138,6 @@ class noise_gen:
         """
         Function for generating sequencing-based noise based on coverage, GC-content and sequencing error rates
         INPUT:
-            ng - number of genes
-            nsamp - number of samples
             genes_ind - indices of genes
             c - coverage
             L - read length [bp]
@@ -155,10 +151,7 @@ class noise_gen:
         # e.g. here for ENCODE project mismatch counting is 0.45-073
 
         """
-        try:
-            nsamp = np.shape(data)[1]
-        except IndexError:
-            nsamp = 1
+        nsamp = np.shape(data)[1]
         ng = np.shape(data)[0]
         if SNR == "very_low":
             ermin = 0.7
@@ -231,8 +224,8 @@ class noise_gen:
                 # error rate of reads
                 # based on: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-13-185
                 # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4631051/
-                er = random.uniform(ermin, ermax)  # good mapping rates 0.1-0.2 (good) or 0-0.1 (very good)
-                # e.g. here for ENCODE project mismatch counting is 0.45-073
+                er = random.uniform(ermin, ermax)  # mapping rates
+                # e.g. for ENCODE project mismatch counting is 0.45-073
                 # https: // bmcbioinformatics.biomedcentral.com / articles / 10.1186 / 1471 - 2105 - 13 - 185 / tables / 3
                 Ne = round(N - N * er)  # we decrease the number of reads as some of them are mismatched with a given error rate
                 reads_pos = np.random.choice(frag, p=prbs, size=Ne, replace=True)
