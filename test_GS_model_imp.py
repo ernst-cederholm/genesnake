@@ -124,7 +124,7 @@ if genes <= 20:
     sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2,annot=True)
     sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3,annot=True)
 else:
-    sns.heatmap(M.steady_state_RNA,cmap="vlag",linecolor="k",linewidths=0.01,ax=ax4,annot=True)
+    sns.heatmap(pd.DataFrame(M.steady_state_RNA),cmap="vlag",linecolor="k",linewidths=0.01,ax=ax4,annot=True)
     sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2)
     sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3)
 

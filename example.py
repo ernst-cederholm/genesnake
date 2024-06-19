@@ -17,7 +17,7 @@ from methods.grn_inference import infer_networks
 
 # Define some settings that are needed to run the example 
 gene_number = 10 # how many genes the GRN should contain 
-use_static_network = True # should the network be selected from one of two existing predefined networks
+use_static_network = False # should the network be selected from one of two existing predefined networks
 plot_results = True # should the final network, data and fold change be plotted at the end 
 load_network = False # a network to load, replace False with path to file containing the network
 print_params = False # option to print all parameters to terminal, exluding time points 
@@ -47,11 +47,11 @@ elif load_network:
 # or created using one of the algorithms in gs.grn.func
 # currently gs.grn.make_DAG, gs.grn.make_random and gs.grn.make_FFLATnetwork can be used for this
 else:
-    genes = gene_number
+    genes = 50
     # for DAG and random the syntax is 
-    network = gs.grn.make_DAG(genes,1.2,sign_bias=0.6)
+    #network = gs.grn.make_DAG(genes,1.2,sign_bias=0.6)
     # and for FFLatt it is
-    #network = gs.grn.make_FFLATnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0,self_loops=False)
+    network = gs.grn.make_FFLATTnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0,self_loops=False)
     
     
 # Once a network is availeble make a ODE model and set parameters for it
@@ -99,8 +99,7 @@ print(M.perturbation)
 
 # With parameters and pertrubation in place the simulation can now be ran using the simulate_data function
 # this also takes arguments for the noise to be added 
-M.simulate_data(exp_type="ss",SNR=5,noise_model="normal")
-
+M.simulate_data(exp_type="time",SNR=5,noise_model="normal")
 # The save/load part and benchmarking part is still under construction and needs further testing 
 
 # to save the model so that it can be reused there is a save function:
@@ -168,7 +167,7 @@ if plot_results:
         sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2,annot=True)
         sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3,annot=True)
     else:
-        sns.heatmap(M.steady_state_RNA,cmap="vlag",linecolor="k",linewidths=0.01,ax=ax4,annot=True)
+        sns.heatmap(pd.DataFrame(M.steady_state_RNA),cmap="vlag",linecolor="k",linewidths=0.01,ax=ax4,annot=True)
         sns.heatmap(M.noise_free_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax2)
         sns.heatmap(fold_change_data.iloc[:,0:genes],cmap="vlag",linecolor="k",linewidths=0.01,ax=ax3)
         
