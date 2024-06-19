@@ -60,11 +60,11 @@ class pargen:
         return np.round(np.random.uniform(low=Emin,high=Emax,size=(len(genes))),2).tolist()
     
     
-    def make_hill_coef(genes=None,Emax=5,Emin=3):
+    def make_hill_coef(genes=None,Emax=4,Emin=2):#3-5
         if genes is None:
             raise ValueError("Attempted to generate parameters for None object in genesnake.modle.parameters")
         
-        return np.round(np.random.randint(low=Emin,high=Emax+1,size=(len(genes))),2).tolist()
+        return np.round(np.random.randint(low=Emin,high=Emax,size=(len(genes))),2).tolist()
     
     
     def make_combinations(network,names=None,max_comb=2,comb_prob=0.5):

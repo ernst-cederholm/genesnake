@@ -14,27 +14,27 @@ import seaborn as sns
 from statistics import mean
 from sklearn.svm import SVR
 
-# def cutoff_handler(A, zvec, zvec_auto=False):
-#     """
-#     Create N networks under various cutoffs using vector of so-called zeta values as thresholds
-#     INPUT:
-#         A - network
-#         zvec - zeta vector
-#         zvec_auto - 100 lineary-spaced thresholds between 0 and absolute maximum value taken from the full network
-#     """
-#     aests = []
-#     if (zvec_auto):
-#         zvec = np.linspace(0, max(abs(A)), 100)
-#     else:
-#         ep = sys.float_info.epsilon
-#         zmin = min(abs(A[A > 0])) - ep
-#         zmax = max(abs(A[A > 0])) + ep * 10
-#         zvec = zvec * (zmax - zmin) + zmin
-#     for z in range(1, len(zvec)):
-#         Atmp = A
-#         Atmp[abs(Atmp) <= zvec[z]] = 0
-#         aests.append(round(Atmp, ndigits=5))
-#     return aests
+def cutoff_handler(A, zvec, zvec_auto=False):
+    """
+    Create N networks under various cutoffs using vector of so-called zeta values as thresholds
+    INPUT:
+        A - network
+        zvec - zeta vector
+        zvec_auto - 100 lineary-spaced thresholds between 0 and absolute maximum value taken from the full network
+    """
+    aests = []
+    if (zvec_auto):
+        zvec = np.linspace(0, max(abs(A)), 100)
+    else:
+        ep = sys.float_info.epsilon
+        zmin = np.min(np.min(abs(A))) - ep
+        zmax = np.max(np.max(abs(A))) + ep * 10
+        zvec = zvec * (zmax - zmin) + zmin
+    for z in range(1, len(zvec)):
+        Atmp = A
+        Atmp[abs(Atmp) <= zvec[z]] = 0
+        aests.append(round(Atmp, ndigits=5))
+    return aests
 
 
 def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
@@ -59,8 +59,8 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
     if method == "zscore":  # Z-score, works OK
         outNet = []
         P2 = P.transpose()
-        for i in P2:
-            inds = np.nonzero(abs(P.iloc[i].array))
+        for i in range(P2.shape[1]):
+            inds = np.nonzero(abs(P.iloc[:,i].array))
             Y2 = Y.transpose()
             tmpAest = np.divide((np.mean(Y2.iloc[inds], axis=0) - np.mean(Y, axis=1)), np.std(Y, axis=1))
             outNet.append(tmpAest)
@@ -72,8 +72,8 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
         for z in zvec:
             lasso_mod = Lasso(alpha=z)
             out_net_tmp = []
-            for i in P.transpose():
-                lasso_mod.fit(Y.transpose(), -P.iloc[i])
+            for i in range(P.shape[0]):
+                lasso_mod.fit(Y.transpose(), -P.iloc[i,:])
                 out_net_tmp.append(lasso_mod.coef_)
             out_net_tmp = pd.DataFrame(out_net_tmp)
             aests.append(out_net_tmp)
@@ -83,8 +83,8 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
         for z in zvec:
             lassoMod = ElasticNet(alpha=z, random_state=0)
             outNetTmp = []
-            for i in P.transpose():
-                lassoMod.fit(Y.transpose(), -P.iloc[i])
+            for i in range(P.shape[0]):
+                lassoMod.fit(Y.transpose(), -P.iloc[i,:])
                 outNetTmp.append(lassoMod.coef_)
 
             outNetTmp = pd.DataFrame(outNetTmp)
@@ -94,9 +94,9 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
     if method == "linsvm":  # linear SVM, works ok
         from sklearn.svm import SVR
         aest = []
-        for i in P.transpose():
+        for i in range(P.shape[0]):
             svr_lin = SVR(kernel="linear", C=100, gamma="auto")
-            fitc = svr_lin.fit(Y.transpose(), -P.iloc[i]).coef_
+            fitc = svr_lin.fit(Y.transpose(), -P.iloc[i,:]).coef_
             aest.append(fitc)
         aest = pd.DataFrame(np.concatenate(aest))
         return aest

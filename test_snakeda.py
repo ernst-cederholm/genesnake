@@ -2,7 +2,7 @@ from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 import seaborn as sns
-import networkx as nx 
+import networkx as nx
 import pandas as pd
 import numpy as np
 import itertools
@@ -11,14 +11,12 @@ import sys
 import genesnake as gs
 
 genes = 100
-network = gs.grn.make_FFLATnetwork(edge_bias=0.7,NETWORK_SIZE=genes,SPARSITY=2.1)
-#network = gs.grn.make_DAG(genes,2.1)
-# move the network to edge_list.csv
+network = gs.grn.make_FFLATnetwork.make_FFLATTnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0,self_loops=False)
 
 print(network)
 print("activating edges:",(network.values>0).sum())
 print("inhibitory edges:",(network.values<0).sum())
-      
+
 G = nx.from_pandas_adjacency(network,create_using=nx.DiGraph())
 edges,weights = zip(*nx.get_edge_attributes(G,'weight').items())
 colors = list()
