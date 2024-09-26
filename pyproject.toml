@@ -1,0 +1,74 @@
+
+# I added this to make the package buildable and installable,
+# which is convenient. 
+# However, there are many things about this package that I don't know,
+# so please modify any of the metadata below as suitable.
+# Ask me if any questions!
+# // Anton Björk 2024-09-26
+
+# Some useful Python packaging documentation:
+# https://packaging.python.org/en/latest/
+# https://packaging.python.org/en/latest/overview/
+# https://packaging.python.org/en/latest/tutorials/packaging-projects/
+
+
+# Hatchling was default in 
+# https://packaging.python.org/en/latest/tutorials/packaging-projects/
+# but switched to setuptools for compatibility with setuptools dynamic
+# dependencies below. Hatchling seems to have and thus possibly require
+# a plugin for that functionality, see
+# https://pypi.org/project/hatch-requirements-txt/
+# Also set version 62 on setuptools which was not tutorial default.
+# This since the file option for dynamic dependencies was added in 62, see
+# https://stackoverflow.com/questions/73600082/how-to-reference-a-requirements-txt-in-the-pyproject-toml-of-a-setuptools-projec
+# [build-system]
+# requires = ["hatchling"]
+# build-backend = "hatchling.build"
+[build-system]
+requires = ["setuptools>=62.6"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "genesnake"
+version = "0.0.1"
+authors = [
+  { name="Modify this", email="and@this.com" },
+]
+# Description is a short, one sentence summary, as per
+# https://packaging.python.org/en/latest/tutorials/packaging-projects/
+description = "Put a short description you like"
+readme = "README.md"
+# Not sure how accurate. If you know better please modify this too.
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    # Pick a license you want for this package
+    # "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["dependencies"]
+
+
+# Since the directory structure is slightly funky, 
+# need custom package discovery.
+# Package discovery documentation
+# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#custom-discovery
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["genesnake*"]
+namespaces = false
+
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["genesnake/requirements.txt"]}
+
+
+[project.urls]
+Documentation = "https://sonnhammer-tutorials.bitbucket.io/genesnake.html"
+Repository = "https://bitbucket.org/sonnhammergrni/genesnake"
+
+
+
+
