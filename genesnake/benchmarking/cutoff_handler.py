@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from copy import deepcopy
 def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=False):
     """
     Create N networks under various cutoffs using vector of so-called zeta values as thresholds
@@ -16,8 +17,8 @@ def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=False):
         zmin = min(abs(A[A > 0])) - ep
         zmax = max(abs(A[A > 0])) + ep * 10
         zvec = zvec * (zmax - zmin) + zmin
+    Atmp = deepcopy(A)
     for z in range(1, len(zvec)):
-        Atmp = A
         Atmp[abs(Atmp) <= zvec[z]] = 0
         aests.append(round(Atmp, ndigits=5))
     return aests
