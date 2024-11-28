@@ -11,7 +11,6 @@
 # https://packaging.python.org/en/latest/overview/
 # https://packaging.python.org/en/latest/tutorials/packaging-projects/
 
-
 # Hatchling was default in 
 # https://packaging.python.org/en/latest/tutorials/packaging-projects/
 # but switched to setuptools for compatibility with setuptools dynamic
@@ -27,7 +26,6 @@
 [build-system]
 requires = ["setuptools>=62.6"]
 build-backend = "setuptools.build_meta"
-
 
 [project]
 name = "genesnake"
@@ -48,16 +46,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dynamic = ["dependencies"]
-
-
-# # Since the directory structure is slightly funky, 
-# # need custom package discovery.
-# # Package discovery documentation
-# # https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#custom-discovery
-# [tool.setuptools.packages.find]
-# where = ["."]
-# include = ["genesnake*"]
-# namespaces = false
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["genesnake/requirements.txt"]}

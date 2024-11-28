@@ -1,3 +1,3 @@
 
-rm -r genesnake.egg-info
+rm -r src/genesnake.egg-info
 rm -r dist
