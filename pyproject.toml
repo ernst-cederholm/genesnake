@@ -50,20 +50,17 @@ classifiers = [
 dynamic = ["dependencies"]
 
 
-# Since the directory structure is slightly funky, 
-# need custom package discovery.
-# Package discovery documentation
-# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#custom-discovery
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["genesnake*"]
-namespaces = false
-
-
+# # Since the directory structure is slightly funky, 
+# # need custom package discovery.
+# # Package discovery documentation
+# # https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#custom-discovery
+# [tool.setuptools.packages.find]
+# where = ["."]
+# include = ["genesnake*"]
+# namespaces = false
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["genesnake/requirements.txt"]}
-
 
 [project.urls]
 Documentation = "https://sonnhammer-tutorials.bitbucket.io/genesnake.html"

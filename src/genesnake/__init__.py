@@ -21,3 +21,4 @@ from . import data
 from . import util 
 from . import benchmarking
 from . import analysis
+from . import inference

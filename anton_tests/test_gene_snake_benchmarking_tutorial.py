@@ -23,12 +23,23 @@ M.simulate_data(exp_type='ss', SNR=10, noise_model='microarray')
 Y = M.data # simulated expression data
 P = M.perturbation # perturbation (P) matrix
 
-# an example GRN inference with normalized least squares regression (LSCON)
-# Hillerton et al. 2022
-aest = np.matmul(-P, np.linalg.pinv(Y))
-aest = pd.DataFrame(aest)
-for column in aest:
-    aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
+
+
+
+
+# # an example GRN inference with normalized least squares regression (LSCON)
+# # Hillerton et al. 2022
+# aest = np.matmul(-P, np.linalg.pinv(Y))
+# aest = pd.DataFrame(aest)
+# for column in aest:
+#     aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
+#
+# Let's use a builtin method now that they are part of the installation
+aest = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
+
+
+
+
 
 ### benchmarking part
 inets = gs.benchmarking.cutoff_handler(aest) # create a span of networks from full to empty
