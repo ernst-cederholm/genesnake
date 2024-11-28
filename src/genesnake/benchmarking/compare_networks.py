@@ -131,7 +131,7 @@ def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
         if (FP + TP) != 0:
             FDR = FP / (FP + TP)
         else:
-            FPR = 0
+            FDR = 0
         FDRo.append(FDR)
         # false omission rate
         if (FN + TN) != 0:
