@@ -6,47 +6,58 @@ import genesnake as gs
 from pathlib import Path
 
 
+
+import anton_util
+
+
 output_dir = Path('outputs')
-output_dir.mkdir(exist_ok = True)
-
-
-### simulation part
-genes = 50 # number of genes
-spars = 4 # sparsity
-
-network = gs.grn.make_DAG(genes, spars, self_loops=True)
-M = gs.GRNmodel.make_model(network)
-M.set_pert('diag', effect=(0.9, 1), noise=0.01, reps=3, sign=-0.1)
-M.simulate_data(exp_type='ss', SNR=10, noise_model='microarray')
-
-### GRN inference part
-Y = M.data # simulated expression data
-P = M.perturbation # perturbation (P) matrix
+cache_dir = output_dir / 'cache/'
+[d.mkdir(exist_ok = True) for d in (output_dir, cache_dir)]
 
 
 
 
+cache_file = cache_dir / 'cache.pkl'
 
-# # an example GRN inference with normalized least squares regression (LSCON)
-# # Hillerton et al. 2022
-# aest = np.matmul(-P, np.linalg.pinv(Y))
-# aest = pd.DataFrame(aest)
-# for column in aest:
-#     aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
-#
-# Let's use a builtin method now that they are part of the installation
-aest = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
+if not cache_file.exists():
+
+    ### Simulation
+    genes = 50 # number of genes
+    spars = 4 # sparsity
+
+    network = gs.grn.make_DAG(genes, spars, self_loops=True)
+    M = gs.GRNmodel.make_model(network)
+    M.set_pert('diag', effect=(0.9, 1), noise=0.01, reps=3, sign=-0.1)
+    M.simulate_data(exp_type='ss', SNR=10, noise_model='microarray')
+
+    ### GRN inference
+    Y = M.data # simulated expression data
+    P = M.perturbation # perturbation (P) matrix
+
+    # An example GRN inference with normalized least squares regression (LSCON)
+    # Hillerton et al. 2022
+    aest = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
+
+    ### Benchmarking
+    inets = gs.benchmarking.cutoff_handler(aest) # create a span of networks from full to empty
+
+    M_network = M.network
+    anton_util.pickle_object((M_network, inets, aest), cache_file)
+
+else:
+    M_network, inets, aest = anton_util.unpickle_object(cache_file)
 
 
 
-
-
-### benchmarking part
-inets = gs.benchmarking.cutoff_handler(aest) # create a span of networks from full to empty
-out = gs.benchmarking.compare_networks(inets, M.network, exclude_diag=False, include_sign=False)
+out = gs.benchmarking.compare_networks(inets, M_network, exclude_diag=False, include_sign=False)
 # print all metrics as data frame
 outm = out['metrics']
 # print(outm)
+
+
+
+
+
 
 ### plotting part
 # plot a boxplot with selected statistics
