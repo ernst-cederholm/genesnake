@@ -178,7 +178,8 @@ def auroc_and_aupr(
     true_network, 
     metrics, 
     model_name,
-    output_dir):
+    output_dir,
+    fix_ylim = True):
     """
     Plot ROC and PR curves, and return AUROC and AUPR
 
@@ -257,15 +258,11 @@ def auroc_and_aupr(
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.xlim((0, 1))
-
-    # Will probably need to include a version that doesn't
-    # fix ylim. People are going to want to see the shape
-    # even when the values are very small.
-    # Or well, I wanted to, when I developed the code for
-    # extending AUPR
-    # FIX
-
-    plt.ylim((0, 1))
+    # When AUPR is really shit, one cannot see the shape of it
+    # because it's just a line at the bottom. But the shape is 
+    # useful to check if shape looks sane. Thus the option
+    if fix_ylim:
+        plt.ylim((0, 1))
     l1 = f'AUPR (DREAM2 extended) = {round(AUPR, ndigits = 3)}'
     l2 = f'ERMA = {round(ERMA, ndigits = 3)}'
     plt.text(

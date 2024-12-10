@@ -31,9 +31,13 @@ model_name = 'Tutorial_LSCON'
 outm.to_csv(
     path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv', 
     sep = '\t', header = True, index = True)
-gs.benchmarking.auroc_and_aupr(
-    full_network = aest,
-    true_network = M.network,
-    metrics = outm,
-    model_name = model_name,
-    output_dir = output_dir)
+
+print(
+    gs.benchmarking.auroc_and_aupr(
+        full_network = aest,
+        true_network = M.network,
+        metrics = outm,
+        model_name = model_name,
+        output_dir = output_dir,
+        fix_ylim = False)
+    )
