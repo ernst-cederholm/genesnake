@@ -243,13 +243,25 @@ def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
     AUROCo = round(np.trapz(TPRate[srt], FPRate[srt]), ndigits=4)
     AUPRo = round(np.trapz(Prec[srt], TPRate[srt]), ndigits=4)
 
-    data = [TPo, FPo, TNo, FNo,
-        TPRo, TNRo, PPVo, NPVo, FNRo, FPRo, FDRo, FORo, LRpo, LRmo, PTo, TSo,
-        F1o, MCCo, FMo, BMo, MKo, DORo, So]
-    df = pd.DataFrame(data,
-                    index=['tp', 'fp', 'tn', 'fn',
-                         'tpr', 'tnr', 'ppv', 'npv', 'fnr', 'fpr', 'fdr', 'for', 'lrp', 'lrm','pt','ts',
-                         'f1', 'mcc', 'fm', 'bm', 'mk', 'dor', 's'])
+    data = [
+        TPo, FPo, TNo, FNo,
+        TPRo, TNRo, PPVo, NPVo, 
+        FNRo, FPRo, FDRo, FORo, 
+        LRpo, LRmo, PTo, TSo,
+        F1o, MCCo, FMo, BMo, 
+        MKo, DORo, So
+        ]
+    df = pd.DataFrame(
+        data,
+        index=[
+            'tp', 'fp', 'tn', 'fn',
+            'tpr', 'tnr', 'ppv', 'npv', 
+            'fnr', 'fpr', 'fdr', 'for', 
+            'lrp', 'lrm','pt','ts',
+            'f1', 'mcc', 'fm', 'bm', 
+            'mk', 'dor', 's'
+            ]
+        )
     op = dict()
     df2 = df.replace(np.nan, 0)
     op['metrics'] = df2.transpose()
