@@ -11,12 +11,18 @@ def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=False):
         zvec - zeta vector, e.g. np.logspace(-5, 0, 100)
         zvec_auto - 100 lineary-spaced thresholds between 0 and absolute maximum value taken from the full network
     """
+    absA = np.abs(A)
     aests = []
     if (zvec_auto):
-        zvec = np.linspace(0, max(abs(A)), 100)
+        sorted_elements = np.array(sorted(np.array(absA).flatten()))
+        zvec = sorted_elements[
+            np.floor(
+                np.linspace(0, len(sorted_elements) - 1, 100)
+                ).astype(int)
+            ]
     else:
-        zmin = np.abs(A).min().min()
-        zmax = np.abs(A).max().max()
+        zmin = absA.min().min()
+        zmax = absA.max().max()
         zvec = zvec * (zmax - zmin) + zmin
 
     Atmp = deepcopy(A)
