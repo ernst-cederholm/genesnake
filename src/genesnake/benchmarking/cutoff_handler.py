@@ -15,15 +15,19 @@ def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=False):
     if (zvec_auto):
         zvec = np.linspace(0, max(abs(A)), 100)
     else:
-        zmin = np.abs(A[A > 0]).min().min()
-        zmax = np.abs(A[A > 0]).max().max()
+        zmin = np.abs(A).min().min()
+        zmax = np.abs(A).max().max()
         zvec = zvec * (zmax - zmin) + zmin
 
     Atmp = deepcopy(A)
     # Add a cutoff that is smaller than 0, so that at least
-    # one full network is returned //AB
-    zvec = [-1] + list(zvec)
+    # one full network is returned.
+    # Similarly, add a zvec that is guaranteed to lead to an empty network.
+    # Covering the whole range of edge amplitudes ensures that
+    # ROC and PR curves are complete.
+    zvec = [-1] + list(zvec) + [zmax + 1]
     for z in range(1, len(zvec)):
         Atmp[abs(Atmp) <= zvec[z]] = 0
         aests.append(round(Atmp, ndigits=5))
+
     return aests

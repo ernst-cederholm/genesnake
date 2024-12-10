@@ -20,7 +20,7 @@ aest = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
 
 ### Benchmarking
 # create a span of networks from full to empty
-inets = gs.benchmarking.cutoff_handler(aest, zvec_auto = True) 
+inets = gs.benchmarking.cutoff_handler(aest, zvec_auto = False) 
 out = gs.benchmarking.compare_networks(inets, M.network, exclude_diag=False, include_sign=False)
 outm = out['metrics']
 
