@@ -1,3 +1,12 @@
+
+# Custom stuff here  //AB
+send_it.sh
+anton_tests/outputs
+
+
+
+
+
 # emacs tmp files
 # -*- mode: gitignore; -*-
 *~
