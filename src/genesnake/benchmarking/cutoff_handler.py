@@ -1,4 +1,4 @@
-import sys
+
 import numpy as np
 from copy import deepcopy
 def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=False):
@@ -15,9 +15,8 @@ def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=False):
     if (zvec_auto):
         zvec = np.linspace(0, max(abs(A)), 100)
     else:
-        ep = sys.float_info.epsilon
-        zmin = np.abs(A[A > 0]).min().min() - ep
-        zmax = np.abs(A[A > 0]).max().max() + ep * 10
+        zmin = np.abs(A[A > 0]).min().min()
+        zmax = np.abs(A[A > 0]).max().max()
         zvec = zvec * (zmax - zmin) + zmin
 
     Atmp = deepcopy(A)
