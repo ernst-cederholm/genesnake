@@ -58,7 +58,7 @@ def calculate_ROC_extension(TPRate_end, FPRate_end):
             ACM.
     """
     TPRate_extension, FPRate_extension  = [
-        [var, 1] for var in (TPRate, FPRate)]
+        [var, 1] for var in (TPRate_end, FPRate_end)]
     return(TPRate_extension, FPRate_extension)
 
 
@@ -193,10 +193,12 @@ def auroc_and_aupr(
     FPRate = outs.fpr
     Precision = outs.ppv
 
-    TPRate_extension, FPRate_extension = calculate_ROC_extension(TPRate, FPRate)
+    TPRate_extension, FPRate_extension = calculate_ROC_extension(
+        TPRate.iloc[-1], 
+        FPRate.iloc[-1])
     AUROC = np.trapz(
         list(TPRate) + list(TPRate_extension), 
-        x = list(FPRate) + list(FPRate_extended)
+        x = list(FPRate) + list(FPRate_extension)
         )
 
     PRe = calculate_PR_extension(
