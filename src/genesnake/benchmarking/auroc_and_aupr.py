@@ -17,7 +17,7 @@ import math
 # own function was mostly to get the extensive comment about
 # the justification for the extension out of the flow of
 # auroc_and_aupr for more easily read code
-def extend_ROC_curve(TPRate, FPRate):
+def calculate_ROC_extension(TPRate_end, FPRate_end):
     """
     The ROC curve can be linearly extrapolated from the last 
     measured point to (1, 1). GRN Benchmark refers to DREAM5 that 
@@ -57,9 +57,9 @@ def extend_ROC_curve(TPRate, FPRate):
             learning, pages 233–240, Pittsburgh, Pennsylvania, 2006.
             ACM.
     """
-    TPRate_extended, FPRate_extended  = [
-        list(var) + [1] for var in (TPRate, FPRate)]
-    return(TPRate_extended, FPRate_extended)
+    TPRate_extension, FPRate_extension  = [
+        [var, 1] for var in (TPRate, FPRate)]
+    return(TPRate_extension, FPRate_extension)
 
 
 
@@ -96,7 +96,7 @@ def calculate_ERMA(true_network):
 
 
 
-def calculate_AUPR_extension(
+def calculate_PR_extension(
     true_network,
     last_predicted_network,
     ):
@@ -185,8 +185,6 @@ def auroc_and_aupr(
 
     Extends ROC linearly to (1,1), and AUPR according to DREAM2. See code for more details and references.
     """
-
-    # Ensure data is sorted on sparsity
     sparsity_order = np.argsort(metrics.s)
     outs = metrics.iloc[sparsity_order, :]
 
@@ -195,17 +193,18 @@ def auroc_and_aupr(
     FPRate = outs.fpr
     Precision = outs.ppv
 
-    # Extend ROC curve
-    TPRate_extended, FPRate_extended = extend_ROC_curve(TPRate, FPRate)
-    AUROC = np.trapz(TPRate_extended, x = FPRate_extended)
+    TPRate_extension, FPRate_extension = calculate_ROC_extension(TPRate, FPRate)
+    AUROC = np.trapz(
+        list(TPRate) + list(TPRate_extension), 
+        x = list(FPRate) + list(FPRate_extended)
+        )
 
-    # Extend PR curve
-    AUPRe = calculate_AUPR_extension(
+    PRe = calculate_PR_extension(
         true_network = true_network,
         last_predicted_network = full_network,
         )
-    Recall_extended = list(Recall) + list(AUPRe['recall'])
-    Precision_extended = list(Precision) + list(AUPRe['precision'])
+    Recall_extended = list(Recall) + list(PRe['recall'])
+    Precision_extended = list(Precision) + list(PRe['precision'])
     AUPR = np.trapz(
         Precision_extended, 
         x = Recall_extended
@@ -215,7 +214,7 @@ def auroc_and_aupr(
     ERMA = calculate_ERMA(true_network)
 
     # FIX: 
-    # End of Recall is not the same as start of AUPRe['recall']
+    # End of Recall is not the same as start of PRe['recall']
     # which I would expect. They align nicely, it just want to
     # verify why, and that it makes sense
     #
@@ -229,11 +228,8 @@ def auroc_and_aupr(
     plt.close()
     plt.plot(FPRate, TPRate, color = 'tab:blue', linestyle = 'solid')
     plt.plot(
-        # This looks a bit strange. Why would I hardcode (1,1) here
-        # when I went through trouble above to extend it?
-        # FIX
-        [FPRate_extended[-2], 1], 
-        [TPRate_extended[-2], 1], 
+        FPRate_extension, 
+        TPRate_extension, 
         color = 'tab:blue', linestyle = 'dashed'
         )
     plt.xlim((0, 1))
@@ -253,7 +249,7 @@ def auroc_and_aupr(
     plt.close()
     plt.plot(Recall, Precision,
         color = 'tab:blue', linestyle = 'solid')
-    plt.plot(AUPRe['recall'], AUPRe['precision'],
+    plt.plot(PRe['recall'], PRe['precision'],
         color = 'tab:blue', linestyle = 'dashed')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
