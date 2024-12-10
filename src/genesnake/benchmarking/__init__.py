@@ -7,3 +7,4 @@ Any added class should be imported in to the genesnake/__init__.py file instead.
 from .compare_networks import compare_networks
 from .data_summary import data_summary
 from .cutoff_handler import cutoff_handler
+from .auroc_and_aupr import auroc_and_aupr
