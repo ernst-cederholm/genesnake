@@ -2,12 +2,14 @@
 # Custom stuff here  //AB
 send_it.sh
 cm
-anton_tests/test_benchmarking_Replogle_lsco/inputs
-anton_tests/test_benchmarking_Replogle_lsco/outputs
-anton_tests/test_gene_snake_benchmarking_tutorial/inputs
+
 anton_tests/test_gene_snake_benchmarking_tutorial/outputs
 
+anton_tests/test_benchmarking_Replogle_lsco/inputs
+anton_tests/test_benchmarking_Replogle_lsco/outputs
 
+anton_tests/test_benchmarking_Replogle_Dspin_Beeline/inputs
+anton_tests/test_benchmarking_Replogle_Dspin_Beeline/outputs
 
 
 
