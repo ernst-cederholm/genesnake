@@ -248,6 +248,7 @@ def auroc_and_aupr(
         0.1, 
         f'AUROC (extended) = {round(AUROC, ndigits = 3)}', 
         )
+
     filename = f'benchmark_stats_{model_name}_ROC_curve.svg'
     plt.title(filename)
     plt.savefig(
@@ -268,11 +269,14 @@ def auroc_and_aupr(
     # useful to check if shape looks sane. Thus the option
     if fix_ylim:
         plt.ylim((0, 1))
+    else:
+        ax = plt.gca()
+        _, top = ax.get_ylim()
     plt.legend()
     l1 = f'AUPR (DREAM2 extended) = {round(AUPR, ndigits = 3)}'
     l2 = f'ERMA = {round(ERMA, ndigits = 3)}'
     plt.text(
-        0.4, 0.7, 
+        0.4, top * 0.7,
         '\n'.join([l1, l2]),
         )
     filename = f'benchmark_stats_{model_name}_PR_curve.svg'

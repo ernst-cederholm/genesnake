@@ -80,7 +80,7 @@ def main():
 			metrics = outm,
 			model_name = model_name,
 			output_dir = output_dir,
-			fix_ylim = True)
+			fix_ylim = False)
 		)
 
 	print('Save metrics')
