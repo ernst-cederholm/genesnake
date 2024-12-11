@@ -250,6 +250,7 @@ def auroc_and_aupr(
         )
     title = f'{model_name}_ROC_curve'
     plt.title(title)
+    plt.tight_layout()
     filename = f'{title}.svg'
     plt.savefig(output_dir / filename)
 
@@ -280,6 +281,7 @@ def auroc_and_aupr(
         )
     title = f'{model_name}_PR_curve'
     plt.title(title)
+    plt.tight_layout()
     filename = f'{title}.svg'
     plt.savefig(
         output_dir / filename)
