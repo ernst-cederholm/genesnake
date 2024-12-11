@@ -248,11 +248,10 @@ def auroc_and_aupr(
         0.1, 
         f'AUROC (extended) = {round(AUROC, ndigits = 3)}', 
         )
-
-    filename = f'benchmark_stats_{model_name}_ROC_curve.svg'
-    plt.title(filename)
-    plt.savefig(
-        output_dir / filename)
+    title = f'{model_name}_ROC_curve'
+    plt.title(title)
+    filename = f'{title}.svg'
+    plt.savefig(output_dir / filename)
 
     plt.close()
     plt.plot(Recall, Precision,
@@ -279,8 +278,9 @@ def auroc_and_aupr(
         0.4, top * 0.7,
         '\n'.join([l1, l2]),
         )
-    filename = f'benchmark_stats_{model_name}_PR_curve.svg'
-    plt.title(filename)
+    title = f'{model_name}_PR_curve'
+    plt.title(title)
+    filename = f'{title}.svg'
     plt.savefig(
         output_dir / filename)
 
