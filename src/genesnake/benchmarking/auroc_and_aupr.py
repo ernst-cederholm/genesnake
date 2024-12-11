@@ -228,20 +228,25 @@ def auroc_and_aupr(
     # It's friday evening after Davides grilling now,
     # and it's been a loong week.
     plt.close()
-    plt.plot(FPRate, TPRate, color = 'tab:blue', linestyle = 'solid')
+    plt.plot(
+        FPRate, TPRate, 
+        color = 'tab:blue', linestyle = 'solid',
+        label = 'Observed')
     plt.plot(
         FPRate_extension, 
         TPRate_extension, 
-        color = 'tab:blue', linestyle = 'dashed'
+        color = 'tab:blue', linestyle = 'dashed',
+        label = 'Extended'
         )
     plt.xlim((0, 1))
     plt.ylim((0, 1))
     plt.xlabel('FP Rate')
     plt.ylabel('TP Rate')
+    plt.legend()
     plt.text(
         0.4, 
         0.1, 
-        f'AUROC (extended to (1, 1)) = {round(AUROC, ndigits = 3)}', 
+        f'AUROC (extended) = {round(AUROC, ndigits = 3)}', 
         )
     filename = f'benchmark_stats_{model_name}_ROC_curve.svg'
     plt.title(filename)
@@ -250,9 +255,11 @@ def auroc_and_aupr(
 
     plt.close()
     plt.plot(Recall, Precision,
-        color = 'tab:blue', linestyle = 'solid')
+        color = 'tab:blue', linestyle = 'solid',
+        label = 'Observed')
     plt.plot(PRe['recall'], PRe['precision'],
-        color = 'tab:blue', linestyle = 'dashed')
+        color = 'tab:blue', linestyle = 'dashed',
+        label = 'Extended')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.xlim((0, 1))
@@ -261,6 +268,7 @@ def auroc_and_aupr(
     # useful to check if shape looks sane. Thus the option
     if fix_ylim:
         plt.ylim((0, 1))
+    plt.legend()
     l1 = f'AUPR (DREAM2 extended) = {round(AUPR, ndigits = 3)}'
     l2 = f'ERMA = {round(ERMA, ndigits = 3)}'
     plt.text(
