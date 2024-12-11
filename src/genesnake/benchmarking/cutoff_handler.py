@@ -1,15 +1,30 @@
 
 import numpy as np
 from copy import deepcopy
-def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=False):
+def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=True):
     """
-    Create N networks under various cutoffs using vector of so-called zeta values as thresholds. 
-    Adds a zeta < 0, to ensure that at least one
-    unmodified network is made.
+    Create N networks under various cutoffs using vector of so-called zeta values as thresholds.
+
+    With the default zvec_auto = True, it picks representative cutoffs
+    from the edge amplitude distribution.
+    After picking other zetas, includes zetas such that at least
+    one unmodified network and one full network are included in
+    the output list of networks.
+
     INPUT:
-        A - a full network
-        zvec - zeta vector, e.g. np.logspace(-5, 0, 100)
-        zvec_auto - 100 lineary-spaced thresholds between 0 and absolute maximum value taken from the full network
+        A
+            A network in matrix form
+        zvec
+            zeta vector.
+            Note that this one is relative. Final zeta values are
+            scaled with maximum and minimum edge values
+        zvec_auto
+            Pick zetas from the sorted list of all network edge amplitudes
+            at index wise regularly spaced intervals. The sorted list
+            can be seen as the empirical cumulative distribution function
+            of edge amplitudes. With cutoffs adapted to the distribution
+            of the edge amplitudes, there is a good chance they
+            will lead to an informative range of networks.
     """
     absA = np.abs(A)
     aests = []
