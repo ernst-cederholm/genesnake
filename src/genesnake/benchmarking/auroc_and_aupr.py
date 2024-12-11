@@ -272,6 +272,7 @@ def auroc_and_aupr(
     else:
         ax = plt.gca()
         _, top = ax.get_ylim()
+        ax.set_ylim(0, top)
     plt.legend()
     l1 = f'AUPR (DREAM2 extended) = {round(AUPR, ndigits = 3)}'
     l2 = f'ERMA = {round(ERMA, ndigits = 3)}'
