@@ -1,9 +1,13 @@
 
 # Custom stuff here  //AB
 send_it.sh
-anton_tests/outputs
-anton_tests/inputs
 cm
+anton_tests/test_benchmarking_Replogle_lsco/inputs
+anton_tests/test_benchmarking_Replogle_lsco/outputs
+anton_tests/test_gene_snake_benchmarking_tutorial/inputs
+anton_tests/test_gene_snake_benchmarking_tutorial/outputs
+
+
 
 
 
