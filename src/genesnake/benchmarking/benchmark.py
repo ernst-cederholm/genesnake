@@ -13,6 +13,24 @@ def benchmark(
         output_dir,
         model_name,
         ):
+
+    # Differently sorted networks could be such a nasty bug to hunt down,
+    # so try helping unsuspecting users spot it. Perhaps inconvenient,
+    # but nothing compared to getting it wrong, so it's motivated.
+    conditions = []
+    for axis in ('index', 'columns'):
+        conditions.append(
+            (
+                getattr(estimated_network, axis) ==
+                getattr(true_network, axis)
+                ).all()
+            )
+    if not all(conditions):
+        raise ValueError(
+            'It seems either index or columns differs between true_network' +
+            ' and estimated_network. Are they sorted the same?'
+            )
+
     cutoffs = calculate_cutoffs(estimated_network)
     # Retain a copy of the original estimated network, since
     # cut_network operates inplace to avoid repeatedly copying the network.
