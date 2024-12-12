@@ -205,6 +205,7 @@ def auroc_and_aupr(
         true_network = true_network,
         last_predicted_network = full_network,
         )
+    Precision = Precision.bfill()
     Recall_extended = list(Recall) + list(PRe['recall'])
     Precision_extended = list(Precision) + list(PRe['precision'])
     AUPR = np.trapz(

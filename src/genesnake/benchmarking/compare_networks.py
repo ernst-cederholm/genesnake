@@ -104,47 +104,6 @@ def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
 			TNR = 0
 		TNRo.append(TNR)
 		# precision
-		#
-		# Comments on handling of undefined precision values where PP = 0:
-		# compare_networks sets precision = 0 if TP + FP = 0
-		# Precision = TP / (TP + FP).
-		# PP, Predicted Positive = TP + FP, so equivalently precision = TP / PP
-		# Setting precision = 0 for PP = 0 is probably not correct.
-		# I'd argue precision is undefined for PP = 0.
-		# It also intuitively makes for a very strange looking AUPR curve.
-		# Linear interpolation from 0 to the first defined precision feels wrong.
-		# I'll try backfilling undefined values with the first recorded
-		# defined precision. It should be more accurate than 0, but less conservative.
-		# Seems information search guys backfill the entire AUPRC with the highest
-		# precision for all points left of it. See
-		#   https://stackoverflow.com/a/39862264/26933451
-		#   https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-ranked-retrieval-results-1.html
-		# The second link explains:
-		# "The justification is that almost anyone would be prepared to
-		#  look at a few more documents if it would increase the percentage
-		#  of the viewed set that were relevant"
-		# I am not sure that completely applies to GRNs. For GRNs, we probably
-		# want a short list of positive links for experimental validation.
-		# And, there will be a more or less fixed budget for the experimental
-		# validation, so we won't be willing to "just do a few more" until
-		# precision gets good.
-		# I'll still take it as some sort of sanity check for backfilling
-		# the initial undefined precision values though.
-		# Backfilling is probably a better guess than setting it 0.
-		# It's possible to have increasing precision at the start of the curve,
-		# but maybe not common if one has a method
-		# that tries to rank links according to confidence.
-		# One risk is that it'll hide problems with the spacing of the points
-		# in the AUPR plot, where a long interpolation from 0 to the first
-		# defined point looks immediately ugly.
-		# I should check with Erik if he has thoughts on it.
-		#
-		# Edit:
-		# Changing this to support comparing single networks.
-		# That makes backfilling impossible since I cannot rely
-		# on having previous network. So reverting to np.nan for now.
-		# The code runs, but the PR is back to interpolating linearly
-		# from (0, 0). Will fix that later.
 		if (TP + FP) != 0:
 			PPV = TP / (TP + FP)
 		else:
@@ -249,11 +208,5 @@ def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
 			]
 		)
 
-	# Should really remove this. nan does not mean 0. Quite the opposite. FIX
-	# Will keep it while finishing the current job though. Let's not
-	# makes multiple different changes at once. Makes bug source tracking
-	# harder.
-	df2 = df.replace(np.nan, 0)
-	metrics = df2.transpose()
-
+	metrics = df.transpose()
 	return(metrics)
