@@ -14,9 +14,13 @@ def benchmark(
         model_name,
         ):
     cutoffs = calculate_cutoffs(estimated_network)
+    # Retain a copy of the original estimated network, since
+    # cut_network operates inplace to avoid repeatedly copying the network.
+    from copy import deepcopy
+    network = deepcopy(estimated_network)
     ms = []
     for cutoff in cutoffs:
-        network = cut_network(estimated_network, cutoff)
+        cut_network(network, cutoff)
         m = compare_networks([network], true_network)
         ms.append(m)
     metrics = pd.concat(ms, axis = 0, ignore_index = True)

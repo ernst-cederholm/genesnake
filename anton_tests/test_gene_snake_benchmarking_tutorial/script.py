@@ -1,4 +1,5 @@
 
+import numpy as np
 import pandas as pd
 import genesnake as gs
 from pathlib import Path
@@ -34,10 +35,21 @@ gs.benchmarking.benchmark(
 
 # Manual benchmarking. Similar thing, but an interface that exposes
 # more internals and options
-cutoffs = gs.benchmarking.calculate_cutoffs(estimated_network)
+cutoffs = gs.benchmarking.calculate_cutoffs(
+	estimated_network,
+    # num_cutoffs = 640,
+    # all_cutoffs = True,
+    # manual_cutoffs = True,
+    # relative_cutoffs = np.logspace(-5, 0, 100)
+	)
+
+# Retain a copy of the original estimated network, since
+# cut_network operates inplace to avoid repeatedly copying the network.
+from copy import deepcopy
+network = deepcopy(estimated_network)
 ms = []
 for cutoff in cutoffs:
-	network = gs.benchmarking.cut_network(estimated_network, cutoff)
+	gs.benchmarking.cut_network(network, cutoff)
 	m = gs.benchmarking.compare_networks([network], true_network)
 	ms.append(m)
 metrics = pd.concat(ms, axis = 0, ignore_index = True)
