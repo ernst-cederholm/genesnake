@@ -1,4 +1,5 @@
 
+import pandas as pd
 import genesnake as gs
 from pathlib import Path
 
@@ -14,40 +15,44 @@ M.simulate_data(exp_type='ss', SNR=10, noise_model='microarray')
 ### GRN inference
 Y = M.data # simulated expression data
 P = M.perturbation # perturbation (P) matrix
+true_network = M.network
 # An example GRN inference with normalized least squares regression (LSCON)
 # Hillerton et al. 2022
-aest = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
+estimated_network = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
 
 # Benchmark. A high level interface that doesn't expose all options.
 # Similar can be done manually like below
-gs.benchmarking.benchmark(
-    estimated_network = aest,
-    true_network = M.network,
-    output_dir = 'outputs',
-    model_name = 'Tutorial_LSCON',
-    )
-
-
-
-# Manual benchmarking. An interface that exposes more options
-inets = gs.benchmarking.cutoff_handler(aest, zvec_auto = True)
-out = gs.benchmarking.compare_networks(inets, M.network, exclude_diag=False, include_sign=False)
-outm = out['metrics']
-
-### Save results to disk
-output_dir = Path('outputs2')
-[d.mkdir(exist_ok = True) for d in (output_dir,)]
 model_name = 'Tutorial_LSCON'
-outm.to_csv(
-    path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv', 
-    sep = '\t', header = True, index = True)
+gs.benchmarking.benchmark(
+	estimated_network = estimated_network,
+	true_network = true_network,
+	output_dir = 'outputs',
+	model_name = model_name,
+	)
 
+
+
+# Manual benchmarking. Similar thing, but an interface that exposes
+# more internals and options
+cutoffs = gs.benchmarking.calculate_cutoffs(estimated_network)
+ms = []
+for cutoff in cutoffs:
+	network = gs.benchmarking.cut_network(estimated_network, cutoff)
+	m = gs.benchmarking.compare_networks([network], true_network)
+	ms.append(m)
+metrics = pd.concat(ms, axis = 0, ignore_index = True)
+
+output_dir = Path('outputs2')
+output_dir.mkdir(exist_ok = True)
+metrics.to_csv(
+	path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv',
+	sep = '\t', header = True, index = True)
 print(
-    gs.benchmarking.auroc_and_aupr(
-        full_network = aest,
-        true_network = M.network,
-        metrics = outm,
-        model_name = model_name,
-        output_dir = output_dir,
-        fix_ylim = False)
-    )
+	gs.benchmarking.auroc_and_aupr(
+		full_network = estimated_network,
+		true_network = true_network,
+		metrics = metrics,
+		model_name = model_name,
+		output_dir = output_dir,
+		fix_ylim = False)
+	)

@@ -132,7 +132,7 @@ def calculate_PR_extension(
         true_network,
         exclude_diag=False, 
         include_sign=False
-        )['metrics']
+        )
 
     # Problem below:
     # Code below assumes boolean networks.

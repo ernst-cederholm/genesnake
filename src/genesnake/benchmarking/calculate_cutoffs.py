@@ -1,9 +1,8 @@
 
 import numpy as np
-from copy import deepcopy
-def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=True):
+def calculate_cutoffs(A, zvec = np.logspace(-5, 0, 100), zvec_auto=True):
     """
-    Create N networks under various cutoffs using vector of so-called zeta values as thresholds.
+    Calculate suitable cutoffs for investigating a range of network sparsities.
 
     With the default zvec_auto = True, it picks representative cutoffs
     from the edge amplitude distribution.
@@ -40,15 +39,11 @@ def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=True):
         zmax = absA.max().max()
         zvec = zvec * (zmax - zmin) + zmin
 
-    Atmp = deepcopy(A)
     # Add a cutoff that is smaller than 0, so that at least
     # one full network is returned.
     # Similarly, add a zvec that is guaranteed to lead to an empty network.
     # Covering the whole range of edge amplitudes ensures that
     # ROC and PR curves are complete.
     zvec = [-1] + list(zvec) + [max(zvec) + 1]
-    for z in range(1, len(zvec)):
-        Atmp[abs(Atmp) <= zvec[z]] = 0
-        aests.append(deepcopy(Atmp))
 
-    return aests
+    return(zvec)

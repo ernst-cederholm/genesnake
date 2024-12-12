@@ -39,7 +39,6 @@
 		# Jialong Jiang, Sisi Chen, Tiffany Tsou, Christopher S. McGinnis, Tahmineh Khazaei, Qin Zhu, Jong H. Park, Inna-Marie Strazhnik, Jost Vielmetter, Yingying Gong, John Hanna, Eric D. Chow, David A. Sivak, Zev J. Gartner, Matt Thomson
 		# bioRxiv 2023.04.19.537364; doi: https://doi.org/10.1101/2023.04.19.537364
 
-
 print('Imports')
 from pathlib import Path
 import pickle
@@ -57,35 +56,15 @@ def main():
 	with open(sorted_networks_cache_path, 'rb') as f:
 		sorted_networks = pickle.load(f)
 	true_network = sorted_networks.pop('true')
-	print('Data read')
 
+	print('Benchmark')
 	model_name = 'dspin'
 	estimated_network = sorted_networks[model_name]
-
-	print('cutoff_handler')
-	inets = gs.benchmarking.cutoff_handler(estimated_network)
-
-	print('compare_networks')
-	out = gs.benchmarking.compare_networks(
-		inets, true_network, 
-		exclude_diag=False, include_sign=False
+	gs.benchmarking.benchmark(
+		estimated_network = estimated_network,
+		true_network = true_network,
+		output_dir = 'outputs',
+		model_name = model_name,
 		)
-	outm = out['metrics']
-
-	print('auroc_and_aupr')
-	print(
-		gs.benchmarking.auroc_and_aupr(
-			full_network = estimated_network,
-			true_network = true_network,
-			metrics = outm,
-			model_name = model_name,
-			output_dir = output_dir,
-			fix_ylim = False)
-		)
-
-	print('Save metrics')
-	outm.to_csv(
-		path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv', 
-		sep = '\t', header = True, index = True)
 
 main()

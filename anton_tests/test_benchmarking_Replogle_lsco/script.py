@@ -45,14 +45,11 @@
         # Pratapa A, Jalihal AP, Law JN, Bharadwaj A, Murali TM. Benchmarking algorithms for gene regulatory network inference from single-cell transcriptomic data. Nat Methods. 2020 Feb;17(2):147-154. doi: 10.1038/s41592-019-0690-6. Epub 2020 Jan 6. PMID: 31907445; PMCID: PMC7098173.
 
 print('Imports')
-
 from pathlib import Path
 import pickle
 import genesnake as gs
 
-
 print('Main')
-
 def main():
 
     input_dir = Path('inputs')
@@ -62,47 +59,23 @@ def main():
     model_type = 'lsco'
     types_of_data = ['regular', 'shuffledYnP']
 
-    # from IPython import embed; embed(colors = 'Linux')
-
     print('Read data')
-
     sorted_networks_cache_path = input_dir / 'sorted_networks.pkl'
     with open(sorted_networks_cache_path, 'rb') as f:
         sorted_networks = pickle.load(f)
     true_network = sorted_networks.pop('true')
 
-    print('Data read')
     for data_type in types_of_data:
 
         model_name = f'{model_type}_{data_type}'
         estimated_network = sorted_networks[model_name]
 
-        print('cutoff_handler')
-        inets = gs.benchmarking.cutoff_handler(estimated_network)
-
-        print('compare_networks')
-        out = gs.benchmarking.compare_networks(
-            inets, true_network, 
-            exclude_diag=False, include_sign=False
+        print(f'Benchmarking model: {model_name}')
+        gs.benchmarking.benchmark(
+            estimated_network = estimated_network,
+            true_network = true_network,
+            output_dir = output_dir,
+            model_name = model_name,
             )
-        outm = out['metrics']
-
-        print('auroc_and_aupr')
-        print(
-            gs.benchmarking.auroc_and_aupr(
-                full_network = estimated_network,
-                true_network = true_network,
-                metrics = outm,
-                model_name = model_name,
-                output_dir = output_dir,
-                fix_ylim = False)
-            )
-
-        ### Save results to disk
-        print('Save metrics')
-        outm.to_csv(
-            path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv', 
-            sep = '\t', header = True, index = True)
-
 
 main()
