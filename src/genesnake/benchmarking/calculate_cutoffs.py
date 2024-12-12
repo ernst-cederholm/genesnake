@@ -2,8 +2,8 @@
 import numpy as np
 def calculate_cutoffs(
 		network,
-		num_cutoffs = 200,
-		all_cutoffs = True,
+		num_cutoffs = 800,
+		all_cutoffs = False,
 		manual_cutoffs = False,
 		relative_cutoffs = None,
 		):
