@@ -1,13 +1,19 @@
 import numpy as np
 import pandas as pd
 
-def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
+def compare_networks(
+		networks, true_network,
+		exclude_diag=False, include_sign=False
+		):
 	"""
 	Function for comparing networks and returning performance statistics.
 	Allows to exclude diagonal and/or consider sign in a network.
-	INPUT:
-		nets - inferred networks
-		net_gs - gold standard network for comparison
+
+	networks
+		Iterable of matrix likes.
+		Can be length 1 to compare
+	true_network
+		matrix like
 	"""
 	TPo = []
 	FPo = []
@@ -35,22 +41,22 @@ def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
 	DORo = []
 	So = []
 
-	for n in range(0, len(nets)):
+	for n in range(0, len(networks)):
 
-		if (exclude_diag):  # if diagonal should be excluded for statistics
-			net1 = np.array(nets[n])  # take a single network to compare
+		if (exclude_diag):
+			net1 = np.array(networks[n])
 			np.fill_diagonal(net1, 0)
-			net2 = np.array(net_gs)  # gold standard
+			net2 = np.array(true_network)
 			np.fill_diagonal(net2, 0)
-		else:  # if diagonal should be included for statistics
-			net1 = np.array(nets[n])  # take a single network to compare
-			net2 = np.array(net_gs)  # gold standard
+		else:
+			net1 = np.array(networks[n])
+			net2 = np.array(true_network)
 
-		S = len(np.nonzero(net1)[0])/net1.shape[0] # sparsity of a network
+		S = len(np.nonzero(net1)[0])/net1.shape[0]
 
 		So.append(S)
 
-		if (include_sign):  # when sign is considered
+		if (include_sign):
 			net1[net1 > 0] = 1
 			net1[net1 < 0] = -1
 			net2[net2 > 0] = 1
@@ -67,7 +73,7 @@ def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
 			TNo.append(TN)
 			FN = sum(sum(~net1.astype(dtype=bool))) - TN
 			FNo.append(FN)
-		else:  # if sign should be ignored
+		else:
 			net1 = net1.astype(dtype=bool)
 			net2 = net2.astype(dtype=bool)
 			TP = sum(sum(net1 & net2))
@@ -79,18 +85,8 @@ def compare_networks(nets, net_gs, exclude_diag=False, include_sign=False):
 			FN = sum(sum(~net1)) - TN
 			FNo.append(FN)
 
-		#precision, recall, thresholds = precision_recall_curve((net2+[0]).flatten(), (net1+[0]).flatten())
-		# Use AUC function to calculate the area under the curve of precision recall curve
-		#auc_precision_recall = auc(recall, precision)
-		#roc_auc = roc_auc_score((net2+[0]).flatten(), (net1+[0]).flatten())
-
-		# AUPRo.append(auc_precision_recall)
-		# AUCo.append(roc_auc)
-
-		# measures based on confusion matrix
-		# based on https://en.wikipedia.org/wiki/Confusion_matrix
-		# ifs are for handling division by zero
-
+		### Measures of confusion matrix based on
+		# https://en.wikipedia.org/wiki/Confusion_matrix
 		# sensitivity
 		if (TP + FN) != 0:
 			TPR = TP / (TP + FN)
