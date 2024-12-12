@@ -215,18 +215,7 @@ def auroc_and_aupr(
     # Calculate Exptected Random Model AUPR (ERMA)
     ERMA = calculate_ERMA(true_network)
 
-    # FIX: 
-    # End of Recall is not the same as start of PRe['recall']
-    # which I would expect. They align nicely, it just want to
-    # verify why, and that it makes sense
-    #
-    # Actually, finding out why this is will be simpler
-    # once I've cleaned up the code a bit, which I will
-    # do next, putting it into genesnake.
-    # So save this for later.
-    # My head might be fresher at that point too.
-    # It's friday evening after Davides grilling now,
-    # and it's been a loong week.
+
     plt.close()
     plt.plot(
         FPRate, TPRate, 

@@ -49,6 +49,6 @@ def cutoff_handler(A, zvec = np.logspace(-5, 0, 100), zvec_auto=True):
     zvec = [-1] + list(zvec) + [max(zvec) + 1]
     for z in range(1, len(zvec)):
         Atmp[abs(Atmp) <= zvec[z]] = 0
-        aests.append(round(Atmp, ndigits=5))
+        aests.append(deepcopy(Atmp))
 
     return aests
