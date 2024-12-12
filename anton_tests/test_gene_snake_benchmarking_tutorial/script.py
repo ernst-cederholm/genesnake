@@ -18,14 +18,24 @@ P = M.perturbation # perturbation (P) matrix
 # Hillerton et al. 2022
 aest = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
 
-### Benchmarking
-# create a span of networks from full to empty
+# Benchmark. A high level interface that doesn't expose all options.
+# Similar can be done manually like below
+gs.benchmarking.benchmark(
+    estimated_network = aest,
+    true_network = M.network,
+    output_dir = 'outputs',
+    model_name = 'Tutorial_LSCON',
+    )
+
+
+
+# Manual benchmarking. An interface that exposes more options
 inets = gs.benchmarking.cutoff_handler(aest, zvec_auto = True)
 out = gs.benchmarking.compare_networks(inets, M.network, exclude_diag=False, include_sign=False)
 outm = out['metrics']
 
 ### Save results to disk
-output_dir = Path('outputs')
+output_dir = Path('outputs2')
 [d.mkdir(exist_ok = True) for d in (output_dir,)]
 model_name = 'Tutorial_LSCON'
 outm.to_csv(
