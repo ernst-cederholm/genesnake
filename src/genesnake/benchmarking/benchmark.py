@@ -37,5 +37,5 @@ def benchmark(
             metrics = metrics,
             model_name = model_name,
             output_dir = output_dir,
-            fix_ylim = False)
+            )
         )
