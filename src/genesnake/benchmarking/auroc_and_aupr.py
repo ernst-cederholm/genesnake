@@ -258,7 +258,8 @@ def auroc_and_aupr(
     # because it's just a line at the bottom. But the shape is 
     # useful to check if shape looks sane. Thus the option
     if fix_ylim:
-        plt.ylim((0, 1))
+        top = 1.1
+        plt.ylim((0, top))
     else:
         ax = plt.gca()
         _, top = ax.get_ylim()
