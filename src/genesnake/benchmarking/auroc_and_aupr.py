@@ -246,7 +246,7 @@ def auroc_and_aupr(
     plt.text(
         0.4, 
         0.1, 
-        f'AUROC (extended) = {round(AUROC, ndigits = 3)}', 
+        f'AUROC (extended) = {AUROC:.3}',
         )
     title = f'{model_name}_ROC_curve'
     plt.title(title)
@@ -274,8 +274,8 @@ def auroc_and_aupr(
         _, top = ax.get_ylim()
         ax.set_ylim(0, top)
     plt.legend()
-    l1 = f'AUPR (DREAM2 extended) = {round(AUPR, ndigits = 3)}'
-    l2 = f'ERMA = {round(ERMA, ndigits = 3)}'
+    l1 = f'AUPR (DREAM2 extended) = {AUPR:.3}'
+    l2 = f'ERMA = {ERMA:.3}'
     plt.text(
         0.4, top * 0.7,
         '\n'.join([l1, l2]),
