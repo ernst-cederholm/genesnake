@@ -88,82 +88,43 @@ def compare_networks(
 		### Measures of confusion matrix based on
 		# https://en.wikipedia.org/wiki/Confusion_matrix
 		# sensitivity
-		if (TP + FN) != 0:
-			TPR = TP / (TP + FN)
-		else:
-			TPR = 0
+		TPR = TP / (TP + FN)
 		TPRo.append(TPR)
 		# specificity
-		if (TN + FP) != 0:
-			TNR = TN / (TN + FP)
-		else:
-			TNR = 0
+		TNR = TN / (TN + FP)
 		TNRo.append(TNR)
 		# precision
-		if (TP + FP) != 0:
-			PPV = TP / (TP + FP)
-		else:
-			PPV = np.nan
+		PPV = TP / (TP + FP)
 		PPVo.append(PPV)
 		# negative predictive value
-		if (TN + FN) != 0:
-			NPV = TN / (TN + FN)
-		else:
-			NPV = 0
+		NPV = TN / (TN + FN)
 		NPVo.append(NPV)
 		# miss rate
-		if (FN + TP) != 0:
-			FNR = FN / (FN + TP)
-		else:
-			FNR = 0
+		FNR = FN / (FN + TP)
 		FNRo.append(FNR)
 		# fall-out
-		if (FP + TN) != 0:
-			FPR = FP / (FP + TN)
-		else:
-			FPR = 0
+		FPR = FP / (FP + TN)
 		FPRo.append(FPR)
 		# false discovery rate
-		if (FP + TP) != 0:
-			FDR = FP / (FP + TP)
-		else:
-			FDR = 0
+		FDR = FP / (FP + TP)
 		FDRo.append(FDR)
 		# false omission rate
-		if (FN + TN) != 0:
-			FOR = FN / (FN + TN)
-		else:
-			FOR = 0
+		FOR = FN / (FN + TN)
 		FORo.append(FOR)
 		# positive likelihood ratio
-		if FPR != 0:
-			LRp = TPR / FPR
-		else:
-			LRp = 0
+		LRp = TPR / FPR
 		LRpo.append(LRp)
 		# negative likelihood ratio
-		if TNR != 0:
-			LRm = FNR / TNR
-		else:
-			LRm = 0
+		LRm = FNR / TNR
 		LRmo.append(LRm)
 		# prevalence threshold
-		if (np.sqrt(TPR) + np.sqrt(FPR)) != 0:
-			PT = np.sqrt(FPR) / (np.sqrt(TPR) + np.sqrt(FPR))
-		else:
-			PT = 0
+		PT = np.sqrt(FPR) / (np.sqrt(TPR) + np.sqrt(FPR))
 		PTo.append(PT)
 		# threat score
-		if (TP + FN + FP) != 0:
-			TS = TP / (TP + FN + FP)
-		else:
-			TS = 0
+		TS = TP / (TP + FN + FP)
 		TSo.append(TS)
 		# F1 score
-		if (2 * TP + FP + FN) != 0:
-			F1 = 2 * TP / (2 * TP + FP + FN)
-		else:
-			F1 = 0
+		F1 = 2 * TP / (2 * TP + FP + FN)
 		F1o.append(F1)
 		# MCC
 		MCC = np.sqrt(PPV * TPR * TNR * NPV) - np.sqrt(FDR * FNR * FPR * FOR)
@@ -178,11 +139,8 @@ def compare_networks(
 		MK = PPV + NPV - 1
 		MKo.append(MK)
 		#diagnostic odds ratio
-		if LRm != 0:
-			DOR = LRp / LRm
-			DORo.append(DOR)
-		else:
-			DORo.append(0)
+		DOR = LRp / LRm
+		DORo.append(DOR)
 
 	data = [
 		TPo, FPo, TNo, FNo,
