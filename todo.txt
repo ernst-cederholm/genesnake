@@ -1,0 +1,47 @@
+
+
+Genesnake; Considered. Won't do for now
+    genesnake import takes long time
+        Maybe good to simplify and change import
+            Don't include everything?
+            Change structure to avoid all the custom __init__.py?
+    I don't like that auroc and aupr depends on the format
+            of metrics output from compare networks
+        I don't think that is an interface I want to rely on
+        Should look at possible rearrangements
+        Let's sit on it a bit, and see if this will be
+                the biggest problem I have to handle
+    Add support for edgelist / sparse matrices in genesnake? 
+        so we can add every edge separately for highest
+                resolution ROC and PR plots
+        Might be able to convert to edge list via sparse matrices
+            edgelists and sparse matrix are similar
+        Supporting sparse matrices would be very nice too
+            in sparse problems, we are storing lots and lots
+                    of 0s in memory
+        Would be very nice, but I'll verify that I need it first
+            I'll let it sit for a while
+    Fix the annoying package structure?
+        Imports in inits
+        Might make hot reloading easier
+            Doesn't work now, and docs for reloading Python
+                    modules say it doesn't
+                    work when modules import other modules
+        Seems the live debugger blows up on genesnake import
+            Takes forever!
+            Yup, verified it's on the genesnake it gets stuck
+        I think I might do soon. Especially if I think it'll 
+                get in my way. But letting it rest for now.
+    infer_networks
+        takes a zeta_vec, but only uses it for some methods. 
+            Not for lsco and lscon. 
+        Should it? 
+            Does it make sense with a zeta vec for the inference? 
+            Or is this a leftover from before, and zeta vec now belongs 
+                    with the benchmarking?
+        I'll let this sit for now
+        I haven't verified that the methods even run, 
+                except for lsco and lscon
+    Update package metadata
+        Well, when I'm on master and feel like I own it, I'll do
+
