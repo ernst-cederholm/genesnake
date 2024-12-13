@@ -1,6 +1,17 @@
 
 
-Genesnake; Considered. Won't do for now
+Inbox
+    Genesnake could consider adding installation instructions for conda
+        Helped Dirk with his failing genesnake install
+        He's using conda
+        The instructions use pip
+        So, probably not compatible
+
+
+
+
+
+Considered. Won't do for now
     genesnake import takes long time
         Maybe good to simplify and change import
             Don't include everything?
