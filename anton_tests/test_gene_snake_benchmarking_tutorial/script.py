@@ -24,13 +24,13 @@ estimated_network = estimated_network.transpose()
 # Benchmark. A high level interface that doesn't expose all options.
 # Similar can be done manually like below
 model_name = 'Tutorial_LSCON'
-gs.benchmarking.benchmark(
+stats = gs.benchmarking.benchmark(
 	estimated_network = estimated_network,
 	true_network = true_network,
 	output_dir = 'outputs',
 	model_name = model_name,
 	)
-
+print(stats)
 
 
 ### Manual benchmarking
@@ -62,12 +62,22 @@ output_dir.mkdir(exist_ok = True)
 metrics.to_csv(
 	path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv',
 	sep = '\t', header = True, index = True)
-print(
-	gs.benchmarking.auroc_and_aupr(
-		full_network = estimated_network,
-		true_network = true_network,
-		metrics = metrics,
-		model_name = model_name,
-		output_dir = output_dir,
-		fix_ylim = False)
-	)
+
+areas = gs.benchmarking.auroc_and_aupr(
+	full_network = estimated_network,
+	true_network = true_network,
+	metrics = metrics,
+	model_name = model_name,
+	output_dir = output_dir,
+	fix_ylim = False)
+epr = gs.benchmarking.calculate_dspin_stats.early_precision_rate(
+	inferred_network = estimated_network,
+	true_network = true_network,
+	fraction_of_K = 1)
+top_k_accuracy = gs.benchmarking.calculate_dspin_stats.top_k_accuracy(
+	inferred_network = estimated_network,
+	true_network = true_network,
+	fraction_of_K = 1)
+
+print({**areas, 'EPR': epr, 'top_K_acc': top_k_accuracy})
+

@@ -5,7 +5,7 @@ from .compare_networks import compare_networks
 from .auroc_and_aupr import auroc_and_aupr
 from .calculate_cutoffs import calculate_cutoffs
 from .cut_network import cut_network
-
+from . import calculate_dspin_stats
 
 def benchmark(
         estimated_network,
@@ -13,6 +13,10 @@ def benchmark(
         output_dir,
         model_name,
         ):
+    """
+    Benchmark. A high level interface that doesn't expose all options.
+    For more options, see code.
+    """
 
     # Differently sorted networks could be such a nasty bug to hunt down,
     # so try helping unsuspecting users spot it. Perhaps inconvenient,
@@ -48,12 +52,20 @@ def benchmark(
     metrics.to_csv(
         path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv',
         sep = '\t', header = True, index = True)
-    print(
-        auroc_and_aupr(
-            full_network = estimated_network,
-            true_network = true_network,
-            metrics = metrics,
-            model_name = model_name,
-            output_dir = output_dir,
-            )
+    areas = auroc_and_aupr(
+        full_network = estimated_network,
+        true_network = true_network,
+        metrics = metrics,
+        model_name = model_name,
+        output_dir = output_dir,
         )
+    epr = calculate_dspin_stats.early_precision_rate(
+        inferred_network = estimated_network,
+        true_network = true_network,
+        )
+    top_k_accuracy = calculate_dspin_stats.top_k_accuracy(
+        inferred_network = estimated_network,
+        true_network = true_network,
+        )
+
+    return({**areas, 'EPR': epr, 'top_K_acc': top_k_accuracy})

@@ -10,3 +10,5 @@ from .auroc_and_aupr import auroc_and_aupr
 from .benchmark import benchmark
 from .calculate_cutoffs import calculate_cutoffs
 from .cut_network import cut_network
+from .calculate_ERMA import calculate_ERMA
+from . import calculate_dspin_stats
