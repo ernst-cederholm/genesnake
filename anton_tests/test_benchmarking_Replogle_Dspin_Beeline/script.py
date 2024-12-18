@@ -60,11 +60,12 @@ def main():
 	print('Benchmark')
 	model_name = 'dspin'
 	estimated_network = sorted_networks[model_name]
-	gs.benchmarking.benchmark(
+	stats = gs.benchmarking.benchmark(
 		estimated_network = estimated_network,
 		true_network = true_network,
-		output_dir = 'outputs',
+		output_dir = output_dir,
 		model_name = model_name,
 		)
+	print(stats)
 
 main()
