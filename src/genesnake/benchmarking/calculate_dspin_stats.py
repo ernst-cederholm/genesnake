@@ -52,12 +52,10 @@ def top_k_accuracy(
     haven't documented well enough.  //Anton Björk
     """
     K = round(len(np.array(true_network).nonzero()[0]) * fraction_of_K)
-    cutoff = sorted(
-        np.abs(np.array(inferred_network)).flatten(),
-        reverse = True
-        )[K]
+    abs_net = np.abs(np.array(inferred_network))
+    cutoff = sorted(abs_net.flatten(), reverse = True)[K - 1]
     top_K_network = copy.deepcopy(inferred_network)
-    top_K_network[top_K_network < cutoff] = 0
+    top_K_network[abs_net < cutoff] = 0
     precision = gs.benchmarking.compare_networks(
         [top_K_network], true_network,
         exclude_diag=False, include_sign=False
