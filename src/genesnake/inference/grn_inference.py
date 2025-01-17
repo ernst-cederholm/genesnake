@@ -18,236 +18,236 @@ from copy import deepcopy
 
 
 def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
-    """
-    Function for inferring networks with various methods
-    INPUT:
-        Y - gene expressions, where columns are experiments and rows are genes
-        P - binary matrix of perturbations corresponding to Y
-        method - inference method to apply
-        zvec - vector of zeta values for cutoff
-    """
+	"""
+	Function for inferring networks with various methods
+	INPUT:
+		Y - gene expressions, where columns are experiments and rows are genes
+		P - binary matrix of perturbations corresponding to Y
+		method - inference method to apply
+		zvec - vector of zeta values for cutoff
+	"""
 
-    # Avoid modifying inputs. This happened before since the indices
-    # from P and Y are copied to new data structures, but then that
-    # goes by reference not copy in an unintuitive way.
-    # Changing something about the network coming out of this function
-    # should not reasonably modify Y and P.
-    P = deepcopy(P)
-    Y = deepcopy(Y)
+	# Avoid modifying inputs. This happened before since the indices
+	# from P and Y are copied to new data structures, but then that
+	# goes by reference not copy in an unintuitive way.
+	# Changing something about the network coming out of this function
+	# should not reasonably modify Y and P.
+	P = deepcopy(P)
+	Y = deepcopy(Y)
 
-    if method == "lsco":  # least squares, works OK
-        aest = np.matmul(-P, np.linalg.pinv(Y))
-        aest.index = P.index
-        aest.columns = P.index
-        return aest
-    if method == "lscon":  # normalized least squares, works OK
-        aest = np.matmul(-P, np.linalg.pinv(Y))
-        aest = pd.DataFrame(aest)
-        for column in aest:
-            aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
-        aest.index = P.index
-        aest.columns = P.index
-        return aest
-    if method == "zscore":
-        """
-        Most of notation and code according to the zscore method from 
-        the DREAM 3 paper. Search for z-score in the paper to find 
-        the section.
+	if method == "lsco":  # least squares, works OK
+		aest = np.matmul(-P, np.linalg.pinv(Y))
+		aest.index = P.index
+		aest.columns = P.index
+		return aest
+	if method == "lscon":  # normalized least squares, works OK
+		aest = np.matmul(-P, np.linalg.pinv(Y))
+		aest = pd.DataFrame(aest)
+		for column in aest:
+			aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
+		aest.index = P.index
+		aest.columns = P.index
+		return aest
+	if method == "zscore":
+		"""
+		Most of notation and code according to the zscore method from 
+		the DREAM 3 paper. Search for z-score in the paper to find 
+		the section.
 
-        Conventions used for this method:
-        Data: [experiments/cells/observations x genes/variables]
-        Output network: [regulators x targets]
+		Conventions used for this method:
+		Data: [experiments/cells/observations x genes/variables]
+		Output network: [regulators x targets]
 
-        Returns NaN for genes that are not perturbed in any experiments.
+		Returns NaN for genes that are not perturbed in any experiments.
 
-        DREAM 3 paper:
-            Link
-                https://doi.org/10.1371/journal.pone.0009202
-            Citation
-                Prill RJ, Marbach D, Saez-Rodriguez J, Sorger PK, Alexopoulos LG, Xue X, Clarke ND, Altan-Bonnet G, Stolovitzky G. Towards a rigorous assessment of systems biology models: the DREAM3 challenges. PLoS One. 2010 Feb 23;5(2):e9202. doi: 10.1371/journal.pone.0009202. Erratum in: PLoS One. 2010;5(3). doi: 10.1371/annotation/f633213a-dc4f-4bee-b6c5-72d50e7073b8. PMID: 20186320; PMCID: PMC2826397.
-        """
-        # Deviation from DREAM 3:
-        # Construct mus and sigmas without the influence of
-        # the perturbed observations
-        # Including the perturbed experiments seemed to introduce
-        # a problematic bias, at least for Genesnake simulated data.
-        # It also makes sense from a theoretical standpoint.
-        # The perturbations is a different process than
-        # the regulation which we are trying to estimate.
-        mu_B = []
-        sigma_B = []
-        for jj in range(P.shape[1]):
-            ii_perturbed = P.iloc[:, jj].astype(bool)
-            tmp = Y.iloc[:, jj]
-            expr_unperturbed = tmp.loc[~ii_perturbed]
-            mu_B.append(expr_unperturbed.mean())
-            sigma_B.append(expr_unperturbed.std())
+		DREAM 3 paper:
+			Link
+				https://doi.org/10.1371/journal.pone.0009202
+			Citation
+				Prill RJ, Marbach D, Saez-Rodriguez J, Sorger PK, Alexopoulos LG, Xue X, Clarke ND, Altan-Bonnet G, Stolovitzky G. Towards a rigorous assessment of systems biology models: the DREAM3 challenges. PLoS One. 2010 Feb 23;5(2):e9202. doi: 10.1371/journal.pone.0009202. Erratum in: PLoS One. 2010;5(3). doi: 10.1371/annotation/f633213a-dc4f-4bee-b6c5-72d50e7073b8. PMID: 20186320; PMCID: PMC2826397.
+		"""
+		# Deviation from DREAM 3:
+		# Construct mus and sigmas without the influence of
+		# the perturbed observations
+		# Including the perturbed experiments seemed to introduce
+		# a problematic bias, at least for Genesnake simulated data.
+		# It also makes sense from a theoretical standpoint.
+		# The perturbations is a different process than
+		# the regulation which we are trying to estimate.
+		mu_B = []
+		sigma_B = []
+		for jj in range(P.shape[1]):
+			ii_perturbed = P.iloc[:, jj].astype(bool)
+			tmp = Y.iloc[:, jj]
+			expr_unperturbed = tmp.loc[~ii_perturbed]
+			mu_B.append(expr_unperturbed.mean())
+			sigma_B.append(expr_unperturbed.std())
 
-        l = []
-        # Regulators A indexed by jj
-        for jj in range(P.shape[1]):
-            ii_perturbed = P.iloc[:, jj].astype(bool)
+		l = []
+		# Regulators A indexed by jj
+		for jj in range(P.shape[1]):
+			ii_perturbed = P.iloc[:, jj].astype(bool)
 
-            # Modification/extension of DREAM 3:
-            # Considers that one gene
-            # can be perturbed several times. Averages the
-            # expression from those perturbations.
-            # Average seems like the natural choice for a first attempt.
-            expr_perturbed = Y.loc[ii_perturbed, :]
-            # Zscores for regulation A -> B, see DREAM 3 paper notation.
-            # Note that we are doing all targets B at once for
-            # certain regulator A, indexed by jj. Hence whole
-            # rows of Y at a time
-            zab = (expr_perturbed.mean(axis = 0) - mu_B) / sigma_B
-            l.append(zab)
-        network = pd.DataFrame(
-            data = np.vstack(l),
-            index = P.columns,  # Since As indexed by jj over P.columns
-            columns = Y.columns  # Since expr_perturbed is from rows from Y
-            )
-        network.index.name = 'regulator'
-        network.columns.name = 'target'
-        return(network)
-    # I don't trust this:
-    # - Why transposing stuff?
-    # - Why P2 that is then never used?
-    # - Why np.mean(Y, axis=1), ie mean of entire Y, when algorith
-    #   uses mean of expressions of gene that is knocked out?
-    # Made my own, that I understand, and is better documented,
-    # so I'll use that going forward  //AB
-    if method == "zscore_old":
-        outNet = []
-        P2 = P.transpose()
-        for i in range(P2.shape[1]):
-            inds = np.nonzero(abs(P.iloc[:,i].array))
-            Y2 = Y.transpose()
-            tmpAest = np.divide(
-                (np.mean(Y2.iloc[inds], axis=0) - np.mean(Y, axis=1)), 
-                np.std(Y, axis=1))
-            outNet.append(tmpAest)
-        aest = pd.DataFrame(outNet)
-        return aest
-    if method == "lasso":  # lasso, works ok
-        aests = []
-        for z in zvec:
-            lasso_mod = Lasso(alpha=z)
-            out_net_tmp = []
-            for i in range(P.shape[0]):
-                lasso_mod.fit(Y.transpose(), -P.iloc[i,:])
-                out_net_tmp.append(lasso_mod.coef_)
-            out_net_tmp = pd.DataFrame(out_net_tmp)
-            aests.append(out_net_tmp)
-            return aests
-    if method == "elnet":  # elastic net, works semi ok
-        aests = []
-        for z in zvec:
-            lassoMod = ElasticNet(alpha=z, random_state=0)
-            outNetTmp = []
-            for i in range(P.shape[0]):
-                lassoMod.fit(Y.transpose(), -P.iloc[i,:])
-                outNetTmp.append(lassoMod.coef_)
+			# Modification/extension of DREAM 3:
+			# Considers that one gene
+			# can be perturbed several times. Averages the
+			# expression from those perturbations.
+			# Average seems like the natural choice for a first attempt.
+			expr_perturbed = Y.loc[ii_perturbed, :]
+			# Zscores for regulation A -> B, see DREAM 3 paper notation.
+			# Note that we are doing all targets B at once for
+			# certain regulator A, indexed by jj. Hence whole
+			# rows of Y at a time
+			zab = (expr_perturbed.mean(axis = 0) - mu_B) / sigma_B
+			l.append(zab)
+		network = pd.DataFrame(
+			data = np.vstack(l),
+			index = P.columns,  # Since As indexed by jj over P.columns
+			columns = Y.columns  # Since expr_perturbed is from rows from Y
+			)
+		network.index.name = 'regulator'
+		network.columns.name = 'target'
+		return(network)
+	# I don't trust this:
+	# - Why transposing stuff?
+	# - Why P2 that is then never used?
+	# - Why np.mean(Y, axis=1), ie mean of entire Y, when algorith
+	#   uses mean of expressions of gene that is knocked out?
+	# Made my own, that I understand, and is better documented,
+	# so I'll use that going forward  //AB
+	if method == "zscore_old":
+		outNet = []
+		P2 = P.transpose()
+		for i in range(P2.shape[1]):
+			inds = np.nonzero(abs(P.iloc[:,i].array))
+			Y2 = Y.transpose()
+			tmpAest = np.divide(
+				(np.mean(Y2.iloc[inds], axis=0) - np.mean(Y, axis=1)), 
+				np.std(Y, axis=1))
+			outNet.append(tmpAest)
+		aest = pd.DataFrame(outNet)
+		return aest
+	if method == "lasso":  # lasso, works ok
+		aests = []
+		for z in zvec:
+			lasso_mod = Lasso(alpha=z)
+			out_net_tmp = []
+			for i in range(P.shape[0]):
+				lasso_mod.fit(Y.transpose(), -P.iloc[i,:])
+				out_net_tmp.append(lasso_mod.coef_)
+			out_net_tmp = pd.DataFrame(out_net_tmp)
+			aests.append(out_net_tmp)
+			return aests
+	if method == "elnet":  # elastic net, works semi ok
+		aests = []
+		for z in zvec:
+			lassoMod = ElasticNet(alpha=z, random_state=0)
+			outNetTmp = []
+			for i in range(P.shape[0]):
+				lassoMod.fit(Y.transpose(), -P.iloc[i,:])
+				outNetTmp.append(lassoMod.coef_)
 
-            outNetTmp = pd.DataFrame(outNetTmp)
-            aests.append(outNetTmp)
-            return aests
+			outNetTmp = pd.DataFrame(outNetTmp)
+			aests.append(outNetTmp)
+			return aests
 
-    if method == "linsvm":  # linear SVM, works ok
-        from sklearn.svm import SVR
-        aest = []
-        for i in range(P.shape[0]):
-            svr_lin = SVR(kernel="linear", C=100, gamma="auto")
-            fitc = svr_lin.fit(Y.transpose(), -P.iloc[i,:]).coef_
-            aest.append(fitc)
-        aest = pd.DataFrame(np.concatenate(aest))
-        return aest
+	if method == "linsvm":  # linear SVM, works ok
+		from sklearn.svm import SVR
+		aest = []
+		for i in range(P.shape[0]):
+			svr_lin = SVR(kernel="linear", C=100, gamma="auto")
+			fitc = svr_lin.fit(Y.transpose(), -P.iloc[i,:]).coef_
+			aest.append(fitc)
+		aest = pd.DataFrame(np.concatenate(aest))
+		return aest
 
-    if method == "regtrees":  # regression trees, works not ok
-        aest = []
-        from sklearn.tree import DecisionTreeRegressor
+	if method == "regtrees":  # regression trees, works not ok
+		aest = []
+		from sklearn.tree import DecisionTreeRegressor
 
-        n = Y.shape[0]
-        for i in range(0, n):
-            # create a regressor object
-            regressor = DecisionTreeRegressor(random_state=0)
-            Y2 = Y.transpose()
-            fitc = regressor.fit(Y2, Y2.iloc[:, i])
-            aest.append(fitc.feature_importances_)
-        aest = pd.DataFrame(aest).transpose()
-        return aest
+		n = Y.shape[0]
+		for i in range(0, n):
+			# create a regressor object
+			regressor = DecisionTreeRegressor(random_state=0)
+			Y2 = Y.transpose()
+			fitc = regressor.fit(Y2, Y2.iloc[:, i])
+			aest.append(fitc.feature_importances_)
+		aest = pd.DataFrame(aest).transpose()
+		return aest
 
-    if method == "rbfsvm":  # rbf svm (nonlinear), works not ok
-        from sklearn.svm import SVR
-        from sklearn.inspection import permutation_importance
-        aest = []
-        n = Y.shape[0]
-        svrr = SVR(kernel="rbf")
-        for i in range(0, n):
-            Y2 = Y.transpose()
-            svrr.fit(Y2, Y2.iloc[:, i])
-            perm_importance = permutation_importance(svrr, Y2, Y2.iloc[:, i])
-            aest.append(perm_importance['importances_mean'])
-        aest = pd.DataFrame(aest)
-        return aest
+	if method == "rbfsvm":  # rbf svm (nonlinear), works not ok
+		from sklearn.svm import SVR
+		from sklearn.inspection import permutation_importance
+		aest = []
+		n = Y.shape[0]
+		svrr = SVR(kernel="rbf")
+		for i in range(0, n):
+			Y2 = Y.transpose()
+			svrr.fit(Y2, Y2.iloc[:, i])
+			perm_importance = permutation_importance(svrr, Y2, Y2.iloc[:, i])
+			aest.append(perm_importance['importances_mean'])
+		aest = pd.DataFrame(aest)
+		return aest
 
-    if method == "polysvm":  # polynomial svm, works not ok
-        from sklearn.svm import SVR
-        from sklearn.inspection import permutation_importance
-        aest = []
-        n = Y.shape[0]
-        svrp = SVR(kernel="poly")
-        for i in range(0, n):
-            Y2 = Y.transpose()
-            svrp.fit(Y2, Y2.iloc[:, i])
-            perm_importance = permutation_importance(svrp, Y2, Y2.iloc[:, i])
-            aest.append(perm_importance['importances_mean'])
-        aest = pd.DataFrame(aest)
-        return aest
-    # Put it down here so I don't mistake the other zscore with this
-    # when editing. Could become very confusing.
-    if method == "zscore_dream3":
-        """
-        Most of notation and code according to the zscore method from 
-        the DREAM 3 paper. Search for z-score in the paper to find 
-        the section.
+	if method == "polysvm":  # polynomial svm, works not ok
+		from sklearn.svm import SVR
+		from sklearn.inspection import permutation_importance
+		aest = []
+		n = Y.shape[0]
+		svrp = SVR(kernel="poly")
+		for i in range(0, n):
+			Y2 = Y.transpose()
+			svrp.fit(Y2, Y2.iloc[:, i])
+			perm_importance = permutation_importance(svrp, Y2, Y2.iloc[:, i])
+			aest.append(perm_importance['importances_mean'])
+		aest = pd.DataFrame(aest)
+		return aest
+	# Put it down here so I don't mistake the other zscore with this
+	# when editing. Could become very confusing.
+	if method == "zscore_dream3":
+		"""
+		Most of notation and code according to the zscore method from 
+		the DREAM 3 paper. Search for z-score in the paper to find 
+		the section.
 
-        Conventions used for this method:
-        Data: [experiments/cells/observations x genes/variables]
-        Output network: [regulators x targets]
+		Conventions used for this method:
+		Data: [experiments/cells/observations x genes/variables]
+		Output network: [regulators x targets]
 
-        Returns NaN for genes that are not perturbed in any experiments.
+		Returns NaN for genes that are not perturbed in any experiments.
 
-        DREAM 3 paper:
-            Link
-                https://doi.org/10.1371/journal.pone.0009202
-            Citation
-                Prill RJ, Marbach D, Saez-Rodriguez J, Sorger PK, Alexopoulos LG, Xue X, Clarke ND, Altan-Bonnet G, Stolovitzky G. Towards a rigorous assessment of systems biology models: the DREAM3 challenges. PLoS One. 2010 Feb 23;5(2):e9202. doi: 10.1371/journal.pone.0009202. Erratum in: PLoS One. 2010;5(3). doi: 10.1371/annotation/f633213a-dc4f-4bee-b6c5-72d50e7073b8. PMID: 20186320; PMCID: PMC2826397.
-        """
-        mu_B = Y.mean(axis = 0)
-        sigma_B = Y.std(axis = 0)
-        # Regulators A indexed by jj
-        l = []
-        for jj in range(P.shape[1]):
-            ii_perturbed = P.iloc[:, jj].astype(bool)
-            # Modification/extension of DREAM 3:
-            # Considers that one gene
-            # can be perturbed several times. Averages the
-            # expression from those perturbations.
-            # Average seems like the natural choice for a first attempt.
-            expr_perturbed = Y.loc[ii_perturbed, :]
-            # Zscores for regulation A -> B, see DREAM 3 paper notation.
-            # Note that we are doing all targets B at once for
-            # certain regulator A, indexed by jj. Hence whole
-            # rows of Y at a time
-            zab = (expr_perturbed.mean(axis = 0) - mu_B) / sigma_B
-            l.append(zab)
-        network = pd.DataFrame(
-            data = np.vstack(l),
-            index = P.columns,  # Since As indexed by jj over P.columns
-            columns = Y.columns  # Since expr_perturbed is from rows from Y
-            )
-        network.index.name = 'regulator'
-        network.columns.name = 'target'
-        return(network)
+		DREAM 3 paper:
+			Link
+				https://doi.org/10.1371/journal.pone.0009202
+			Citation
+				Prill RJ, Marbach D, Saez-Rodriguez J, Sorger PK, Alexopoulos LG, Xue X, Clarke ND, Altan-Bonnet G, Stolovitzky G. Towards a rigorous assessment of systems biology models: the DREAM3 challenges. PLoS One. 2010 Feb 23;5(2):e9202. doi: 10.1371/journal.pone.0009202. Erratum in: PLoS One. 2010;5(3). doi: 10.1371/annotation/f633213a-dc4f-4bee-b6c5-72d50e7073b8. PMID: 20186320; PMCID: PMC2826397.
+		"""
+		mu_B = Y.mean(axis = 0)
+		sigma_B = Y.std(axis = 0)
+		# Regulators A indexed by jj
+		l = []
+		for jj in range(P.shape[1]):
+			ii_perturbed = P.iloc[:, jj].astype(bool)
+			# Modification/extension of DREAM 3:
+			# Considers that one gene
+			# can be perturbed several times. Averages the
+			# expression from those perturbations.
+			# Average seems like the natural choice for a first attempt.
+			expr_perturbed = Y.loc[ii_perturbed, :]
+			# Zscores for regulation A -> B, see DREAM 3 paper notation.
+			# Note that we are doing all targets B at once for
+			# certain regulator A, indexed by jj. Hence whole
+			# rows of Y at a time
+			zab = (expr_perturbed.mean(axis = 0) - mu_B) / sigma_B
+			l.append(zab)
+		network = pd.DataFrame(
+			data = np.vstack(l),
+			index = P.columns,  # Since As indexed by jj over P.columns
+			columns = Y.columns  # Since expr_perturbed is from rows from Y
+			)
+		network.index.name = 'regulator'
+		network.columns.name = 'target'
+		return(network)
 
 
 
