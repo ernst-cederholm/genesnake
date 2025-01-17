@@ -1,11 +1,31 @@
 
 
 Inbox
+    I don't think Genesnake properly compensates when excluding diagonal
+            from benchmarking, making the benchmark slightly biased
+        From notes
+            Not sure excluding the diagonal is well designed
+                    in Genesnake benchmarking
+                excluding it, the results seem biased to be slightly
+                        lower than 0.5
+                Maybe it just counts the diagonal as misses, should check
+                Yes, code looks like it
+                    If fills diagonals with 0s
+                    Then it counts TPs, ie non-0 in agreement
+                    Then it calculates other stats as stat - TP
+                    So it probably never adjusts to actually
+                            not consider the diagonals in
+                            the benchmark, they just end up being
+                            ,, true negatives?
+                        Hmm, doesn't quite add up
+                        Should look into it a bit more
     Genesnake could consider adding installation instructions for conda
         Helped Dirk with his failing genesnake install
         He's using conda
         The instructions use pip
         So, probably not compatible
+    Getting Y and P from Y only
+    Converting between matrix and edgelist formats
 
 
 
