@@ -67,6 +67,8 @@ def calculate_ROC_extension(TPRate_end, FPRate_end):
 def calculate_PR_extension(
     true_network,
     last_predicted_network,
+    exclude_diag,
+    include_sign,
     ):
     """
     Input networks are in matrix form, not edge list. This is for compatibility with the rest of genesnake. For this specific function, edge list would probably have been more convenient.
@@ -98,9 +100,10 @@ def calculate_PR_extension(
     stats = compare_networks(
         [last_predicted_network],
         true_network,
-        exclude_diag=False, 
-        include_sign=False
+        exclude_diag = exclude_diag,
+        include_sign = include_sign
         )
+
 
     # Problem below:
     # Code below assumes boolean networks.
@@ -125,18 +128,19 @@ def calculate_PR_extension(
     FPL = int(stats['fp'])
     rL = float(stats['tpr'])  # Could also calculate as TPL / P
     L = TPL + FPL  # Length of list of predictions done
-    r = np.linspace(rL, 1, num = 100)
-    
-    try:
-        rho = (P - TPL) / (T - L)
-        p = rho * (P * r) / (P * (r - rL) + L * rho)
-    # If T - L = 0, we don't have to extend AUPR, it has already
-    # gone all the way. In this case, return empty r and p
-    except ZeroDivisionError:
-        r = []
-        p = []
+    # The underscore is to avoid collision with debugger return command
+    r_ = np.linspace(rL, 1, num = 100)
 
-    return({'recall': r, 'precision': p})
+    # If any of these are true, the AUPR has already
+    # gone all the way and we don't need to extend it
+    if T - L == 0 or all(r_ - rL == 0):
+        r_ = []
+        p = []
+    else:
+        rho = (P - TPL) / (T - L)
+        p = rho * (P * r_) / (P * (r_ - rL) + L * rho)
+
+    return({'recall': r_, 'precision': p})
 
 
 
@@ -147,7 +151,10 @@ def auroc_and_aupr(
     metrics, 
     model_name,
     output_dir,
-    fix_ylim = True):
+    exclude_diag = True,
+    include_sign = False,
+    fix_ylim = True,
+    ):
     """
     Plot ROC and PR curves, and return AUROC and AUPR
 
@@ -172,6 +179,8 @@ def auroc_and_aupr(
     PRe = calculate_PR_extension(
         true_network = true_network,
         last_predicted_network = full_network,
+        exclude_diag = exclude_diag,
+        include_sign = include_sign,
         )
     Precision = Precision.bfill()
     Recall_extended = list(Recall) + list(PRe['recall'])

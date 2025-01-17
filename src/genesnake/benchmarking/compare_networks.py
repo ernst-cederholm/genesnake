@@ -2,8 +2,10 @@ import numpy as np
 import pandas as pd
 
 def compare_networks(
-		networks, true_network,
-		exclude_diag=False, include_sign=False
+		networks,
+		true_network,
+		exclude_diag = True,
+		include_sign = False
 		):
 	"""
 	Function for comparing networks and returning performance statistics.
@@ -61,17 +63,21 @@ def compare_networks(
 			net1[net1 < 0] = -1
 			net2[net2 > 0] = 1
 			net2[net2 < 0] = -1
+
 			cond1 = net1 == net2
 			cond2 = net1 != 0
 			cond3 = net2 != 0
-
 			TP = sum(sum(cond1 & cond2 & cond3))
 			TPo.append(TP)
-			FP = sum(sum(net1.astype(dtype=bool))) - TP
+
+			PP = net1.astype(dtype=bool)  # Predicted Positive
+			AP = net2.astype(dtype=bool)  # Actual Positive
+
+			FP = sum(sum(PP)) - TP
 			FPo.append(FP)
-			TN = sum(sum(~net1.astype(dtype=bool) & ~net1.astype(dtype=bool)))
+			TN = sum(sum(~PP & ~AP))
 			TNo.append(TN)
-			FN = sum(sum(~net1.astype(dtype=bool))) - TN
+			FN = sum(sum(~PP)) - TN
 			FNo.append(FN)
 		else:
 			net1 = net1.astype(dtype=bool)
@@ -163,4 +169,5 @@ def compare_networks(
 		)
 
 	metrics = df.transpose()
+
 	return(metrics)

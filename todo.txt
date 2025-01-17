@@ -1,6 +1,8 @@
 
 
 Inbox
+    Convert from spaces to tabs, and to linux file endings in
+            among other files grn_inference.py
     I don't think Genesnake properly compensates when excluding diagonal
             from benchmarking, making the benchmark slightly biased
         From notes
