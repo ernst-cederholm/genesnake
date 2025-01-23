@@ -206,7 +206,7 @@ def auroc_and_aupr(
 		label = 'Extended'
 		)
 	plt.xlim((0, 1))
-	plt.ylim((0, 1))
+	plt.ylim((0, 1.01))
 	plt.xlabel('FP Rate')
 	plt.ylabel('TP Rate')
 	plt.legend()
@@ -240,7 +240,7 @@ def auroc_and_aupr(
 	else:
 		ax = plt.gca()
 		_, top = ax.get_ylim()
-		ax.set_ylim(0, top)
+		ax.set_ylim(0, top * 1.1)
 	plt.legend()
 	l1 = f'AUPR (DREAM2 extended) = {AUPR:.3}'
 	l2 = f'ERMA = {ERMA:.3}'

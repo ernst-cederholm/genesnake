@@ -13,7 +13,7 @@ def compare_networks(
 
 	networks
 		Iterable of matrix likes.
-		Can be length 1 to compare
+		Can be length 1.
 	true_network
 		matrix like
 	"""
@@ -46,6 +46,11 @@ def compare_networks(
 	for n in range(0, len(networks)):
 
 		if (exclude_diag):
+			# Setting the diagonal elements to 0 will inflate the
+			# number of true negatives. What we want to do is
+			# exclude diagonals,
+			# ie not count them towards any of TP, FP, TN, FN.
+			# This is compensated below when calculating TN.
 			net1 = np.array(networks[n])
 			np.fill_diagonal(net1, 0)
 			net2 = np.array(true_network)
@@ -58,7 +63,32 @@ def compare_networks(
 
 		So.append(S)
 
+		# Well fuck, what happens if I want to not exclude the diagonals?
+		# Then subtracting the length of the diagonals don't make sense..
+		# Will I have to do each combination case exclude_diag x include_sign
+		# separately?
+		# That would feel really sad.
+		# I guess I can pick out the upper and lower triangular
+		# matrices and paste them together, ie explicitly removing
+		# the diagonal. Is that that smoothest solution?
+		# Since we have other questionmarks about how to do signed
+		# benchmarking properly, I will disable it for now and proceed
+		# with the unsigned benchmarking. Then I'll sort out how to do
+		# signed benchmarking in a reasonable way.
+		# TLDR version of signed benchmark problems;
+		# When signed, it's no longer binary classification, it's
+		# [-1, 0, 1], which kills various assumptions around ROC
+		# curves, eg random being 0.5, and TPR 1 always being reached.
+
 		if (include_sign):
+			raise(
+				NotImplementedError(
+"""
+Signed benchmarking disabled until we figure out how to do it properly.
+See comments for more details.
+"""
+					)
+				)
 			net1[net1 > 0] = 1
 			net1[net1 < 0] = -1
 			net2[net2 > 0] = 1
@@ -75,9 +105,13 @@ def compare_networks(
 
 			FP = sum(sum(PP)) - TP
 			FPo.append(FP)
-			TN = sum(sum(~PP & ~AP))
+			# Compensating for setting the diagonals to 0 to exclude them.
+			# Note that this will need
+			# restructuring when I enable signed benchmarking again,
+			# see explanation above
+			TN = sum(sum(~PP & ~AP)) - len(np.diag(net1))
 			TNo.append(TN)
-			FN = sum(sum(~PP)) - TN
+			FN = sum(sum(~PP)) - len(np.diag(net1)) - TN
 			FNo.append(FN)
 		else:
 			net1 = net1.astype(dtype=bool)
@@ -86,9 +120,13 @@ def compare_networks(
 			TPo.append(TP)
 			FP = sum(sum(net1)) - TP
 			FPo.append(FP)
-			TN = sum(sum(~net1 & ~net2))
+			# Compensating for setting the diagonals to 0 to exclude them.
+			# Note that this will need
+			# restructuring when I enable signed benchmarking again,
+			# see explanation above
+			TN = sum(sum(~net1 & ~net2)) - len(np.diag(net1))
 			TNo.append(TN)
-			FN = sum(sum(~net1)) - TN
+			FN = sum(sum(~net1)) - len(np.diag(net1)) - TN
 			FNo.append(FN)
 
 		### Measures of confusion matrix based on
