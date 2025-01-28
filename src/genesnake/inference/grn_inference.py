@@ -105,6 +105,13 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 			index = P.columns,  # Since As indexed by jj over P.columns
 			columns = Y.columns  # Since expr_perturbed is from rows from Y
 			)
+		# Correct the sign. This assumes knockdown data.
+		# If A knockdown leads to B overexpression, the regulation
+		# is an inhibition, signified by negative sign on the weight.
+		# Compare to how overexpression of B gives positive sign above.
+		# Might rewrite to consider both knockdown and overexpression data
+		# in the future.
+		network = -network
 		network.index.name = 'regulator'
 		network.columns.name = 'target'
 		return(network)
@@ -245,6 +252,13 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 			index = P.columns,  # Since As indexed by jj over P.columns
 			columns = Y.columns  # Since expr_perturbed is from rows from Y
 			)
+		# Correct the sign. This assumes knockdown data.
+		# If A knockdown leads to B overexpression, the regulation
+		# is an inhibition, signified by negative sign on the weight.
+		# Compare to how overexpression of B gives positive sign above.
+		# Might rewrite to consider both knockdown and overexpression data
+		# in the future.
+		network = -network
 		network.index.name = 'regulator'
 		network.columns.name = 'target'
 		return(network)
