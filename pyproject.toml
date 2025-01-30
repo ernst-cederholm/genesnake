@@ -48,7 +48,7 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["genesnake/requirements.txt"]}
+dependencies = {file = ["requirements.txt"]}
 
 [project.urls]
 Documentation = "https://sonnhammer-tutorials.bitbucket.io/genesnake.html"
