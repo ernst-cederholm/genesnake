@@ -57,6 +57,7 @@ def calculate_cutoffs(
 		cutoffs = relative_cutoffs * (mmax - mmin) + mmin
 	else:
 		sorted_elements = np.array(sorted(np.array(absA).flatten()))
+		sorted_elements = sorted_elements[sorted_elements.nonzero()[0]]
 		if all_cutoffs:
 			cutoffs = sorted_elements
 		else:
