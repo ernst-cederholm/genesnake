@@ -255,6 +255,8 @@ def auroc_and_aupr(
 	plt.savefig(
 		output_dir / filename)
 
-	return({'AUROC': AUROC, 'AUPR': AUPR, 'ERMA': ERMA})
+	# The print format of AUROC and AUPR was annoying, specifying
+	# they were np.float64(the actual number)
+	return({'AUROC': float(AUROC), 'AUPR': float(AUPR), 'ERMA': ERMA})
 
 
