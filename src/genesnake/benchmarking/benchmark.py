@@ -2,7 +2,8 @@
 import pandas as pd
 from pathlib import Path
 from .compare_networks import compare_networks
-from .auroc_and_aupr import auroc_and_aupr
+from .calculate_auroc_and_aupr import calculate_auroc_and_aupr
+from .plot_auroc_and_aupr import plot_auroc_and_aupr
 from .calculate_cutoffs import calculate_cutoffs
 from .cut_network import cut_network
 from . import calculate_dspin_stats
@@ -40,10 +41,18 @@ def benchmark(
 	# cut_network operates inplace to avoid repeatedly copying the network.
 	from copy import deepcopy
 	network = deepcopy(estimated_network)
+	tn = deepcopy(true_network)
 	ms = []
 	for cutoff in cutoffs:
 		cut_network(network, cutoff)
-		m = compare_networks([network], true_network)
+		# Warning:
+		# compare_networks can modify both networks and true_network
+		# This to avoid repeated copying of networks in the hot loop
+		# of the benchmarking. Surrounding code has to be aware of
+		# this and handle it.
+		m = compare_networks(
+			networks = [network],
+			true_network = tn)
 		ms.append(m)
 	metrics = pd.concat(ms, axis = 0, ignore_index = True)
 
@@ -52,12 +61,15 @@ def benchmark(
 	metrics.to_csv(
 		path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv',
 		sep = '\t', header = True, index = True)
-	areas = auroc_and_aupr(
+	stats = calculate_auroc_and_aupr(
 		full_network = estimated_network,
 		true_network = true_network,
 		metrics = metrics,
+		)
+	plot_auroc_and_aupr(
+		stats = stats,
 		model_name = model_name,
-		output_dir = output_dir,
+		output_dir = output_dir
 		)
 	epr = calculate_dspin_stats.early_precision_rate(
 		inferred_network = estimated_network,
@@ -68,4 +80,5 @@ def benchmark(
 		true_network = true_network,
 		)
 
-	return({**areas, 'EPR': epr, 'top_K_acc': top_k_accuracy})
+	stats.pop('plot_metrics')
+	return({**stats, 'EPR': epr, 'top_K_acc': top_k_accuracy})

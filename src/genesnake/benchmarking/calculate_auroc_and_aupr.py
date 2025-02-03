@@ -2,15 +2,11 @@
 # This code starts from genesnake benchmark statistics and
 # calculates and plots ROC and PR curves along with the areas under them
 
-
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import pickle
-from pathlib import Path
 from .compare_networks import compare_networks
 import math
 from .calculate_ERMA import calculate_ERMA
+import copy
 
 
 # The reason for splitting this rather trivial line out to its
@@ -98,8 +94,12 @@ def calculate_PR_extension(
 
 	# Get some needed quantities
 	stats = compare_networks(
-		[last_predicted_network],
-		true_network,
+		# Copies are necessary to avoid unexpectedly modifying
+		# the input networks. compare_networks can modify it's inputs
+		# for performance reasons (that are not relevant here since
+		# this is not on the hot path of the benchmarking).
+		[copy.deepcopy(last_predicted_network)],
+		copy.deepcopy(true_network),
 		exclude_diag = exclude_diag,
 		include_sign = include_sign
 		)
@@ -145,21 +145,19 @@ def calculate_PR_extension(
 
 
 
-def auroc_and_aupr(
+def calculate_auroc_and_aupr(
 	full_network, 
 	true_network, 
 	metrics, 
-	model_name,
-	output_dir,
 	exclude_diag = True,
 	include_sign = False,
-	fix_ylim = True,
 	):
 	"""
-	Plot ROC and PR curves, and return AUROC and AUPR
+	Return AUROC and AUPR
 
 	Extends ROC linearly to (1,1), and AUPR according to DREAM2. See code for more details and references.
 	"""
+
 	sparsity_order = np.argsort(metrics.s)
 	outs = metrics.iloc[sparsity_order, :]
 
@@ -182,81 +180,35 @@ def auroc_and_aupr(
 		exclude_diag = exclude_diag,
 		include_sign = include_sign,
 		)
+	Recall_extension = PRe['recall']
+	Precision_extension = PRe['precision']
 	Precision = Precision.bfill()
-	Recall_extended = list(Recall) + list(PRe['recall'])
-	Precision_extended = list(Precision) + list(PRe['precision'])
 	AUPR = np.trapz(
-		Precision_extended, 
-		x = Recall_extended
+		list(Precision) + list(Precision_extension),
+		x = list(Recall) + list(Recall_extension)
 		)
 
 	# Calculate Exptected Random Model AUPR (ERMA)
 	ERMA = calculate_ERMA(true_network)
 
-
-	plt.close()
-	plt.plot(
-		FPRate, TPRate, 
-		color = 'tab:blue', linestyle = 'solid',
-		label = 'Observed')
-	plt.plot(
-		FPRate_extension, 
-		TPRate_extension, 
-		color = 'tab:blue', linestyle = 'dashed',
-		label = 'Extended'
+	return(
+		{
+			# The print format of AUROC and AUPR was annoying, specifying
+			# they were np.float64(the actual number)
+			'AUROC': float(AUROC),
+			'AUPR': float(AUPR),
+			'ERMA': ERMA,
+			'plot_metrics': {
+				'TPRate': TPRate,
+				'TPRate_extension': TPRate_extension,
+				'FPRate': FPRate,
+				'FPRate_extension': FPRate_extension,
+				'Recall': Recall,
+				'Recall_extension': Recall_extension,
+				'Precision': Precision,
+				'Precision_extension': Precision_extension,
+				}
+			}
 		)
-	plt.xlim((0, 1))
-	plt.ylim((0, 1.01))
-	plt.xlabel('FP Rate')
-	plt.ylabel('TP Rate')
-	plt.legend()
-	plt.text(
-		0.4, 
-		0.1, 
-		f'AUROC (extended) = {AUROC:.3}',
-		)
-	title = f'{model_name}_ROC_curve'
-	plt.title(title)
-	plt.tight_layout()
-	filename = f'{title}.svg'
-	plt.savefig(output_dir / filename)
-
-	plt.close()
-	plt.plot(Recall, Precision,
-		color = 'tab:blue', linestyle = 'solid',
-		label = 'Observed')
-	plt.plot(PRe['recall'], PRe['precision'],
-		color = 'tab:blue', linestyle = 'dashed',
-		label = 'Extended')
-	plt.xlabel('Recall')
-	plt.ylabel('Precision')
-	plt.xlim((0, 1))
-	# When AUPR is really shit, one cannot see the shape of it
-	# because it's just a line at the bottom. But the shape is 
-	# useful to check if shape looks sane. Thus the option
-	if fix_ylim:
-		top = 1.1
-		plt.ylim((0, top))
-	else:
-		ax = plt.gca()
-		_, top = ax.get_ylim()
-		ax.set_ylim(0, top * 1.1)
-	plt.legend()
-	l1 = f'AUPR (DREAM2 extended) = {AUPR:.3}'
-	l2 = f'ERMA = {ERMA:.3}'
-	plt.text(
-		0.4, top * 0.7,
-		'\n'.join([l1, l2]),
-		)
-	title = f'{model_name}_PR_curve'
-	plt.title(title)
-	plt.tight_layout()
-	filename = f'{title}.svg'
-	plt.savefig(
-		output_dir / filename)
-
-	# The print format of AUROC and AUPR was annoying, specifying
-	# they were np.float64(the actual number)
-	return({'AUROC': float(AUROC), 'AUPR': float(AUPR), 'ERMA': ERMA})
 
 

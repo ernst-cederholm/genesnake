@@ -24,13 +24,14 @@ estimated_network = estimated_network.transpose()
 # Benchmark. A high level interface that doesn't expose all options.
 # Similar can be done manually like below
 model_name = 'Tutorial_LSCON'
-stats = gs.benchmarking.benchmark(
+
+all_stats = gs.benchmarking.benchmark(
 	estimated_network = estimated_network,
 	true_network = true_network,
 	output_dir = 'outputs',
 	model_name = model_name,
 	)
-print(stats)
+print(all_stats)
 
 
 ### Manual benchmarking
@@ -47,12 +48,19 @@ cutoffs = gs.benchmarking.calculate_cutoffs(
 # cut_network operates inplace to avoid repeatedly copying the network.
 from copy import deepcopy
 network = deepcopy(estimated_network)
+tn = deepcopy(true_network)
 ms = []
 for cutoff in cutoffs:
 	gs.benchmarking.cut_network(network, cutoff)
+	# Warning:
+	# compare_networks can modify both networks and true_network
+	# This to avoid repeated copying of networks in the hot loop
+	# of the benchmarking. Surrounding code has to be aware of
+	# this and handle it.
 	m = gs.benchmarking.compare_networks(
-		[network], true_network,
-		exclude_diag = False,
+		networks = [network],
+		true_network = tn,
+		exclude_diag = True,
 		include_sign = False)
 	ms.append(m)
 metrics = pd.concat(ms, axis = 0, ignore_index = True)
@@ -63,10 +71,13 @@ metrics.to_csv(
 	path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv',
 	sep = '\t', header = True, index = True)
 
-areas = gs.benchmarking.auroc_and_aupr(
+stats = gs.benchmarking.calculate_auroc_and_aupr(
 	full_network = estimated_network,
 	true_network = true_network,
 	metrics = metrics,
+	)
+gs.benchmarking.plot_auroc_and_aupr(
+	stats = stats,
 	model_name = model_name,
 	output_dir = output_dir,
 	fix_ylim = False)
@@ -78,6 +89,5 @@ top_k_accuracy = gs.benchmarking.calculate_dspin_stats.top_k_accuracy(
 	inferred_network = estimated_network,
 	true_network = true_network,
 	fraction_of_K = 1)
-
-print({**areas, 'EPR': epr, 'top_K_acc': top_k_accuracy})
-
+stats.pop('plot_metrics')
+print({**stats, 'EPR': epr, 'top_K_acc': top_k_accuracy})

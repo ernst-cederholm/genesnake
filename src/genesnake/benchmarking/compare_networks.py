@@ -11,6 +11,12 @@ def compare_networks(
 	Function for comparing networks and returning performance statistics.
 	Allows to exclude diagonal and/or consider sign in a network.
 
+	WARNING:
+		This function modifies the networks.
+		Normally I wouldn't write it as such, but since this
+		is on the hot path of the benchmarking, I'll let it be.
+		It bit me once so far. If it keeps happening I might change it.
+
 	networks
 		Iterable of matrix likes.
 		Can be length 1.
