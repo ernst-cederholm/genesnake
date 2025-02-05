@@ -1,39 +1,10 @@
 
 
-Inbox
-    Convert from spaces to tabs, and to linux file endings in
-            among other files grn_inference.py
-    I don't think Genesnake properly compensates when excluding diagonal
-            from benchmarking, making the benchmark slightly biased
-        From notes
-            Not sure excluding the diagonal is well designed
-                    in Genesnake benchmarking
-                excluding it, the results seem biased to be slightly
-                        lower than 0.5
-                Maybe it just counts the diagonal as misses, should check
-                Yes, code looks like it
-                    If fills diagonals with 0s
-                    Then it counts TPs, ie non-0 in agreement
-                    Then it calculates other stats as stat - TP
-                    So it probably never adjusts to actually
-                            not consider the diagonals in
-                            the benchmark, they just end up being
-                            ,, true negatives?
-                        Hmm, doesn't quite add up
-                        Should look into it a bit more
-    Genesnake could consider adding installation instructions for conda
-        Helped Dirk with his failing genesnake install
-        He's using conda
-        The instructions use pip
-        So, probably not compatible
-    Getting Y and P from Y only
-    Converting between matrix and edgelist formats
+Inbox. Not considered yet. A place to dump ideas before they are forgotten
 
 
 
-
-
-Considered. Won't do for now
+Considered. Not urgent. Pending for future
     genesnake import takes long time
         Maybe good to simplify and change import
             Don't include everything?
@@ -47,6 +18,7 @@ Considered. Won't do for now
     Add support for edgelist / sparse matrices in genesnake? 
         so we can add every edge separately for highest
                 resolution ROC and PR plots
+            This is now possible, since rewriting the cutoff handling
         Might be able to convert to edge list via sparse matrices
             edgelists and sparse matrix are similar
         Supporting sparse matrices would be very nice too
@@ -56,7 +28,7 @@ Considered. Won't do for now
             I'll let it sit for a while
     Fix the annoying package structure?
         Imports in inits
-        Might make hot reloading easier
+        Fixing this might make hot reloading easier
             Doesn't work now, and docs for reloading Python
                     modules say it doesn't
                     work when modules import other modules
@@ -75,6 +47,47 @@ Considered. Won't do for now
         I'll let this sit for now
         I haven't verified that the methods even run, 
                 except for lsco and lscon
+        This is related to
+            The interface to inference methods is very restrictive
     Update package metadata
         Well, when I'm on master and feel like I own it, I'll do
+    Genesnake could consider adding installation instructions for conda
+        Helped Dirk with his failing genesnake install
+        He's using conda
+        The instructions use pip
+        So, probably not compatible
+        This is probably not a priority
+            Let's see that we get more external users that also
+                    cannot adapt from conda before starting to support
+                    secondary installation procedures
+                Supporting custom secondary installation systems
+                        feels sketchy even in the best case
+                    Why try to take on that extra complexity?
+    Add utility functions
+        List
+            Getting Y and P from Y only
+            Converting between matrix and edgelist formats
+            Add a function to shuffle a matrix
+                I keep reimplementing that in scripts
+        I might add as I go or upon request from others
+    The interface to inference methods is very restrictive
+        And I am not sure it's smart to force the same interface
+                on all
+        For example, it stops me from letting zscore consider
+                if we are doing knockdowns or overexpressions
+                in a good way
+        Consider rewriting so different methods can have different
+                interfaces
+        Let's for now await clarity on what type of package
+                genesnake will be
+            Whether Genesnake will be considered a genespider port
+                    or not seems to be in the balance
+            The other option is that it focuses solely on the novel
+                    data simulation parts, accompanying that
+                    publication
+    Make zscore handle both knockdowns and overexpressions
+        Right now it assumes knockdowns
+        Let's first see if we get that far
+
+
 
