@@ -57,7 +57,7 @@ def benchmark(
 	metrics = pd.concat(ms, axis = 0, ignore_index = True)
 
 	output_dir = Path(output_dir)
-	output_dir.mkdir(exist_ok = True)
+	output_dir.mkdir(exist_ok = True, parents = True)
 	metrics.to_csv(
 		path_or_buf = output_dir / f'benchmark_stats_{model_name}.csv',
 		sep = '\t', header = True, index = True)
