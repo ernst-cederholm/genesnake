@@ -19,8 +19,8 @@ P = M.perturbation # perturbation (P) matrix
 true_network = M.network
 # An example GRN inference with normalized least squares regression (LSCON)
 # Hillerton et al. 2022
-estimated_network = gs.inference.infer_networks(Y = Y, P = P, method = 'lscon')
-estimated_network = estimated_network.transpose()
+estimated_network = gs.inference.infer_networks(
+	Y = Y.T, P = P.T, method = 'zscore')
 # Benchmark. A high level interface that doesn't expose all options.
 # Similar can be done manually like below
 model_name = 'Tutorial_LSCON'

@@ -36,18 +36,22 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 	Y = deepcopy(Y)
 
 	if method == "lsco":  # least squares, works OK
+		P = P.T
+		Y = Y.T
 		aest = np.matmul(-P, np.linalg.pinv(Y))
 		aest.index = P.index
 		aest.columns = P.index
-		return aest
+		return aest.T
 	if method == "lscon":  # normalized least squares, works OK
+		P = P.T
+		Y = Y.T
 		aest = np.matmul(-P, np.linalg.pinv(Y))
 		aest = pd.DataFrame(aest)
 		for column in aest:
 			aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
 		aest.index = P.index
 		aest.columns = P.index
-		return aest
+		return aest.T
 	if method == "zscore":
 		"""
 		Most of notation and code according to the zscore method from 
