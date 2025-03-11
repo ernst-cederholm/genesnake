@@ -1,0 +1,9 @@
+
+# There are a few zip files used by FFLATT at runtime in here 
+# that should be included in the distribution archive
+graft src/genesnake/grn
+
+# Relevant documentation:
+# https://packaging.python.org/en/latest/specifications/pyproject-toml/#arbitrary-tool-configuration-the-tool-table
+# https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+# https://setuptools.pypa.io/en/latest/userguide/miscellaneous.html#using-manifest-in
