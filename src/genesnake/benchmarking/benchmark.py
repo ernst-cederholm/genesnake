@@ -1,4 +1,5 @@
 
+import numpy as np
 import pandas as pd
 from pathlib import Path
 from .compare_networks import compare_networks
@@ -35,6 +36,12 @@ def benchmark(
 			'It seems either index or columns differs between true_network' +
 			' and estimated_network. Are they sorted the same?'
 			)
+	for net_name, net in zip(
+			['estimated_network', 'true_network'],
+			[estimated_network, true_network]
+			):
+		if np.isnan(net).any().any():
+			print(f'Warning: Discovered NaN values in {net_name}. If not intentional, this might give inaccurate benchmark results')
 
 	cutoffs = calculate_cutoffs(estimated_network)
 	# Retain a copy of the original estimated network, since
