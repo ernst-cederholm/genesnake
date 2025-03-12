@@ -6,7 +6,7 @@ from .calculate_auroc_and_aupr import calculate_auroc_and_aupr
 from .plot_auroc_and_aupr import plot_auroc_and_aupr
 from .calculate_cutoffs import calculate_cutoffs
 from .cut_network import cut_network
-from . import calculate_dspin_stats
+from . import calculate_beeline_stats
 
 def benchmark(
 		estimated_network,
@@ -71,11 +71,11 @@ def benchmark(
 		model_name = model_name,
 		output_dir = output_dir
 		)
-	epr = calculate_dspin_stats.early_precision_rate(
+	epr = calculate_beeline_stats.early_precision_rate(
 		inferred_network = estimated_network,
 		true_network = true_network,
 		)
-	top_k_accuracy = calculate_dspin_stats.top_k_accuracy(
+	top_k_accuracy = calculate_beeline_stats.top_k_accuracy(
 		inferred_network = estimated_network,
 		true_network = true_network,
 		)

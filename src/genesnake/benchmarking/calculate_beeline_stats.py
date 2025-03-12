@@ -58,6 +58,6 @@ def top_k_accuracy(
 	top_K_network[abs_net < cutoff] = 0
 	precision = gs.benchmarking.compare_networks(
 		[top_K_network], true_network,
-		exclude_diag=False, include_sign=False
+		exclude_diag = True, include_sign = False
 		)['ppv']
 	return(float(precision))
