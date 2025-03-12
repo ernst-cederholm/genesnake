@@ -56,14 +56,14 @@ def calculate_cutoffs(
 			stop = np.log10(len(sorted_elements) - 1),
 			num = round(num_cutoffs / 2)).astype(int))
 		cutoffs_logspace = np.flip(np.flip(sorted_elements)[logspace_indices])
-		cutoffs = np.concat((cutoffs_linspace, cutoffs_logspace))
+		cutoffs = np.concatenate((cutoffs_linspace, cutoffs_logspace))
 
 	# Add a cutoff that is smaller than 0, so that at least
 	# one full network is returned.
 	# Similarly, add a cutoffs that is guaranteed to lead to an empty network.
 	# Covering the whole range of edge amplitudes ensures that
 	# ROC and PR curves are complete.
-	cutoffs = np.sort(np.concat(
+	cutoffs = np.sort(np.concatenate(
 		(
 			[-1],
 			cutoffs,
