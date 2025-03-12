@@ -52,7 +52,7 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 		aest.index = P.index
 		aest.columns = P.index
 		return aest.T
-	if method == "zscore":
+	if method == "zscore_ab":
 		"""
 		Most of notation and code according to the zscore method from 
 		the DREAM 3 paper. Search for z-score in the paper to find 
