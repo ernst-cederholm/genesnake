@@ -3,7 +3,7 @@ import pandas as pd
 
 def compare_networks(
 		networks,
-		true_network,
+		reference_network,
 		exclude_diag = True,
 		include_sign = False
 		):
@@ -20,7 +20,7 @@ def compare_networks(
 	networks
 		Iterable of matrix likes.
 		Can be length 1.
-	true_network
+	reference_network
 		matrix like
 	"""
 	TPo = []
@@ -54,7 +54,7 @@ def compare_networks(
 		if (exclude_diag):
 
 			net1 = np.array(networks[n])
-			net2 = np.array(true_network)
+			net2 = np.array(reference_network)
 			m = np.full(shape = net1.shape, fill_value = False)
 			np.fill_diagonal(m, val = True)
 			net1 = np.ma.masked_array(net1, mask = m)
@@ -62,7 +62,7 @@ def compare_networks(
 
 		else:
 			net1 = np.array(networks[n])
-			net2 = np.array(true_network)
+			net2 = np.array(reference_network)
 
 		S = len(np.nonzero(net1)[0])/net1.shape[0]
 		So.append(S)

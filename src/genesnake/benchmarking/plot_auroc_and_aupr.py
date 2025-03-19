@@ -1,51 +1,70 @@
 
 import matplotlib.pyplot as plt
 from pathlib import Path
+from sklearn.metrics import roc_curve
+from sklearn.metrics import precision_recall_curve
 
 def plot_auroc_and_aupr(
 		stats,
-		model_name,
-		output_dir,
-		fix_ylim = False
+		method_name,
+		plot_dir,
+		fix_pr_ylim = False
 		):
 
+	def make_title(method_name, suffix):
+		if method_name is not None:
+			title = f'{method_name}_{suffix}'
+		else:
+			title = suffix
+		return(title)
+
+	plot_dir = Path(plot_dir)
+	plot_dir.mkdir(exist_ok = True)
+
 	plot_metrics = stats['plot_metrics']
-	Path(output_dir).mkdir(exist_ok = True)
+
+
+
+
 
 	plt.close()
 	plt.plot(
-		plot_metrics['FPRate'], plot_metrics['TPRate'], 
+		plot_metrics['fpr'], plot_metrics['tpr'],
 		color = 'tab:blue', linestyle = 'solid',
 		label = 'Observed')
 	plt.plot(
-		plot_metrics['FPRate_extension'], 
-		plot_metrics['TPRate_extension'], 
+		plot_metrics['fpr_extension'],
+		plot_metrics['tpr_extension'],
 		color = 'tab:blue', linestyle = 'dashed',
 		label = 'Extended'
 		)
 	plt.xlim((0, 1))
 	plt.ylim((0, 1.01))
-	plt.xlabel('FP Rate')
-	plt.ylabel('TP Rate')
+	plt.xlabel('False positive rate')
+	plt.ylabel('True positive rate')
 	plt.legend()
 	plt.text(
 		0.4, 
 		0.1, 
 		f'AUROC (extended) = {stats["AUROC"]:.3}',
 		)
-	title = f'{model_name}_ROC_curve'
+	title = make_title(method_name, 'ROC')
 	plt.title(title)
 	plt.tight_layout()
 	filename = f'{title}.svg'
-	plt.savefig(output_dir / filename)
+	plt.savefig(plot_dir / filename)
+
+
+
+
 
 	plt.close()
-	plt.plot(plot_metrics['Recall'], plot_metrics['Precision'],
+	plt.plot(plot_metrics['recall'], plot_metrics['precision'],
 		color = 'tab:blue', linestyle = 'solid',
 		label = 'Observed')
 	plt.plot(
-		plot_metrics['Recall_extension'], 
-		plot_metrics['Precision_extension'],
+		plot_metrics['recall_extension'],
+		plot_metrics['precision_extension'],
 		color = 'tab:blue', linestyle = 'dashed',
 		label = 'Extended')
 	plt.xlabel('Recall')
@@ -54,7 +73,7 @@ def plot_auroc_and_aupr(
 	# When AUPR is really shit, one cannot see the shape of it
 	# because it's just a line at the bottom. But the shape is 
 	# useful to check if shape looks sane. Thus the option
-	if fix_ylim:
+	if fix_pr_ylim:
 		top = 1.1
 		plt.ylim((0, top))
 	else:
@@ -68,10 +87,9 @@ def plot_auroc_and_aupr(
 		0.4, top * 0.7,
 		'\n'.join([l1, l2]),
 		)
-	title = f'{model_name}_PR_curve'
+	title = make_title(method_name, 'PR')
 	plt.title(title)
 	plt.tight_layout()
 	filename = f'{title}.svg'
 	plt.savefig(
-		output_dir / filename)
-
+		plot_dir / filename)

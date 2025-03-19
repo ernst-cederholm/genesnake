@@ -44,39 +44,43 @@
     # Citation
         # Pratapa A, Jalihal AP, Law JN, Bharadwaj A, Murali TM. Benchmarking algorithms for gene regulatory network inference from single-cell transcriptomic data. Nat Methods. 2020 Feb;17(2):147-154. doi: 10.1038/s41592-019-0690-6. Epub 2020 Jan 6. PMID: 31907445; PMCID: PMC7098173.
 
-print('Imports')
 from pathlib import Path
 import pickle
 import genesnake as gs
+import pandas as pd
 
-print('Main')
-def main():
+input_dir = Path('inputs')
+output_dir = Path('outputs')
+[d.mkdir(exist_ok = True) for d in (input_dir, output_dir)]
 
-    input_dir = Path('inputs')
-    output_dir = Path('outputs')
-    [d.mkdir(exist_ok = True) for d in (input_dir, output_dir)]
+model_type = 'lsco'
+types_of_data = ['regular', 'shuffledYnP']
 
-    model_type = 'lsco'
-    types_of_data = ['regular', 'shuffledYnP']
+print('Read data')
+sorted_networks_cache_path = input_dir / 'sorted_networks.pkl'
+with open(sorted_networks_cache_path, 'rb') as f:
+    sorted_networks = pickle.load(f)
+true_network = sorted_networks.pop('true')
 
-    print('Read data')
-    sorted_networks_cache_path = input_dir / 'sorted_networks.pkl'
-    with open(sorted_networks_cache_path, 'rb') as f:
-        sorted_networks = pickle.load(f)
-    true_network = sorted_networks.pop('true')
+all_stats = {}
 
-    for data_type in types_of_data:
+for data_type in types_of_data:
 
-        model_name = f'{model_type}_{data_type}'
-        estimated_network = sorted_networks[model_name]
+    model_name = f'{model_type}_{data_type}'
+    estimated_network = sorted_networks[model_name]
 
-        print(f'Benchmarking model: {model_name}')
-        stats = gs.benchmarking.benchmark(
-            estimated_network = estimated_network,
-            true_network = true_network,
-            output_dir = output_dir,
-            model_name = model_name,
-            )
-        print(stats)
+    print(f'Benchmarking model: {model_name}')
+    stats = gs.benchmarking.benchmark(
+        estimated_network = estimated_network,
+        reference_network = true_network,
+        plot_dir = output_dir,
+        method_name = model_name,
+        )
+    print(stats)
+    all_stats[model_name] = stats
 
-main()
+df = pd.DataFrame(all_stats).T
+df.index.name = 'model_name'
+df.to_csv(output_dir / 'model_statistics.csv')
+
+

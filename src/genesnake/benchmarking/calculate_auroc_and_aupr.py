@@ -3,9 +3,9 @@
 # calculates and plots ROC and PR curves along with the areas under them
 
 import numpy as np
+import pandas as pd
 from .compare_networks import compare_networks
 import math
-from .calculate_ERMA import calculate_ERMA
 import copy
 
 
@@ -53,25 +53,20 @@ def calculate_ROC_extension(TPRate_end, FPRate_end):
 			learning, pages 233–240, Pittsburgh, Pennsylvania, 2006.
 			ACM.
 	"""
-	TPRate_extension, FPRate_extension  = [
+	tpr_extension, fpr_extension  = [
 		[var, 1] for var in (TPRate_end, FPRate_end)]
-	return(TPRate_extension, FPRate_extension)
+	return(tpr_extension, fpr_extension)
 
 
 
 
 def calculate_PR_extension(
-	true_network,
-	last_predicted_network,
-	exclude_diag,
-	include_sign,
+	reference_network,
+	estimated_network,
 	):
 	"""
 	Input networks are in matrix form, not edge list. This is for compatibility with the rest of genesnake. For this specific function, edge list would probably have been more convenient.
 	
-	last_predicted_network is the network with the highest
-	recall, ie the least stringent filtering of links.
-
 	Returns dict: {label: array}, 
 	where label is in ('recall', 'precision')
 
@@ -98,31 +93,16 @@ def calculate_PR_extension(
 		# the input networks. compare_networks can modify it's inputs
 		# for performance reasons (that are not relevant here since
 		# this is not on the hot path of the benchmarking).
-		[copy.deepcopy(last_predicted_network)],
-		copy.deepcopy(true_network),
-		exclude_diag = exclude_diag,
-		include_sign = include_sign
+		[copy.deepcopy(estimated_network)],
+		copy.deepcopy(reference_network),
+		# diagonal is already excluded. Normally this function
+		# would take a square matrix, but now it's a 1D array
+		# from flattening the networks without diagonals
+		exclude_diag = False,
 		)
 
-
-	# Problem below:
-	# Code below assumes boolean networks.
-	# For example P = true_network.sum().sum() to get the true positives
-	# So I need options for boolean vs continuous networks here as well?
-	#
-	# No, these calculations should always use boolean.
-	# Refer to compare_networks if needed.
-	# What I might need is an option to include sign though...
-	# 
-	# compare_networks handles this already. Can I utilise that?
-	# The only quantity that looks off is P.
-	# P = TP + FN
-	# I'll try that!
-	# Seems to work ^^
-
 	# Calculate the PRC extension according to DREAM2
-	T = math.prod(true_network.shape)  # Number of possible edges
-	# P = true_network.sum().sum()  # Number of true positives
+	T = math.prod(reference_network.shape)  # Number of possible edges
 	P = int(stats['tp'] + stats['fn'])
 	TPL = int(stats['tp'])
 	FPL = int(stats['fp'])
@@ -140,75 +120,126 @@ def calculate_PR_extension(
 		rho = (P - TPL) / (T - L)
 		p = rho * (P * r_) / (P * (r_ - rL) + L * rho)
 
-	return({'recall': r_, 'precision': p})
+	return(r_, p)
 
 
 
 
 def calculate_auroc_and_aupr(
-	full_network, 
-	true_network, 
-	metrics, 
-	exclude_diag = True,
-	include_sign = False,
+	estimated_network,
+	reference_network,
 	):
 	"""
-	Return AUROC and AUPR
-
 	Extends ROC linearly to (1,1), and AUPR according to DREAM2. See code for more details and references.
 	"""
+	import sklearn.metrics
 
-	sparsity_order = np.argsort(metrics.s)
-	outs = metrics.iloc[sparsity_order, :]
+	m = np.full(shape = estimated_network.shape, fill_value = False)
+	np.fill_diagonal(m, val = True)
+	def exclude_diagonal_and_linearise(array):
+		return(np.ma.masked_array(array, mask = m).ravel().compressed())
+	estimated_network_lin = exclude_diagonal_and_linearise(estimated_network)
+	reference_network_lin = exclude_diagonal_and_linearise(reference_network)
+	estimated_network = np.abs(estimated_network_lin)
+	reference_network = reference_network_lin
 
-	TPRate = outs.tpr
-	Recall = TPRate  # It's just different names for the same thing
-	FPRate = outs.fpr
-	Precision = outs.ppv
+	stats = {}
 
-	TPRate_extension, FPRate_extension = calculate_ROC_extension(
-		TPRate.iloc[-1], 
-		FPRate.iloc[-1])
-	AUROC = np.trapz(
-		list(TPRate) + list(TPRate_extension), 
-		x = list(FPRate) + list(FPRate_extension)
+
+
+	tmp = sklearn.metrics.roc_curve(
+		y_true = reference_network,
+		y_score = estimated_network,
+		)
+	# Remove the extension to (1, 1) that roc_curve adds
+	fpr, tpr, _ = [var[:-1] for var in tmp]
+	# Get it again. See function docstring if curious. Also nice
+	# to have the extension bit in separate variables for plotting later.
+	tpr_extension, fpr_extension = calculate_ROC_extension(tpr[-1], fpr[-1])
+	stats['AUROC'] = np.trapz(
+		np.concatenate((tpr, tpr_extension)),
+		x = np.concatenate((fpr, fpr_extension))
 		)
 
-	PRe = calculate_PR_extension(
-		true_network = true_network,
-		last_predicted_network = full_network,
-		exclude_diag = exclude_diag,
-		include_sign = include_sign,
+
+
+	pr_curve = sklearn.metrics.precision_recall_curve(
+		y_true = reference_network,
+		y_score = estimated_network,
+		# Lighter plots. Sounds like good idea.
+		# Default for ROC curve but not here.
+		drop_intermediate = True,
 		)
-	Recall_extension = PRe['recall']
-	Precision_extension = PRe['precision']
-	Precision = Precision.bfill()
-	AUPR = np.trapz(
-		list(Precision) + list(Precision_extension),
-		x = list(Recall) + list(Recall_extension)
+	# Rest of code expects these arrays the other way around,
+	# ie from low to high recall.
+	# precision_recall_curve makes a linear extension to recall = 1,
+	# which is inappropriate for PR curves.
+	# See calculate_PR_extension for more details.
+	# Thus, remove this extension which is stored in the last element.
+	precision, recall, thresholds = [
+		np.flip(var)[:-1] for var in pr_curve]
+	if len(precision) == 1:
+		print(
+			"Warning: All elements of the estimated network excluding "
+			"diagonal seems to be equal. If this is surprising it might "
+			"indicate a bug."
+			)
+	# Precision is undefined for an empty network / set of predictions,
+	# which happens at the low density extreme of a PR curve. Seems that
+	# precision_recall_curve sets this undefined precision to 1. This is
+	# annoying when AUPR is very low, because it displays the y axis up to the
+	# maximum data point which makes most of the curve hard to distinguish.
+	# Instead, let the first precision value be the same as the first well
+	# defined precision value. This doesn't screw up the plots, and should also
+	# represent a better guess/impute than 1, which is often improbable,
+	# possibly inflating the AUPR in some fairly likely cases. At this point of
+	# the code, precision can be length 1, so cannot do
+	# precision[0] = precision[1]
+	# without triggering errors in some (valid, but corner) cases. Thus simply
+	# invalidate it for now and backfill later.
+	precision[0] = np.nan
+
+	# The last point added on by precision_recall_curve is
+	# the correct precision endpoint, so should be able to just
+	# feed that in here instead of the networks, and not have to
+	# call compare networks inside this function for that precision value.
+	#
+	# Edit; Well, that might be true, but the function uses
+	# several metrics from compare_networks that I don't have
+	# on hand here, so it makes little sense to substitute it if it works.
+	recall_extension, precision_extension = calculate_PR_extension(
+		reference_network = reference_network,
+		estimated_network = estimated_network,
 		)
 
-	# Calculate Exptected Random Model AUPR (ERMA)
-	ERMA = calculate_ERMA(true_network)
+	all_recall = np.concatenate((recall, recall_extension))
+	# Precision for an empty network is undefined, which
+	# sometimes lead to the first elements of precision
+	# being nan. Backfill those values with the first valid
+	# precision value.
+	all_precision = np.array(
+		pd.Series(
+			np.concatenate((precision, precision_extension))
+			).bfill()
+		)
+
+	stats['AUPR'] = np.trapz(
+		all_precision,
+		x = all_recall
+		)
 
 	return(
 		{
-			# The print format of AUROC and AUPR was annoying, specifying
-			# they were np.float64(the actual number)
-			'AUROC': float(AUROC),
-			'AUPR': float(AUPR),
-			'ERMA': ERMA,
+			**stats,
 			'plot_metrics': {
-				'TPRate': TPRate,
-				'TPRate_extension': TPRate_extension,
-				'FPRate': FPRate,
-				'FPRate_extension': FPRate_extension,
-				'Recall': Recall,
-				'Recall_extension': Recall_extension,
-				'Precision': Precision,
-				'Precision_extension': Precision_extension,
+				'tpr': tpr,
+				'tpr_extension': tpr_extension,
+				'fpr': fpr,
+				'fpr_extension': fpr_extension,
+				'recall': recall,
+				'recall_extension': recall_extension,
+				'precision': precision,
+				'precision_extension': precision_extension,
 				}
 			}
 		)
-
-
