@@ -38,6 +38,8 @@ def benchmark(
 			):
 		if np.isnan(net).any().any():
 			print(f'Warning: Discovered NaN values in {net_name}. If not intentional, this might give inaccurate benchmark results')
+	if not all(reference_network.dtypes == bool):
+		raise ValueError('The reference network should be boolean')
 
 	stats = {}
 	stats = calculate_auroc_and_aupr(
