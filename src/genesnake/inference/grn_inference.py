@@ -265,9 +265,9 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 		network = -network
 		network.index.name = 'regulator'
 		network.columns.name = 'target'
-		return(network)
+		return(network)	
 
-
+	raise ValueError('Unknown method name')
 
 
 
