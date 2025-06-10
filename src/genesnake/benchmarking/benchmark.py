@@ -28,7 +28,8 @@ def benchmark(
 			)
 	if not all(conditions):
 		raise ValueError(
-			'It seems either index or columns differs between reference_network' +
+			'It seems either index or columns differs between'
+			' reference_network'
 			' and estimated_network. Are they sorted the same?'
 			)
 	# Had to debug for this myself once, so added check for future //AB
