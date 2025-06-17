@@ -56,8 +56,17 @@ def top_k_accuracy(
 	cutoff = sorted(abs_net.flatten(), reverse = True)[K - 1]
 	top_K_network = copy.deepcopy(inferred_network)
 	top_K_network[abs_net < cutoff] = 0
-	precision = gs.benchmarking.compare_networks(
-		[top_K_network], reference_network,
-		exclude_diag = True, include_sign = False
-		)['ppv']
+
+	net1 = top_K_network.astype(dtype=bool)
+	# Should already be bool, but eh
+	net2 = reference_network.astype(dtype=bool)
+
+	TP = (net1 & net2).sum()
+	FP = net1.sum() - TP
+	TN = (~net1 & ~net2).sum()
+	FN = (~net1).sum() - TN
+
+	# precision
+	precision = TP / (TP + FP)
+
 	return(float(precision))

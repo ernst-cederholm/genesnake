@@ -134,18 +134,7 @@ def calculate_auroc_and_aupr(
 	"""
 	import sklearn.metrics
 
-	m = np.full(shape = estimated_network.shape, fill_value = False)
-	np.fill_diagonal(m, val = True)
-	def exclude_diagonal_and_linearise(array):
-		return(np.ma.masked_array(array, mask = m).ravel().compressed())
-	estimated_network_lin = exclude_diagonal_and_linearise(estimated_network)
-	reference_network_lin = exclude_diagonal_and_linearise(reference_network)
-	estimated_network = np.abs(estimated_network_lin)
-	reference_network = reference_network_lin
-
 	stats = {}
-
-
 
 	tmp = sklearn.metrics.roc_curve(
 		y_true = reference_network,

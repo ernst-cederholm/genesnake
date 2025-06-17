@@ -13,6 +13,7 @@ def benchmark(
 		plot_dir = None,
 		method_name = None,
 		fix_pr_ylim = False,
+		exclude_diagonal = True
 		):
 
 	# Differently sorted networks could be such a nasty bug,
@@ -42,6 +43,25 @@ def benchmark(
 	if not all(reference_network.dtypes == bool):
 		raise ValueError('The reference network should be boolean')
 
+
+	if exclude_diagonal:
+		m = np.full(shape = estimated_network.shape, fill_value = False)
+		np.fill_diagonal(m, val = True)
+		def exclude_diagonal_and_linearise(array):
+			return(np.ma.masked_array(array, mask = m).ravel().compressed())
+		estimated_network_lin = exclude_diagonal_and_linearise(
+			estimated_network)
+		reference_network_lin = exclude_diagonal_and_linearise(
+			reference_network)
+	else:
+		estimated_network_lin = np.array(estimated_network).flatten()
+		reference_network_lin = np.array(reference_network).flatten()
+
+	estimated_network = np.abs(estimated_network_lin)
+	reference_network = reference_network_lin
+
+
+
 	stats = {}
 	stats = calculate_auroc_and_aupr(
 		estimated_network = estimated_network,
@@ -56,7 +76,6 @@ def benchmark(
 		inferred_network = estimated_network,
 		reference_network = reference_network,
 		)
-
 	if plot_dir is not None:
 		plot_auroc_and_aupr(
 			stats = stats,

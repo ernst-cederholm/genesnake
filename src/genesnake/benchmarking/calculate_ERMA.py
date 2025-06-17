@@ -26,6 +26,7 @@ def calculate_ERMA(true_network):
 		Citation
 			Saito T, Rehmsmeier M. The precision-recall plot is more informative than the ROC plot when evaluating binary classifiers on imbalanced datasets. PLoS One. 2015 Mar 4;10(3):e0118432. doi: 10.1371/journal.pone.0118432. PMID: 25738806; PMCID: PMC4349800.
 	"""
+	# Works also for linearised networks, so it can be 1D
 	A = math.prod(true_network.shape)
 	P = len(np.array(true_network).nonzero()[0])
 	ERMA = P / A
