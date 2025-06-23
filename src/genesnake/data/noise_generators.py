@@ -109,6 +109,61 @@ class noise_gen:
         return data, noise
 
 
+
+    def make_gaussian_ab_mod(data,SNR):
+        """
+        Modified the other one to exclude the log normal noise,
+        and compute the standard deviation for the normal noise
+        based on the mean of the data instead of each data point
+        """
+        noise = np.zeros(data.shape)
+        elems = data.size
+        mean_val = np.mean(data) #NILS EDIT
+        stdE = mean_val/SNR #NILS EDIT
+        for i in range(data.shape[0]):
+            if len(data.shape)>1:
+                # L = np.zeros(data.shape[1])
+                for j in range(data.shape[1]):
+                    # No reason to keep remaking this L
+                    # Code is in a pretty shit state.
+                    # Will fix later though, not changing more than
+                    # necessary for comparison.
+                    # //AB
+                    # L[j] = np.random.lognormal(0.2,0.2)
+
+                    # stdE = data[i,j]/SNR
+                    #stdE = np.sqrt((stdE**2)+np.std(data)**2) #np.abs(data[i,j]/SNR)
+                    noise[i,j] = np.random.normal(1, stdE)
+            else:
+                #L = np.random.lognormal(0.1,0.1)
+                # stdE = np.abs(data[i]/SNR)
+                noise[i] = np.random.normal(1,stdE)
+        #data = data + noise
+        #data[np.where(data <= 0)]=0.0001
+        noise[np.where(noise<=0.000001)]=0.000001
+        # data = np.multiply(data,L)
+        
+        # if len(data.shape)>1:
+        #     data = np.multiply(data, L)
+
+        data = np.multiply(data,noise) + np.random.normal(0, 0.00008, data.shape)
+        #mask = data<=0
+        #mask = mask*np.random.uniform(0,min(1e-4,np.min(abs(data))),data.shape)
+
+        #data[np.where(data<=0)] = 0
+        #data = data+mask
+
+        return data, noise
+
+
+
+
+
+
+
+
+
+
     def make_micro_array_like(data,SNR):
         """
         Model for creating micro array like noise based on the implementation of a similar nature in the GeneNetWeaver paper and the

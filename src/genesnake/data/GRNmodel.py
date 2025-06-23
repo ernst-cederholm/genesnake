@@ -207,9 +207,21 @@ class GRNmodel(object):
             [data,noise] = noise_gen.make_repcor(self.noise_free_data.values,self.perturbation,SNR)
         elif noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
+
+        # AB mod
+        elif noise_model == "normal_ab_mod":
+            [data,noise] = noise_gen.make_gaussian_ab_mod(self.noise_free_data.values,SNR)
+
+
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
             noise = data-self.noise_free_data
+            if np.any(np.isinf(data)) or np.any(np.isinf(noise)):
+                raise ValueError(
+                    f'inf values in data or noise. The {noise_model} noise '
+                    'model is unstable for very low snrs. This may be '
+                    'the reason\n'
+                    )
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
             noise = noise_gen.make_sequencing_noise(self.noise_free_data.values, SNR)
             data = noise["ratios"] * self.noise_free_data.values
@@ -227,6 +239,7 @@ class GRNmodel(object):
         self.data = pd.DataFrame(data.round(6),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
         self.noise = pd.DataFrame(noise.round(6),index=self.noise_free_data.index,columns=self.noise_free_data.columns)
 
+
         # do the same for the control
         self.noise_free_steady_state_RNA = pd.Series(self.noise_free_steady_state_RNA,index=self.noise_free_data.index)
         # add noise based on selected models
@@ -235,6 +248,11 @@ class GRNmodel(object):
             [data,noise] = noise_gen.make_repcor(self.noise_free_steady_state_RNA.values,self.perturbation,SNR)
         elif noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.noise_free_steady_state_RNA.values,SNR)
+
+        # AB mod
+        elif noise_model == "normal_ab_mod":
+            [data,noise] = noise_gen.make_gaussian_ab_mod(self.noise_free_steady_state_RNA.values,SNR)
+
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
             print(self.noise_free_data.shape)
             data = noise_gen.make_micro_array_like(self.noise_free_steady_state_RNA.values,SNR)
