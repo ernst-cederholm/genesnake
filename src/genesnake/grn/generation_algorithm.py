@@ -885,7 +885,7 @@ def generate_artificial_network(
         
     else:
     	substrate_matrix = get_network_nucleus(
-        	interaction_matrix, motifs, motifs_network, min_size=nucleus_size, random_seed=random_seed
+        	interaction_matrix, motifs, motifs_network, min_size=nucleus_size, random_seed = np.random.randint(1,10000)
     	)
     network_params = get_network_params(substrate_matrix, config_file, verbose=False)
 

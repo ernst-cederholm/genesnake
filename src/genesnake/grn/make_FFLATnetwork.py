@@ -70,7 +70,7 @@ def make_FFLATTnetwork(self_loops=False,edge_bias=0.6,**kvargs):
     
     # generate FFL-network
     artificial_matrix_ffl = generate_artificial_network(
-                        interaction_matrix, settings, random_seed = np.random.randint(1,100),
+                        interaction_matrix, settings, random_seed = np.random.randint(1,10000),
                         motifs=motifs_ids_ffl, motifs_network=motifs_network,
                         nucleus=nucleus_network, network_size=int(settings["NETWORK_SIZE"]))
     
