@@ -81,7 +81,7 @@ def benchmark(
 			stats = stats,
 			method_name = method_name,
 			plot_dir = plot_dir,
-			fix_pr_ylim = False
+			fix_pr_ylim = fix_pr_ylim
 			)
 
 	stats.pop('plot_metrics')
