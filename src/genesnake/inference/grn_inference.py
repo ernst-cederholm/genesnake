@@ -3,7 +3,7 @@ import statistics
 import numpy as np
 import pandas as pd
 import sys
-from sklearn.linear_model import Lasso, ElasticNet
+from sklearn.linear_model import ElasticNet
 from sklearn import svm
 #from sklearn.metrics import precision_recall_curve, auc, roc_auc_score
 from scipy.stats import shapiro, kstest
@@ -149,6 +149,93 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 			out_net_tmp = pd.DataFrame(out_net_tmp)
 			aests.append(out_net_tmp)
 			return aests
+			# Probably broke as shit
+			# Note how it returns from this whole function
+			# when completing the solution for the first z in zvec
+			# The comment above says "works ok". How can that possibly be?
+			# It's not even returning according to the intended format..
+			# //AB
+	if method == 'lasso_density_5':
+		# Returns a lasso network with density close to 5, by optimising
+		# the alpha parameter using Brents root finding algorithm.
+		# Adapted from (the sensical parts of) the lasso method herein
+		# by Anton Björk.
+		#
+		# Format conventions used for this method:
+		# Data: [experiments/cells/observations x genes/variables]
+		# Output network: [regulators x targets]
+		P = P.T
+		Y = Y.T
+		def perturbation_lasso(Y, P, alpha):
+			from sklearn.linear_model import Lasso
+			lasso_mod = Lasso(alpha = alpha)
+			out_net_tmp = []
+			for i in range(P.shape[0]):
+				lasso_mod.fit(Y.transpose(), -P.iloc[i, :])
+				out_net_tmp.append(lasso_mod.coef_)
+			out_net = pd.DataFrame(
+				data = out_net_tmp,
+				index = Y.index,
+				columns = Y.index)
+			return(out_net)
+		def get_alpha_for_target_sparsity(
+				Y, P,
+				target_nonzeros_per_gene,
+				):
+			def sparsity_deviation(alpha):
+			    network = perturbation_lasso(Y, P, alpha)
+			    avg_nonzeros = np.mean(np.count_nonzero(network.values, axis=1))
+			    deviation = avg_nonzeros - target_nonzeros_per_gene
+			    # print(f"alpha = {alpha}, avg_nonzeros = {avg_nonzeros}, deviation = {deviation}")
+			    return(deviation)
+			from scipy.optimize import brentq
+			heuristic_lower_bound = 1e-10
+			heuristic_upper_bound = 1e2
+			try:
+				alpha = brentq(
+				    sparsity_deviation,
+				    a = heuristic_lower_bound,
+				    b = heuristic_upper_bound,
+				)
+			except RuntimeError as e:
+				print(e)
+				print(
+					'Brentq didnt finish with the default maximum iterations. '
+					'Trying one more time with higher max iterations'
+					)
+				alpha = brentq(
+				    sparsity_deviation,
+				    a = heuristic_lower_bound,
+				    b = heuristic_upper_bound,
+				    maxiter = 300
+				)
+			except ValueError as e:
+				print(e)
+				print(
+					'Seems the starting bracket did not include '
+					'the optimal sparsity. Trying a wider bracket, '
+					'along with higher maximum iterations'
+					)
+				alpha = brentq(
+				    sparsity_deviation,
+				    a = 1e-30,
+				    b = 1e30,
+				    maxiter = 300
+				)
+			# print(alpha)
+			return(alpha)
+		alpha = get_alpha_for_target_sparsity(
+			Y = Y,
+			P = P,
+			target_nonzeros_per_gene = 5,
+			)
+		network = perturbation_lasso(
+			Y = Y,
+			P = P,
+			alpha = alpha
+			)
+		network = network.T
+		return(network)
 	if method == "elnet":  # elastic net, works semi ok
 		aests = []
 		for z in zvec:
