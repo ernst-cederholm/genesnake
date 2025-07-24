@@ -207,12 +207,8 @@ class GRNmodel(object):
             [data,noise] = noise_gen.make_repcor(self.noise_free_data.values,self.perturbation,SNR)
         elif noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
-
-        # AB mod
-        elif noise_model == "normal_ab_mod":
-            [data,noise] = noise_gen.make_gaussian_ab_mod(self.noise_free_data.values,SNR)
-
-
+        elif noise_model == "normal_with_log_normal":
+            [data,noise] = noise_gen.make_gaussian_with_lognormal(self.noise_free_data.values,SNR)
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
             noise = data-self.noise_free_data
@@ -248,11 +244,8 @@ class GRNmodel(object):
             [data,noise] = noise_gen.make_repcor(self.noise_free_steady_state_RNA.values,self.perturbation,SNR)
         elif noise_model == "gaussian" or noise_model == "normal":
             [data,noise] = noise_gen.make_gaussian(self.noise_free_steady_state_RNA.values,SNR)
-
-        # AB mod
-        elif noise_model == "normal_ab_mod":
-            [data,noise] = noise_gen.make_gaussian_ab_mod(self.noise_free_steady_state_RNA.values,SNR)
-
+        elif noise_model == "normal_with_log_normal":
+            [data,noise] = noise_gen.make_gaussian_with_lognormal(self.noise_free_steady_state_RNA.values,SNR)
         elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
             print(self.noise_free_data.shape)
             data = noise_gen.make_micro_array_like(self.noise_free_steady_state_RNA.values,SNR)

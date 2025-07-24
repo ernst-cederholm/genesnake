@@ -58,7 +58,7 @@ class noise_gen:
 
 
 
-    def make_gaussian(data,SNR):
+    def make_gaussian_with_lognormal(data,SNR):
         """
         Function that wraps the numpy.random.normal function for easy use with the geneSNAKE GNRmodel data generation
         for adding white noise to experiemnts.
@@ -110,7 +110,7 @@ class noise_gen:
 
 
 
-    def make_gaussian_ab_mod(data,SNR):
+    def make_gaussian(data,SNR):
         """
         Modified the other one to exclude the log normal noise,
         and compute the standard deviation for the normal noise
