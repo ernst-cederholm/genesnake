@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import random
 
 def make_scalefree(N, S, alpha=1.2, pasign=0.62):
@@ -90,7 +91,15 @@ def make_scalefree(N, S, alpha=1.2, pasign=0.62):
     # Set diagonal to -1 (avoid self-loops)
     np.fill_diagonal(A, -1)
 
-    return A
+
+    gene_names = ["G"+str(i+1) for i in range(N)]
+    network = pd.DataFrame(
+        data = A.T,
+        index = gene_names,
+        columns = gene_names
+        )
+
+    return network
 
 
 # Example parameters
