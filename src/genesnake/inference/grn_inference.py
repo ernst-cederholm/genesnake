@@ -17,7 +17,11 @@ from copy import deepcopy
 
 
 
-def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
+def infer_networks(
+		Y, P, 
+		method, 
+		zvec = np.logspace(-5, 0, 100),
+		**kwargs):
 	"""
 	Function for inferring networks with various methods
 	INPUT:
@@ -155,17 +159,24 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 			# The comment above says "works ok". How can that possibly be?
 			# It's not even returning according to the intended format..
 			# //AB
-	if method == 'lasso_density_5':
-		# Returns a lasso network with density close to 5, by optimising
-		# the alpha parameter using Brents root finding algorithm.
+	if method == 'lasso_density':
+		# Returns a lasso network with density close to a target density, 
+		# by optimising the alpha parameter using Brents root finding algorithm.
 		# Adapted from (the sensical parts of) the lasso method herein
 		# by Anton Björk.
 		#
 		# Format conventions used for this method:
 		# Data: [experiments/cells/observations x genes/variables]
 		# Output network: [regulators x targets]
+
+		# Transposing for compatibility with lasso code that
+		# Uses the opposite conventions.
 		P = P.T
 		Y = Y.T
+
+		def block_format(string_):
+			import textwrap
+			return(' '.join(textwrap.dedent(string_).splitlines()))
 		def perturbation_lasso(Y, P, alpha):
 			from sklearn.linear_model import Lasso
 			lasso_mod = Lasso(alpha = alpha)
@@ -186,7 +197,7 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 			    network = perturbation_lasso(Y, P, alpha)
 			    avg_nonzeros = np.mean(np.count_nonzero(network.values, axis=1))
 			    deviation = avg_nonzeros - target_nonzeros_per_gene
-			    # print(f"alpha = {alpha}, avg_nonzeros = {avg_nonzeros}, deviation = {deviation}")
+			    print(f"alpha = {alpha}, avg_nonzeros = {avg_nonzeros}, deviation = {deviation}")
 			    return(deviation)
 			from scipy.optimize import brentq
 			heuristic_lower_bound = 1e-10
@@ -222,18 +233,57 @@ def infer_networks(Y, P, method, zvec = np.logspace(-5, 0, 100)):
 				    b = 1e30,
 				    maxiter = 300
 				)
-			# print(alpha)
+			print(f'{alpha = }')
 			return(alpha)
-		alpha = get_alpha_for_target_sparsity(
-			Y = Y,
-			P = P,
-			target_nonzeros_per_gene = 5,
-			)
-		network = perturbation_lasso(
-			Y = Y,
-			P = P,
-			alpha = alpha
-			)
+
+		target_density = kwargs['target_density']
+		n_genes = Y.shape[0]
+		
+		if target_density < 0:
+			import textwrap
+			raise ValueError(textwrap.dedent(
+				f'''
+				{target_density = }
+				Cannot make network with negative density
+				'''
+				))
+		if target_density * n_genes > n_genes ** 2:
+			print(block_format(
+				'''
+				The requested density is higher than a full network.
+				Returning full network instead.
+				The target density is given as average number of
+				links per gene.
+				'''
+				))
+			target_density = n_genes
+			network = perturbation_lasso(
+				Y = Y,
+				P = P,
+				alpha = 0
+				)
+		else:
+			alpha = get_alpha_for_target_sparsity(
+				Y = Y,
+				P = P,
+				target_nonzeros_per_gene = target_density,
+				)
+			network = perturbation_lasso(
+				Y = Y,
+				P = P,
+				alpha = alpha
+				)
+
+		avg_nonzeros = np.mean(np.count_nonzero(network.values, axis=1))
+		print(f'{avg_nonzeros = }')
+		if abs(avg_nonzeros - target_density) > 0.1 * target_density:
+			raise ValueError(block_format(
+				'''
+				The density of the network found differs more than
+				10% from the target density.
+				'''
+				))
+
 		network = network.T
 		return(network)
 	if method == "elnet":  # elastic net, works semi ok
