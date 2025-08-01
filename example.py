@@ -9,7 +9,7 @@ genes = 100
 self_loops = True
 cell_replicates = 3
 snr = 3
-noise_model = 'normal_ab_mod'
+noise_model = 'normal'
 using_fold_change_data = True
 
 
