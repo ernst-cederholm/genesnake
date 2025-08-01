@@ -1,41 +1,11 @@
 # GeneSNAKE 
 
-Repository for the python package genesnake. 
-The repository contains a few different things but the main things are:
-
-- genesnake - the main tool, this contains all functions for data and network simulation, benchmarking of infered regulatory networks and the relevant files allowing this content to be imported in python.
-- methods - a folder for methods which infer gene regulatory networks used either by geneSPIDER (https://bitbucket.org/sonnhammergrni/genespider/src/master/) or that were used in relation to genesnake. 
-
+Repository for the python package genesnake for Gene Regulatory Networks (GRNs), with network and data simulation, network inference, and benchmarking.
 
 # GeneSNAKE tutorial
 [Visit the website with the GeneSNAKE tutorial](https://sonnhammer-tutorials.bitbucket.io/genesnake.html)
 
-An example script of how to use most function in genesnake is avalible in the example.py script. For more detailed instructions most of the complex functions to use are in the GRNmodel.py script which contains detailed instruction on how to use it in the doc-header. 
-
-
-# Antons genesnake branch
-
-Will make several changes to various things, so made my own branch. Will merge parts into master as necessary and permitted. Figured I should add my changes and bugfixes as I come across them instead of waiting and trying to remember what it was about.
-
-There used to be a number of tests lying in the repository root dir. I ran all with 
-run_tests.py
-and they don't give pass / fail outputs. Instead lots of data is printed. In the interest of not getting held up for a long time wrapping my head around how to interpret and use those tests, I have not considered them. I put them in 
-tests/
-. The tests I actually consider on this branch is in
-anton_tests
-.
-
-
-
-
-
-
-
-
-
-
-
-
+example.py briefly shows how to use Genesnake. For more detailed instructions most of the complex functions are in GRNmodel.py which contains detailed usage instructions in docstrings.
 
 # Contributing
 
