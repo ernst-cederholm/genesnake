@@ -1,3 +1,18 @@
+
+# Custom stuff here  //AB
+
+anton_tests/test_gene_snake_benchmarking_tutorial/outputs
+anton_tests/test_gene_snake_benchmarking_tutorial/outputs2
+
+anton_tests/test_benchmarking_Replogle_lsco/inputs
+anton_tests/test_benchmarking_Replogle_lsco/outputs
+
+anton_tests/test_benchmarking_Replogle_Dspin_Beeline/inputs
+anton_tests/test_benchmarking_Replogle_Dspin_Beeline/outputs
+
+
+
+
 # emacs tmp files
 # -*- mode: gitignore; -*-
 *~

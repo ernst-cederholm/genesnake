@@ -1,0 +1,14 @@
+numpy
+pandas
+matplotlib
+scipy
+joblib
+numba
+tqdm
+networkx
+statsmodels
+seaborn
+jinja2
+scikit-learn
+plotly
+umap-learn
