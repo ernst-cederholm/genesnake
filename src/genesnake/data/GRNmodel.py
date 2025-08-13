@@ -209,7 +209,7 @@ class GRNmodel(object):
             [data,noise] = noise_gen.make_gaussian(self.noise_free_data.values,SNR)
         elif noise_model == "normal_with_log_normal":
             [data,noise] = noise_gen.make_gaussian_with_lognormal(self.noise_free_data.values,SNR)
-        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
+        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array" or noise_model == 'log_normal':
             data = noise_gen.make_micro_array_like(self.noise_free_data.values,SNR)
             noise = data-self.noise_free_data
             if np.any(np.isinf(data)) or np.any(np.isinf(noise)):
@@ -219,10 +219,24 @@ class GRNmodel(object):
                     'the reason\n'
                     )
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
-            noise = noise_gen.make_sequencing_noise(self.noise_free_data.values, SNR)
-            data = noise["ratios"] * self.noise_free_data.values
+            # The RNA sequencing like noise model applies noise
+            # to the initial state at the same time as the remainder
+            # of the observations. Thus, concatenate, calculate noise,
+            # split, apply noise to data, and keep the initial state
+            # noise for later application
+            tmp = pd.concat(
+                (self.noise_free_data, self.noise_free_steady_state_RNA),
+                axis = 1
+                )
+            all_noise = noise_gen.make_sequencing_noise(tmp, SNR)
+            noise_ratios = all_noise['ratios']
+            # initial_state_noise is applied to initial state array later.
+            # See code below
+            initial_state_noise = noise_ratios.iloc[:, -1]
+            data_noise = noise_ratios.iloc[:, :-1]
+            data = data_noise.values * self.noise_free_data
             data = data.to_numpy()
-            noise = noise["ratios"].values
+            noise = data_noise.values
         else:
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
@@ -246,15 +260,18 @@ class GRNmodel(object):
             [data,noise] = noise_gen.make_gaussian(self.noise_free_steady_state_RNA.values,SNR)
         elif noise_model == "normal_with_log_normal":
             [data,noise] = noise_gen.make_gaussian_with_lognormal(self.noise_free_steady_state_RNA.values,SNR)
-        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array":
+        elif noise_model == "microarray" or noise_model == "array_like" or noise_model == "array" or noise_model == 'log_normal':
             print(self.noise_free_data.shape)
             data = noise_gen.make_micro_array_like(self.noise_free_steady_state_RNA.values,SNR)
             #noise = data-self.noise_free_data
         elif noise_model == "rnaseq" or noise_model == "rnaseq_like" or noise_model == "coverage_nb":
-            noise = noise_gen.make_sequencing_noise(self.noise_free_steady_state_RNA.values, SNR)
-            data = noise["ratios"] * self.noise_free_steady_state_RNA
+            # The RNA sequencing like noise model applies noise
+            # to the initial state at the same time as the remainder
+            # of the observations. Thus the noise is precalculated from
+            # earlier.
+            data = initial_state_noise.values * self.noise_free_steady_state_RNA
             data = data.to_numpy()
-            noise = noise["ratios"].values
+            noise = initial_state_noise.values
         else:
             if noise_model != None:
                 print("WARNING unknown noise model selected in genesnake.GRNmodel.simulate_data. While the simulation is fine no noise have been added to your data.")
