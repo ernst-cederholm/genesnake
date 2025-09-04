@@ -5,6 +5,7 @@ from pathlib import Path
 from .calculate_auroc_and_aupr import calculate_auroc_and_aupr
 from .plot_auroc_and_aupr import plot_auroc_and_aupr
 from .calculate_ERMA import calculate_ERMA
+from .calculate_f1_scores import calculate_f1_scores
 from . import calculate_beeline_stats
 
 def benchmark(
@@ -76,6 +77,10 @@ def benchmark(
 		inferred_network = estimated_network,
 		reference_network = reference_network,
 		)
+	stats['f1_scores'] = calculate_f1_scores(
+		estimated_network = estimated_network,
+		reference_network = reference_network,
+		)
 	if plot_dir is not None:
 		plot_auroc_and_aupr(
 			stats = stats,
@@ -83,6 +88,5 @@ def benchmark(
 			plot_dir = plot_dir,
 			fix_pr_ylim = fix_pr_ylim
 			)
-
 	stats.pop('plot_metrics')
 	return(stats)
