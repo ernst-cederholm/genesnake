@@ -1,24 +1,23 @@
-"""
-Main init file for the geneSNAKE module
-Imports all name space variables in to the env so that geneSNAKE can be called 
-easily called.
-To limit how many sub calls are needed
-Classes should in general be imported so that they can be used as: 
-    genesnake.class.function 
-Stand alone functions should be imported so that they are in the right sub group e.g.
-    network·random_network(10,10)
-"""
+import importlib
 
-# import the classes that should be under genesnake.class
-from .data.GRNmodel import GRNmodel
+__all__ = ["GRNmodel", "grn", "data", "util", "benchmarking", "analysis", "inference"]
 
-# import the entier folders and corresponding functions
-# Note any function added to a directory here needs to be added in the
-# corresponding __init__ e.g. for fflat_network the network/__init__
-# must have the line from .FFLAT import FFLAT
-from . import grn
-from . import data
-from . import util 
-from . import benchmarking
-from . import analysis
-from . import inference
+# Map class names to (module_path, class_name) tuples
+_LAZY_CLASSES = {
+    "GRNmodel": ("data.GRNmodel", "GRNmodel"),
+}
+
+# Subpackages
+_SUBPACKAGES = {"grn", "data", "util", "benchmarking", "analysis", "inference"}
+
+def __dir__():
+    return __all__
+
+def __getattr__(name):
+    if name in _LAZY_CLASSES:
+        module_path, class_name = _LAZY_CLASSES[name]
+        module = importlib.import_module(f".{module_path}", __name__)
+        return getattr(module, class_name)
+    if name in _SUBPACKAGES:
+        return importlib.import_module(f".{name}", __name__)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

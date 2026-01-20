@@ -1,15 +1,28 @@
-"""
-Init file for adding all network functions in geneSNAKE to the enviroment. 
-Any added function should be added as a defined function and imported here. 
-Any added class should be imported in to the genesnake/__init__.py file instead. 
-"""
+import importlib
 
-from .make_FFLATnetwork import make_FFLATTnetwork
-from .make_randomnetwork import make_random 
-from .make_DAG import make_DAG
-from .make_scalefree import make_scalefree
-from .load_and_save import to_edgelist
-from .load_and_save import load
-from .load_and_save import from_networkx
-from .load_and_save import from_numpy
-from .load_and_save import to_networkx
+__all__ = [
+    "make_FFLATTnetwork", "make_random", "make_DAG", "make_scalefree",
+    "to_edgelist", "load", "from_networkx", "from_numpy", "to_networkx"
+]
+
+# Map attribute names to their source modules
+_LAZY_IMPORTS = {
+    "make_FFLATTnetwork": "make_FFLATTnetwork",
+    "make_random": "make_randomnetwork",
+    "make_DAG": "make_DAG",
+    "make_scalefree": "make_scalefree",
+    "to_edgelist": "load_and_save",
+    "load": "load_and_save",
+    "from_networkx": "load_and_save",
+    "from_numpy": "load_and_save",
+    "to_networkx": "load_and_save",
+}
+
+def __dir__():
+    return __all__
+
+def __getattr__(name):
+    if name in _LAZY_IMPORTS:
+        module = importlib.import_module(f".{_LAZY_IMPORTS[name]}", __name__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
