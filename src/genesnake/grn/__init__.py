@@ -7,7 +7,7 @@ __all__ = [
 
 # Map attribute names to their source modules
 _LAZY_IMPORTS = {
-    "make_FFLATTnetwork": "make_FFLATTnetwork",
+    "make_FFLATTnetwork": "make_FFLATnetwork",
     "make_random": "make_randomnetwork",
     "make_DAG": "make_DAG",
     "make_scalefree": "make_scalefree",
