@@ -4,8 +4,6 @@ Auxiliary functions
 
 """
 
-import warnings
-warnings.filterwarnings("ignore")
 import os
 import json
 import joblib
@@ -34,21 +32,24 @@ n_combs = lambda n, k: int(factorial(n)/factorial(n-k)/factorial(k))
 
 
 def read_ecoli_network(path):
-    f = open(path)
-    line = f.readline()
-    while line.startswith('#'):
+    with open(path) as f:
         line = f.readline()
-    df = pd.read_csv(f, sep="\t", header=None)
-    df.loc[-1] = line.split("\t")
-    df.index = df.index + 1
-    df = df.sort_index()
-    f.close()
+        while line.startswith('#'):
+            line = f.readline()
+        df = pd.read_csv(f, sep="\t", header=None)
+        df.loc[-1] = line.split("\t")
+        df.index = df.index + 1
+        df = df.sort_index()
     return df
 
 
 def get_actual_parametrization(source, check_input=False, verbose=False):
         
-    cfg = source if type(source) is dict else json.load(open(source, "r"))
+    if type(source) is dict:
+        cfg = source
+    else:
+        with open(source, "r") as f:
+            cfg = json.load(f)
     
     if check_input:
         assert cfg["NETWORK_TO_SEARCH_IN"] in ["ecoli", "test", "yeast", "ecoli", "gs0.01", "gs0.1", "gs1"]
@@ -64,7 +65,8 @@ def update_cfg(path, param, value, verbose=False):
     cfg = get_actual_parametrization(path, check_input=False, verbose=False)
     cfg[param] = value
     cfg = get_actual_parametrization(cfg, verbose=verbose)
-    json.dump(cfg, open(path, "w"))
+    with open(path, "w") as f:
+        json.dump(cfg, f)
     
     return cfg
 
@@ -106,7 +108,9 @@ def get_equivalents(core_pattern):
 
 
 def print_equivalents(config_file):
-    m = build_motif_from_string(json.load(open(os.path.join(os.path.dirname(__file__),"motifs_collection.json"), "r"))[config_file["MOTIF_TO_SEARCH_FOR"]])
+    with open(os.path.join(os.path.dirname(__file__),"motifs_collection.json"), "r") as f:
+        motifs_data = json.load(f)
+    m = build_motif_from_string(motifs_data[config_file["MOTIF_TO_SEARCH_FOR"]])
     if config_file["SELFLOOPS_INCLUDED"]: m += np.diag([1]*3)
     equivalents = get_equivalents(m)
     print(f"""Equivalent forms for {config_file["MOTIF_TO_SEARCH_FOR"]}{" with selfloops" if config_file["SELFLOOPS_INCLUDED"] else ""}\
@@ -117,7 +121,8 @@ def print_equivalents(config_file):
 
         
 def get_triad_codes(path=None):
-    motifs = json.load(open(os.path.join(os.path.dirname(__file__),"motifs_collection.json"), "r"))
+    with open(os.path.join(os.path.dirname(__file__),"motifs_collection.json"), "r") as f:
+        motifs = json.load(f)
     salt = np.array([2**i for i in range(6)])
     mapping = {x: i for i, x in enumerate(motifs.keys())}
     codes = {}
@@ -261,9 +266,11 @@ def motif_search(config_file, interaction_matrix, batch_size, verbose=False, loa
     else:
         #cwd = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
         #motifs = joblib.load("../src/ffl_motifs.gz")
-        motifs = json.load(open(os.path.join(os.path.dirname(__file__),"ffl_motifs.json"), "r"))
+        with open(os.path.join(os.path.dirname(__file__),"ffl_motifs.json"), "r") as f:
+            motifs = json.load(f)
     if dump:
-        json.dump(motifs, open(os.path.join(os.path.dirname(__file__),"ffl_motifs.json"), "w"))
+        with open(os.path.join(os.path.dirname(__file__),"ffl_motifs.json"), "w") as f:
+            json.dump(motifs, f)
     	
     return motifs
 
