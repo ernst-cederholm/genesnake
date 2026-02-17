@@ -118,7 +118,9 @@ def calculate_PR_extension(
 		p = []
 	else:
 		rho = (P - TPL) / (T - L)
-		p = rho * (P * r_) / (P * (r_ - rL) + L * rho)
+		denominator = P * (r_ - rL) + L * rho
+		with np.errstate(invalid='ignore', divide='ignore'):
+			p = rho * (P * r_) / denominator
 
 	return(r_, p)
 

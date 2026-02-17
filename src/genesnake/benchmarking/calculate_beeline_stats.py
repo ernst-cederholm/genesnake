@@ -30,7 +30,10 @@ def early_precision_rate(
 	# they are the same. See calculate_ERMA documentation for explanation
 	# if curious.
 	ERMA = gs.benchmarking.calculate_ERMA(reference_network)
-	early_precision_rate = top_k_accuracy_ / ERMA
+	if ERMA == 0:
+		early_precision_rate = np.inf
+	else:
+		early_precision_rate = top_k_accuracy_ / ERMA
 	return(early_precision_rate)
 
 
@@ -67,6 +70,9 @@ def top_k_accuracy(
 	FN = (~net1).sum() - TN
 
 	# precision
-	precision = TP / (TP + FP)
+	if (TP + FP) == 0:
+		precision = np.inf
+	else:
+		precision = TP / (TP + FP)
 
 	return(float(precision))

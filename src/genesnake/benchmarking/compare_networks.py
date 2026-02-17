@@ -134,7 +134,10 @@ See comments for more details.
 		TNR = TN / (TN + FP)
 		TNRo.append(TNR)
 		# precision
-		PPV = TP / (TP + FP)
+		if (TP + FP) == 0:
+			PPV = np.inf
+		else:
+			PPV = TP / (TP + FP)
 		PPVo.append(PPV)
 		# negative predictive value
 		if (TN + FN) == 0:
@@ -149,7 +152,10 @@ See comments for more details.
 		FPR = FP / (FP + TN)
 		FPRo.append(FPR)
 		# false discovery rate
-		FDR = FP / (FP + TP)
+		if (FP + TP) == 0:
+			FDR = np.inf
+		else:
+			FDR = FP / (FP + TP)
 		FDRo.append(FDR)
 		# false omission rate
 		if (FN + TN) == 0:
@@ -158,7 +164,10 @@ See comments for more details.
 			FOR = FN / (FN + TN)
 		FORo.append(FOR)
 		# positive likelihood ratio
-		LRp = TPR / FPR
+		if FPR == 0:
+			LRp = np.inf
+		else:
+			LRp = TPR / FPR
 		LRpo.append(LRp)
 		# negative likelihood ratio
 		if TNR == 0:
@@ -167,7 +176,11 @@ See comments for more details.
 			LRm = FNR / TNR
 		LRmo.append(LRm)
 		# prevalence threshold
-		PT = np.sqrt(FPR) / (np.sqrt(TPR) + np.sqrt(FPR))
+		denominator = np.sqrt(TPR) + np.sqrt(FPR)
+		if denominator == 0:
+			PT = np.inf
+		else:
+			PT = np.sqrt(FPR) / denominator
 		PTo.append(PT)
 		# threat score
 		TS = TP / (TP + FN + FP)
@@ -185,7 +198,8 @@ See comments for more details.
 			MCC = np.sqrt(PPV * TPR * TNR * NPV) - np.sqrt(FDR * FNR * FPR * FOR)
 		MCCo.append(MCC)
 		# Fowlkes-Mallows index
-		FM = np.sqrt(PPV * TPR)
+		with np.errstate(invalid='ignore'):
+			FM = np.sqrt(PPV * TPR)
 		FMo.append(FM)
 		# informedness
 		BM = TPR + TNR - 1
