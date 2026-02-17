@@ -1,6 +1,11 @@
-"""
-Init file for adding all network functions in geneSNAKE to the enviroment. 
-Any added function should be added as a defined function and imported here. 
-Any added class should be imported in to the genesnake/__init__.py file instead. 
-"""
-from . import conversions
+import lazy_loader as lazy
+
+# Define what to lazily load
+submod_attrs = {
+    'conversions': ['edgelist_to_matrix', 'matrix_to_edgelist', 'harmonise_networks'],
+}
+
+__getattr__, __dir__, __all__ = lazy.attach(
+    __name__,
+    submod_attrs=submod_attrs
+)

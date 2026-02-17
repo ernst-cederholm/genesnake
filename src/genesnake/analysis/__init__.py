@@ -1,20 +1,13 @@
-import importlib
+import lazy_loader as lazy
 
-__all__ = ["snakeda", "umap", "network_data_dyn_test"]
-
-# Map attribute names to (module_path, attribute_name) tuples
-_LAZY_IMPORTS = {
-    "snakeda": ("snakeda.snakeda", "snakeda"),
-    "umap": ("umap_project_and_plot", "umap"),
-    "network_data_dyn_test": ("network_to_data_dynamics_test", "network_data_dyn_test"),
+# Define what to lazily load
+submod_attrs = {
+    'snakeda.snakeda': ['snakeda'],
+    'umap_project_and_plot': ['umap'],
+    'network_to_data_dynamics_test': ['network_data_dyn_test'],
 }
 
-def __dir__():
-    return __all__
-
-def __getattr__(name):
-    if name in _LAZY_IMPORTS:
-        module_path, attr_name = _LAZY_IMPORTS[name]
-        module = importlib.import_module(f".{module_path}", __name__)
-        return getattr(module, attr_name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+__getattr__, __dir__, __all__ = lazy.attach(
+    __name__,
+    submod_attrs=submod_attrs
+)

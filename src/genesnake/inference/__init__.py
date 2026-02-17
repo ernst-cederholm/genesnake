@@ -1,17 +1,11 @@
-import importlib
+import lazy_loader as lazy
 
-__all__ = ["infer_networks"]
-
-# Map attribute names to their source modules
-_LAZY_IMPORTS = {
-    "infer_networks": "grn_inference",
+# Define what to lazily load
+submod_attrs = {
+    'grn_inference': ['infer_networks'],
 }
 
-def __dir__():
-    return __all__
-
-def __getattr__(name):
-    if name in _LAZY_IMPORTS:
-        module = importlib.import_module(f".{_LAZY_IMPORTS[name]}", __name__)
-        return getattr(module, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+__getattr__, __dir__, __all__ = lazy.attach(
+    __name__,
+    submod_attrs=submod_attrs
+)
