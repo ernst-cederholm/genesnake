@@ -103,10 +103,10 @@ def calculate_PR_extension(
 
 	# Calculate the PRC extension according to DREAM2
 	T = math.prod(reference_network.shape)  # Number of possible edges
-	P = int(stats['tp'] + stats['fn'])
-	TPL = int(stats['tp'])
-	FPL = int(stats['fp'])
-	rL = float(stats['tpr'])  # Could also calculate as TPL / P
+	P = int((stats['tp'] + stats['fn']).iloc[0])
+	TPL = int(stats['tp'].iloc[0])
+	FPL = int(stats['fp'].iloc[0])
+	rL = float(stats['tpr'].iloc[0])  # Could also calculate as TPL / P
 	L = TPL + FPL  # Length of list of predictions done
 	# The underscore is to avoid collision with debugger return command
 	r_ = np.linspace(rL, 1, num = 100)

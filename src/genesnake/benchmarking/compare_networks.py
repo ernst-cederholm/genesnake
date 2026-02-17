@@ -137,7 +137,10 @@ See comments for more details.
 		PPV = TP / (TP + FP)
 		PPVo.append(PPV)
 		# negative predictive value
-		NPV = TN / (TN + FN)
+		if (TN + FN) == 0:
+			NPV = np.inf
+		else:
+			NPV = TN / (TN + FN)
 		NPVo.append(NPV)
 		# miss rate
 		FNR = FN / (FN + TP)
@@ -149,13 +152,19 @@ See comments for more details.
 		FDR = FP / (FP + TP)
 		FDRo.append(FDR)
 		# false omission rate
-		FOR = FN / (FN + TN)
+		if (FN + TN) == 0:
+			FOR = np.inf
+		else:
+			FOR = FN / (FN + TN)
 		FORo.append(FOR)
 		# positive likelihood ratio
 		LRp = TPR / FPR
 		LRpo.append(LRp)
 		# negative likelihood ratio
-		LRm = FNR / TNR
+		if TNR == 0:
+			LRm = np.inf
+		else:
+			LRm = FNR / TNR
 		LRmo.append(LRm)
 		# prevalence threshold
 		PT = np.sqrt(FPR) / (np.sqrt(TPR) + np.sqrt(FPR))
@@ -167,7 +176,13 @@ See comments for more details.
 		F1 = 2 * TP / (2 * TP + FP + FN)
 		F1o.append(F1)
 		# MCC
-		MCC = np.sqrt(PPV * TPR * TNR * NPV) - np.sqrt(FDR * FNR * FPR * FOR)
+		# Suppress warnings for operations involving infinity values from
+		# divide-by-zero cases above. When any component statistic is
+		# undefined (infinite), MCC becomes mathematically undefined (NaN),
+		# which is the correct result. The context manager prevents noisy
+		# warnings while preserving correctness.
+		with np.errstate(invalid='ignore'):
+			MCC = np.sqrt(PPV * TPR * TNR * NPV) - np.sqrt(FDR * FNR * FPR * FOR)
 		MCCo.append(MCC)
 		# Fowlkes-Mallows index
 		FM = np.sqrt(PPV * TPR)
@@ -179,7 +194,10 @@ See comments for more details.
 		MK = PPV + NPV - 1
 		MKo.append(MK)
 		#diagnostic odds ratio
-		DOR = LRp / LRm
+		if LRm == 0:
+			DOR = np.inf
+		else:
+			DOR = LRp / LRm
 		DORo.append(DOR)
 
 	data = [
