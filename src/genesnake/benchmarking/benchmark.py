@@ -2,11 +2,7 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from .calculate_auroc_and_aupr import calculate_auroc_and_aupr
-from .plot_auroc_and_aupr import plot_auroc_and_aupr
-from .calculate_ERMA import calculate_ERMA
-from .calculate_f1_scores import calculate_f1_scores
-from . import calculate_beeline_stats
+import genesnake as gs
 
 def benchmark(
 		estimated_network,
@@ -64,25 +60,25 @@ def benchmark(
 
 
 	stats = {}
-	stats = calculate_auroc_and_aupr(
+	stats = gs.benchmarking.calculate_auroc_and_aupr(
 		estimated_network = estimated_network,
 		reference_network = reference_network,
 		)
-	stats['ERMA'] = calculate_ERMA(reference_network)
-	stats['epr'] = calculate_beeline_stats.early_precision_rate(
+	stats['ERMA'] = gs.benchmarking.calculate_ERMA(reference_network)
+	stats['epr'] = gs.benchmarking.calculate_beeline_stats.early_precision_rate(
 		inferred_network = estimated_network,
 		reference_network = reference_network,
 		)
-	stats['top_k_accuracy'] = calculate_beeline_stats.top_k_accuracy(
+	stats['top_k_accuracy'] = gs.benchmarking.calculate_beeline_stats.top_k_accuracy(
 		inferred_network = estimated_network,
 		reference_network = reference_network,
 		)
-	stats['f1_scores'] = calculate_f1_scores(
+	stats['f1_scores'] = gs.benchmarking.calculate_f1_scores(
 		estimated_network = estimated_network,
 		reference_network = reference_network,
 		)
 	if plot_dir is not None:
-		plot_auroc_and_aupr(
+		gs.benchmarking.plot_auroc_and_aupr(
 			stats = stats,
 			method_name = method_name,
 			plot_dir = plot_dir,

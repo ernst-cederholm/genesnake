@@ -1,30 +1,22 @@
-import importlib
+import lazy_loader as lazy
 
-__all__ = [
-    "compare_networks", "data_summary", "calculate_auroc_and_aupr", 
-    "plot_auroc_and_aupr", "benchmark", "calculate_ERMA", "calculate_beeline_stats"
+# Define what to lazily load
+submodules = [
+    'calculate_beeline_stats',
+    'data_summary'
 ]
 
-# Map attribute names to their source modules
-_LAZY_IMPORTS = {
-    "compare_networks": "compare_networks",
-    "data_summary": "data_summary",
-    "calculate_auroc_and_aupr": "calculate_auroc_and_aupr",
-    "plot_auroc_and_aupr": "plot_auroc_and_aupr",
-    "benchmark": "benchmark",
-    "calculate_ERMA": "calculate_ERMA",
+submod_attrs = {
+    'compare_networks': ['compare_networks'],
+    'calculate_auroc_and_aupr': ['calculate_auroc_and_aupr'],
+    'plot_auroc_and_aupr': ['plot_auroc_and_aupr'],
+    'benchmark': ['benchmark'],
+    'calculate_ERMA': ['calculate_ERMA'],
+    'calculate_f1_scores': ['calculate_f1_scores'],
 }
 
-# Submodules that should be imported as modules, not attributes
-_SUBMODULES = {"calculate_beeline_stats"}
-
-def __dir__():
-    return __all__
-
-def __getattr__(name):
-    if name in _SUBMODULES:
-        return importlib.import_module(f".{name}", __name__)
-    if name in _LAZY_IMPORTS:
-        module = importlib.import_module(f".{_LAZY_IMPORTS[name]}", __name__)
-        return getattr(module, name)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+__getattr__, __dir__, __all__ = lazy.attach(
+    __name__,
+    submodules=submodules,
+    submod_attrs=submod_attrs
+)

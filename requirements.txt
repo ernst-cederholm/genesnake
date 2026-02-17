@@ -12,3 +12,4 @@ jinja2
 scikit-learn
 plotly
 umap-learn
+lazy-loader

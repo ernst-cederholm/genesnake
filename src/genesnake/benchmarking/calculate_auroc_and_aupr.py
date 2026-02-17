@@ -4,9 +4,9 @@
 
 import numpy as np
 import pandas as pd
-from .compare_networks import compare_networks
 import math
 import copy
+import genesnake as gs
 
 
 # The reason for splitting this rather trivial line out to its
@@ -88,7 +88,7 @@ def calculate_PR_extension(
 	"""
 
 	# Get some needed quantities
-	stats = compare_networks(
+	stats = gs.benchmarking.compare_networks(
 		# Copies are necessary to avoid unexpectedly modifying
 		# the input networks. compare_networks can modify it's inputs
 		# for performance reasons (that are not relevant here since
