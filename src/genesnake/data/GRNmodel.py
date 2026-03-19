@@ -287,12 +287,12 @@ class GRNmodel(object):
             scheme - String which determines design of the perturbations should have. Currently, avalible are:
                      - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
                      - multi - Multipert genes are perturbed per replicate*experiments in a way that ensures each gene is perturbed
-                               at least once per replicate. Will attempt to add additional perturbation so that each gene is pertrubed
+                               at least once per replicate. Will attempt to add additional perturbation so that each gene is perturbed
                                in equal number of experiemts where possible.
                      - combined  - Perturbs genes in a combinatory targeted fashion. Perturbing up to multipert genes that co-regulate
                                   a target in each experiment.
                      - random - Randomly perturb multipert genes in each experiment. Will attempt to distribute
-                                pertrubations evenly accross all genes.
+                                perturbations evenly accross all genes.
                      - all - All genes will be slightly perturbed (between 0.1-0.3) with random sign in a multifactorial design.
                      - targeted - Similar to diagonal but only the genes listed in targets will be perturbed.
                      - scheme - Will print the avalible perturbation designs.
@@ -314,7 +314,7 @@ class GRNmodel(object):
             sign - +/-1. Used to determine if the perturbation is up or down regulation.
 
         OUTPUT:
-            GRNmodel.pertrubations - sets the GRNmodel perturbation to the selected design with selected values in a pd.DataFrame.
+            GRNmodel.perturbations - sets the GRNmodel perturbation to the selected design with selected values in a pd.DataFrame.
         """
 
         # first check that effect is not greater than 1 or less than 0
@@ -353,7 +353,7 @@ class GRNmodel(object):
             setattr(self,"perturbation",pertgen.diagonal(self.genes,effect,reps,noise,sign))
         elif scheme=="multi":
             if multipert < 2:
-                print("WARNING: Cannot perform multiple pertrubations <2  (multipert<2) in genesnake.GRNmodel.set_pert. multipert have been set to 2")
+                print("WARNING: Cannot perform multiple perturbations <2  (multipert<2) in genesnake.GRNmodel.set_pert. multipert have been set to 2")
                 multipert = 2
             elif multipert > len(self.genes):
                 raise ValueError("Cannot include more perturbations than genes in genesnake.GRNmodel.set_pert multi, random or combined perturbation scheme")
@@ -387,28 +387,28 @@ class GRNmodel(object):
             setattr(self,"perturbation",pertgen.combined_pert(self.genes,self.network,effect,reps,exp,noise,sign,multipert))
 
         elif scheme=="scheme":
-            print("""Avalible pertrubation designs are:
+            print("""Avalible perturbation designs are:
             - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
             - multi - Multipert genes are perturbed per replicate*experiments in a way that ensures each gene is perturbed
-                      at least once per replicate. Will attempt to add additional perturbation so that each gene is pertrubed
+                      at least once per replicate. Will attempt to add additional perturbation so that each gene is perturbed
                       in equal number of experiemts where possible.
             - combined  - Perturbs genes in a combinatory targetwd fashion. Perturbing up to multipert genes that co-regulate
                           a target in each experiemnt.
             - random - Randomly perturb genes between 0 and multipert times in each experiment. Will attempt to distribute
-                       pertrubations evenly accross all genes.
+                       perturbations evenly accross all genes.
             - all - All genes will be slightly perturbed (between 0.1-0.3) with random sign in a multifactorial design.\n
             - targeted - Similar to diagonal but only the genes listed in targets will be perturbed.
             - scheme - Will print the avalible perturbation designs.""")
         else:
-            raise ValueError("""Unknown perturbation design selected in genesnake.GRNmodel.get_pert. Avalible pertrubation designs are:
+            raise ValueError("""Unknown perturbation design selected in genesnake.GRNmodel.get_pert. Avalible perturbation designs are:
             - diag - Each gene is perturbed once per replicate*experiemnts in turn, all perturbations are along the diagonal
             - multi - Multipert genes are perturbed per replicate*experiments in a way that ensures each gene is perturbed
-                      at least once per replicate. Will attempt to add additional perturbation so that each gene is pertrubed
+                      at least once per replicate. Will attempt to add additional perturbation so that each gene is perturbed
                       in equal number of experiemts where possible.
             - combined  - Perturbs genes in a combinatory targetwd fashion. Perturbing up to multipert genes that co-regulate
                           a target in each experiemnt.
             - random - Randomly perturb genes between 0 and multipert times in each experiment. Will attempt to distribute
-                       pertrubations evenly accross all genes.
+                       perturbations evenly accross all genes.
             - all - All genes will be slightly perturbed (between 0.1-0.3) with random sign in a multifactorial design.\n
             - targeted - Similar to diagonal but only the genes listed in targets will be perturbed.
             - scheme - Will print the avalible perturbation designs.""")
@@ -463,7 +463,7 @@ class GRNmodel(object):
             nonoise_data = nonoise_data[columns]
 
         # then save the data and everything else to file
-        perts.to_csv(file+"_pertrubation_design"+kind,sep=sep)
+        perts.to_csv(file+"_perturbation_design"+kind,sep=sep)
         data.to_csv(file+"_data"+kind,sep=sep)
         nonoise_data.to_csv(file+"_nonoise_data"+kind,sep=sep)
 

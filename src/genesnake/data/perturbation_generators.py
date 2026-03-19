@@ -139,14 +139,14 @@ class pertgen:
         # make a numpy array of size N,exp
         pert_mat = np.zeros((N,exp))
         
-        # form the zero array we start randomly adding pertrubations until each column has multipert perts
-        # in a way so that each gene should be pertrubed at least once when possible
+        # form the zero array we start randomly adding perturbations until each column has multipert perts
+        # in a way so that each gene should be perturbed at least once when possible
         for i in range(pert_mat.shape[1]):
             while np.count_nonzero(pert_mat[:,i]) < multipert:
                 # get the rowsum for each row. This is used to ensure an even spread
-                # among which genes are pertrubed 
+                # among which genes are perturbed 
                 rowsum = np.sum(pert_mat,axis=1)
-                # get a random vector to make sure that the pertrubations are semi random distrubuted 
+                # get a random vector to make sure that the perturbations are semi random distrubuted 
                 rands = np.random.rand(N)
                 # add the two vectors up 
                 rs = rowsum+rands
@@ -206,10 +206,10 @@ class pertgen:
         # make a numpy array of size N,exp
         pert_mat = np.zeros((N,exp))
         
-        # form the zero array we start randomly adding pertrubations until each column has multipert perts
+        # form the zero array we start randomly adding perturbations until each column has multipert perts
         for i in range(pert_mat.shape[1]):
             while np.count_nonzero(pert_mat[:,i]) < multipert:
-                # create a random vector to select where to add a pertrubation
+                # create a random vector to select where to add a perturbation
                 rs = np.random.rand(N)
                 pos = np.argmin(rs)
                 
@@ -346,7 +346,7 @@ class pertgen:
         # once all possible combinations of size 2-multipert have been found
         # randomly select from these until all experiemnts have been filled 
         for i in range(pert_mat.shape[1]):
-            # select the pertrubations to do 
+            # select the perturbations to do 
             select = np.random.randint(len(combs))
             experiment = combs[select]
             # and drop this from possible further experiemnts
@@ -408,7 +408,7 @@ class pertgen:
         # make a numpy array of size N,number of targets
         pert_mat = np.zeros((N,len(targets)))
         
-        # form the zero array we start randomly adding pertrubations until each column has multipert perts
+        # form the zero array we start randomly adding perturbations until each column has multipert perts
         for i in range(pert_mat.shape[1]):
             if isinstance(targets[i],list):
                 for j in targets[i]:
