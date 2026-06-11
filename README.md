@@ -2,6 +2,9 @@
 
 Repository for the python package genesnake for Gene Regulatory Networks (GRNs), with network and data simulation, network inference, and benchmarking.
 
+# GeneSNAKE paper
+https://doi.org/10.1093/bioadv/vbag039
+
 # GeneSNAKE tutorial
 [Visit the website with the GeneSNAKE tutorial](https://sonnhammer-tutorials.bitbucket.io/genesnake.html)
 
