@@ -123,6 +123,116 @@ def infer_networks(
 		network.index.name = 'regulator'
 		network.columns.name = 'target'
 		return(network)
+	if method == "mean_difference":
+		"""
+
+		Mean differences method, from submission to the causalbench challenge;
+		CausalBench Challenge: Differences in Mean Expression
+		Marcin Kowiel, Wojciech Kotlowski, Dariusz Brzezinski
+		https://openreview.net/forum?id=Cx9B85IlEVR
+
+		One of the top performers in the post challenge evaluation paper;
+		Chevalley, M., Roohani, Y.H., Mehrjou, A. et al. A large-scale benchmark for network inference from single-cell perturbation data. Commun Biol 8, 412 (2025).
+		https://doi.org/10.1038/s42003-025-07764-y
+
+		Implemented myself, since simple, and no code published as far as I've seen.
+
+		This version computes the unperturbed means on all cells where that gene
+		is not perturbed. mean_difference_controls_only instead computes it on
+		control cells only, ie cells where no gene was perturbed. Judging by the text
+		of their report, my best guess is that they used mean_difference_controls_only
+
+		Conventions used for this method:
+		Data: [experiments/cells/observations x genes/variables]
+		Output network: [regulators x targets]
+
+		Nomenclature; Their original nomenclature used X for regulator and Y
+		for target. Since already using Y for expression matrix, (and reusing
+		code from the zscore method), below instead uses A for regulator
+		and B for target.
+
+		"""
+		# Calculate mean values of unperturbed expression for all genes
+		mu_B = []
+		for jj in range(P.shape[1]):
+			ii_perturbed = P.iloc[:, jj].astype(bool)
+			tmp = Y.iloc[:, jj]
+			expr_unperturbed = tmp.loc[~ii_perturbed]
+			mu_B.append(expr_unperturbed.mean())
+		mean_differences = []
+		# Regulators A indexed by jj
+		for jj in range(P.shape[1]):
+			ii_perturbed = P.iloc[:, jj].astype(bool)
+			expr_perturbed = Y.loc[ii_perturbed, :]
+			# Note that we are doing all targets B at once for
+			# certain regulator A, indexed by jj. Hence whole
+			# rows of Y at a time. Likewise, mu_B is not scalar
+			# but the whole array we collected in the previous loop
+			mean_difference = expr_perturbed.mean(axis = 0) - mu_B
+
+			mean_differences.append(mean_difference)
+
+		network = pd.DataFrame(
+			data = np.vstack(mean_differences),
+			index = P.columns,  # Since As indexed by jj over P.columns
+			columns = Y.columns  # Since expr_perturbed is from rows from Y
+			)
+		# Method does unsigned inference
+		network = network.abs()
+		network.index.name = 'regulator'
+		network.columns.name = 'target'
+		return(network)
+	if method == "mean_difference_controls_only":
+		"""
+
+		Mean differences method, from submission to the causalbench challenge;
+		CausalBench Challenge: Differences in Mean Expression
+		Marcin Kowiel, Wojciech Kotlowski, Dariusz Brzezinski
+		https://openreview.net/forum?id=Cx9B85IlEVR
+
+		One of the top performers in the post challenge evaluation paper;
+		Chevalley, M., Roohani, Y.H., Mehrjou, A. et al. A large-scale benchmark for network inference from single-cell perturbation data. Commun Biol 8, 412 (2025).
+		https://doi.org/10.1038/s42003-025-07764-y
+
+		Implemented myself, since simple, and no code published as far as I've seen.
+
+		Conventions used for this method:
+		Data: [experiments/cells/observations x genes/variables]
+		Output network: [regulators x targets]
+
+		Nomenclature; Their original nomenclature used X for regulator and Y
+		for target. Since already using Y for expression matrix, (and reusing
+		code from the zscore method), below instead uses A for regulator
+		and B for target.
+
+		"""
+		controls_bool = (Y.index == 'control')
+		if sum(controls_bool) == 0:
+			print('No control samples found in dataset. This method is unsuitable. Returning None instead of network')
+			return None
+		# Mean values of unperturbed expression for all genes
+		mu_B = Y.loc[controls_bool, :].mean(axis = 0)
+		mean_differences = []
+		# Regulators A indexed by jj
+		for jj in range(P.shape[1]):
+			ii_perturbed = P.iloc[:, jj].astype(bool)
+			expr_perturbed = Y.loc[ii_perturbed, :]
+			# Note that we are doing all targets B at once for
+			# certain regulator A, indexed by jj. Hence whole
+			# rows of Y at a time. Likewise, mu_B is not scalar
+			# but the whole array we collected in the previous loop
+			mean_difference = expr_perturbed.mean(axis = 0) - mu_B
+			mean_differences.append(mean_difference)
+		network = pd.DataFrame(
+			data = np.vstack(mean_differences),
+			index = P.columns,  # Since As indexed by jj over P.columns
+			columns = Y.columns  # Since expr_perturbed is from rows from Y
+			)
+		# Method does unsigned inference
+		network = network.abs()
+		network.index.name = 'regulator'
+		network.columns.name = 'target'
+		return(network)
 	# I don't trust this:
 	# - Why transposing stuff?
 	# - Why P2 that is then never used?
