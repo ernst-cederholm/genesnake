@@ -7,7 +7,6 @@ import genesnake as gs
 def benchmark(
 		estimated_network,
 		reference_network,
-		plot_dir = None,
 		method_name = None,
 		fix_pr_ylim = False,
 		exclude_diagonal = True
@@ -77,12 +76,18 @@ def benchmark(
 		estimated_network = estimated_network,
 		reference_network = reference_network,
 		)
-	if plot_dir is not None:
-		gs.benchmarking.plot_auroc_and_aupr(
-			stats = stats,
-			method_name = method_name,
-			plot_dir = plot_dir,
-			fix_pr_ylim = fix_pr_ylim
-			)
+	plot_roc, plot_pr = gs.benchmarking.plot_auroc_and_aupr(
+		stats = stats,
+		method_name = method_name,
+		fix_pr_ylim = fix_pr_ylim
+		)
 	stats.pop('plot_metrics')
+	stats['plot_roc'] = plot_roc
+	stats['plot_pr'] = plot_pr
 	return(stats)
+
+
+
+
+
+

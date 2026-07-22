@@ -1,13 +1,9 @@
 
 import matplotlib.pyplot as plt
-from pathlib import Path
-from sklearn.metrics import roc_curve
-from sklearn.metrics import precision_recall_curve
 
 def plot_auroc_and_aupr(
 		stats,
-		method_name,
-		plot_dir,
+		method_name = None,
 		fix_pr_ylim = False
 		):
 
@@ -18,16 +14,10 @@ def plot_auroc_and_aupr(
 			title = suffix
 		return(title)
 
-	plot_dir = Path(plot_dir)
-	plot_dir.mkdir(exist_ok = True)
-
 	plot_metrics = stats['plot_metrics']
-
-
-
-
-
-	plt.close()
+	
+	# Create ROC plot
+	plot_roc = plt.figure()
 	plt.plot(
 		plot_metrics['fpr'], plot_metrics['tpr'],
 		color = 'tab:blue', linestyle = 'solid',
@@ -51,14 +41,13 @@ def plot_auroc_and_aupr(
 	title = make_title(method_name, 'ROC')
 	plt.title(title)
 	plt.tight_layout()
-	filename = f'{title}.svg'
-	plt.savefig(plot_dir / filename)
 
 
 
 
 
-	plt.close()
+	# Create PR plot
+	plot_pr = plt.figure()
 	plt.plot(plot_metrics['recall'], plot_metrics['precision'],
 		color = 'tab:blue', linestyle = 'solid',
 		label = 'Observed')
@@ -90,6 +79,5 @@ def plot_auroc_and_aupr(
 	title = make_title(method_name, 'PR')
 	plt.title(title)
 	plt.tight_layout()
-	filename = f'{title}.svg'
-	plt.savefig(
-		plot_dir / filename)
+	
+	return plot_roc, plot_pr
