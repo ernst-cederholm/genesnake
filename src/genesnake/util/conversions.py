@@ -78,7 +78,15 @@ def harmonise_networks(network_matrices):
     edge_lists = [matrix_to_edgelist(net) for net in network_matrices]
 
     harmonised_networks = [
-        edgelist_to_matrix(np.array(l), all_genes = all_genes)
+        edgelist_to_matrix(
+            regulators = l['regulator'],
+            targets = l['target'],
+            values = l['value'],
+            all_genes = all_genes
+            )
         for l in edge_lists
         ]
     return(harmonised_networks)
+
+
+
