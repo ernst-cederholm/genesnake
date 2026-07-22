@@ -4,21 +4,17 @@ import pandas as pd
 from copy import deepcopy
 
 
-def edgelist_to_matrix(edgelist, all_genes = None):
+def edgelist_to_matrix(
+        regulators,
+        targets,
+        values = None,
+        all_genes = None):
 
     from scipy.sparse import coo_array
 
-    if isinstance(edgelist, pd.DataFrame):
-        raise TypeError(
-            'expected numpy array for edgelist, but got pandas dataframe'
-            )
-
-    regulators = edgelist[:, 0]
-    targets = edgelist[:, 1]
-    try:
-        values = edgelist[:, 2].astype(float)
-    except IndexError:
-        values = [1] * edgelist.shape[0]
+    assert(len(regulators) == len(targets))
+    if values is None:
+        values = [1] * len(regulators)
 
     if all_genes is not None:
         unique_genes = sorted(np.unique(all_genes))
@@ -30,13 +26,13 @@ def edgelist_to_matrix(edgelist, all_genes = None):
     index_dictionary = dict(zip(unique_genes, range(n)))
     iis = [index_dictionary[element] for element in regulators]
     jjs = [index_dictionary[element] for element in targets]
-    
+
     sparse_array = coo_array((values, (iis, jjs)), shape = (n, n))
     numpy_array = sparse_array.toarray()
     df = pd.DataFrame(numpy_array)
     df.index = unique_genes
     df.columns = unique_genes
-    
+
     return(df)
 
 
