@@ -41,7 +41,7 @@ def plot_auroc_and_aupr(
 	title = make_title(method_name, 'ROC')
 	plt.title(title)
 	plt.tight_layout()
-
+	plt.close()
 
 
 
@@ -79,5 +79,10 @@ def plot_auroc_and_aupr(
 	title = make_title(method_name, 'PR')
 	plt.title(title)
 	plt.tight_layout()
+	plt.close()
 	
 	return plot_roc, plot_pr
+
+
+
+
