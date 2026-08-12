@@ -1,78 +1,96 @@
+"""
+Calculates network benchmarking metrics (Early Precision Rate and Top-K Accuracy).
+Follows conventions from the dSPIN preprint (doi: 10.1101/2023.04.19.537364).
+"""
+
+from typing import Optional
 
 import numpy as np
 import genesnake as gs
-import copy
 
 
 def early_precision_rate(
-		inferred_network, 
-		reference_network,
-		fraction_of_K = 1):
-	"""
-	Calculate Early Precision Rate (EPR) according to
-	dspin bioarxiv preprint at
-	doi
-		https://doi.org/10.1101/2023.04.19.537364
-	link (more precise, to full text version 4)
-		https://www.biorxiv.org/content/10.1101/2023.04.19.537364v4.full
-
-	Given reading a few lines of the dspin bioarxiv, I think the code
-	with comments below will be understandable, so leaving it at that.
-	Get in touch if problems though! You not understanding means I 
-	haven't documented well enough.  //Anton Björk
-	"""
-
-	top_k_accuracy_ = top_k_accuracy(
-		inferred_network, 
-		reference_network,
-		fraction_of_K = fraction_of_K)
-	# Using ERMA to calculate the precision of a random model since
-	# they are the same. See calculate_ERMA documentation for explanation
-	# if curious.
-	ERMA = gs.benchmarking.calculate_ERMA(reference_network)
-	if ERMA == 0:
-		early_precision_rate = np.inf
-	else:
-		early_precision_rate = top_k_accuracy_ / ERMA
-	return(early_precision_rate)
+    inferred_network: np.ndarray, 
+    reference_network: np.ndarray,
+    fraction_of_k: float = 1.0,
+    top_k: Optional[int] = None
+) -> float:
+    """
+    Calculates the Early Precision Rate (EPR) by normalizing the Top-K accuracy
+    against the Expected Random Model AUPR (ERMA).
+    
+    Args:
+        inferred_network: The continuous edge weight matrix of the predicted GRN.
+        reference_network: The boolean ground-truth edge matrix.
+        fraction_of_k: The fraction of total true edges to evaluate (default 1.0).
+        top_k: An explicit number of top edges to evaluate (overrides fraction_of_k).
+        
+    Returns:
+        The EPR value as a float.
+    """
+    top_k_acc = top_k_accuracy(
+        inferred_network=inferred_network, 
+        reference_network=reference_network,
+        fraction_of_k=fraction_of_k,
+        top_k=top_k
+    )
+    
+    erma = gs.benchmarking.calculate_ERMA(reference_network)
+    
+    if erma <= 0.0:
+        return 0.0
+        
+    return float(top_k_acc / erma)
 
 
 def top_k_accuracy(
-		inferred_network, 
-		reference_network,
-		fraction_of_K = 1):
-	"""
-	Calculate Top K accuracy according to
-	dspin bioarxiv preprint at
-	doi
-		https://doi.org/10.1101/2023.04.19.537364
-	link (more precise, to full text version 4)
-		https://www.biorxiv.org/content/10.1101/2023.04.19.537364v4.full
+    inferred_network: np.ndarray, 
+    reference_network: np.ndarray,
+    fraction_of_k: float = 1.0,
+    top_k: Optional[int] = None
+) -> float:
+    """
+    Calculates the precision of the network using only the strongest K predictions.
+    
+    Args:
+        inferred_network: The continuous edge weight matrix of the predicted GRN.
+        reference_network: The boolean ground-truth edge matrix.
+        fraction_of_k: The fraction of total true edges to evaluate.
+        top_k: An explicit number of top edges to evaluate (overrides fraction_of_k).
+        
+    Returns:
+        The precision (True Positives / Predicted Positives) among the top K edges.
+    """
+    reference_bool = np.asarray(reference_network, dtype=bool)
+    
+    # 1. Determine the integer K
+    if top_k is not None:
+        k = int(top_k)
+    else:
+        k = int(round(reference_bool.sum() * fraction_of_k))
+        
+    if k <= 0:
+        return 0.0
 
-	Given reading a few lines of the dspin bioarxiv, I think this code
-	will be understandable, so leaving it at that.
-	Get in touch if problems though! You not understanding means I 
-	haven't documented well enough.  //Anton Björk
-	"""
-	K = round(len(np.array(reference_network).nonzero()[0]) * fraction_of_K)
-	abs_net = np.abs(np.array(inferred_network))
-	cutoff = sorted(abs_net.flatten(), reverse = True)[K - 1]
-	top_K_network = copy.deepcopy(inferred_network)
-	top_K_network[abs_net < cutoff] = 0
+    # 2. Flatten and get absolute values to evaluate connection strength
+    abs_net_flat = np.abs(np.asarray(inferred_network)).flatten()
+    n_elements = len(abs_net_flat)
+    
+    # Cap K if it exceeds the maximum possible edges
+    k = min(k, n_elements)
 
-	net1 = top_K_network.astype(dtype=bool)
-	# Should already be bool, but eh
-	net2 = reference_network.astype(dtype=bool)
+    # 3. Find the cutoff threshold using O(N) partitioning instead of O(N log N) sorting
+    cutoff_idx = n_elements - k
+    cutoff = np.partition(abs_net_flat, cutoff_idx)[cutoff_idx]
+    
+    # 4. Create boolean mask of inferred edges that meet the cutoff
+    inferred_bool = np.abs(inferred_network) >= cutoff
+    
+    # 5. Calculate statistics
+    true_positives = (inferred_bool & reference_bool).sum()
+    predicted_positives = inferred_bool.sum()
 
-	TP = (net1 & net2).sum()
-	FP = net1.sum() - TP
-	TN = (~net1 & ~net2).sum()
-	FN = (~net1).sum() - TN
-
-	# precision
-	if (TP + FP) == 0:
-		precision = np.inf
-	else:
-		precision = TP / (TP + FP)
-
-	return(float(precision))
+    if predicted_positives == 0:
+        return 0.0
+        
+    return float(true_positives / predicted_positives)

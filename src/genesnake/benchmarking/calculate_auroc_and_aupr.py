@@ -147,7 +147,7 @@ def calculate_auroc_and_aupr(
 	# Get it again. See function docstring if curious. Also nice
 	# to have the extension bit in separate variables for plotting later.
 	tpr_extension, fpr_extension = calculate_ROC_extension(tpr[-1], fpr[-1])
-	stats['AUROC'] = np.trapz(
+	stats['AUROC'] = np.trapezoid(
 		np.concatenate((tpr, tpr_extension)),
 		x = np.concatenate((fpr, fpr_extension))
 		)
@@ -214,7 +214,7 @@ def calculate_auroc_and_aupr(
 			).bfill()
 		)
 
-	stats['AUPR'] = np.trapz(
+	stats['AUPR'] = np.trapezoid(
 		all_precision,
 		x = all_recall
 		)
