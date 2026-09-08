@@ -1,7 +1,5 @@
 
 import numpy as np
-import pandas as pd
-from pathlib import Path
 import genesnake as gs
 
 def benchmark(
@@ -9,7 +7,8 @@ def benchmark(
 		reference_network,
 		method_name = None,
 		fix_pr_ylim = False,
-		exclude_diagonal = True
+		exclude_diagonal = True,
+		return_plots = True,
 		):
 
 	# Differently sorted networks could be such a nasty bug,
@@ -76,14 +75,15 @@ def benchmark(
 		estimated_network = estimated_network,
 		reference_network = reference_network,
 		)
-	plot_roc, plot_pr = gs.benchmarking.plot_auroc_and_aupr(
-		stats = stats,
-		method_name = method_name,
-		fix_pr_ylim = fix_pr_ylim
-		)
-	stats.pop('plot_metrics')
-	stats['plot_roc'] = plot_roc
-	stats['plot_pr'] = plot_pr
+	if return_plots:
+		plot_roc, plot_pr = gs.benchmarking.plot_auroc_and_aupr(
+			stats = stats,
+			method_name = method_name,
+			fix_pr_ylim = fix_pr_ylim
+			)
+		stats.pop('plot_metrics')
+		stats['plot_roc'] = plot_roc
+		stats['plot_pr'] = plot_pr
 	return(stats)
 
 
