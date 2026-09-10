@@ -49,7 +49,7 @@ def signal_to_noise_ratio(data, rep_dict, norep):
         SNR = np.mean(average)/np.mean(stdev)
     # case without replicates which calculate SNR on the whole data at once
     else:
-        SNR = abs(np.mean(data))/np.std(data)
+        SNR = abs(np.mean(data.values))/np.std(data.values)
     return SNR
 
 def match_experiment_with_gene_name(gene_names, rep_dict):
@@ -348,9 +348,9 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
                     }
     else:
         stats3 = {"Condition number" : round(float(np.linalg.cond(data_df.values)), 4), # condition number
-                "Max of SVD" : "", # max of svd
-                "Median of SVD" : "", # median of svd
-                "Min of SVD" : "" # min of svd
+                "Max of SVD" : np.nan, # max of svd
+                "Median of SVD" : np.nan, # median of svd
+                "Min of SVD" : np.nan # min of svd
                 }
 
     if pert_design == 'single':
