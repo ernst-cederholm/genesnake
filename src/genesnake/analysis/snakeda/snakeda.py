@@ -70,16 +70,16 @@ def match_experiment_with_gene_name(gene_names, rep_dict):
             new_rep_dict[key] = rep_dict[key]
         # if an exact match does not exist, try to find a close one
         else:
-            closest = difflib.get_close_matches(key, gene_names, n=1, cutoff=0.8)
+            #closest = difflib.get_close_matches(key, gene_names, n=1, cutoff=0.8)
             # if a close match is found, use as new key
-            if len(closest)==1:
-                new_rep_dict[closest[0]] = rep_dict[key]
+            #if len(closest)==1:
+            #    new_rep_dict[closest[0]] = rep_dict[key]
             # if a match could not be found, use the old key
-            else:
+            #else:
                 new_rep_dict[key] = rep_dict[key]
     return new_rep_dict
 
-def make_reps_lookup_dict(data_df, norep, method='single_pert'):
+def make_reps_lookup_dict(data_df, norep, method='single_pert', synthetic=False):
     """
     Function for creating a lookup dictionary of which columns are replicates of the same experiment.
     INPUT:
@@ -106,8 +106,11 @@ def make_reps_lookup_dict(data_df, norep, method='single_pert'):
         if not norep:
             col_lables = list(data_df.columns)
 
-            # check common separators between experiment name and replicate tag
-            common_separators = {"dots":".","underscore":"_","dash":"-","space":" ", "capital_r":"R"}
+            # check common separators between experiment name and replicate tag 
+            common_separators = {"dots":".","underscore":"_","dash":"-","space":" "}
+            if synthetic:
+                common_separators["capital_r"] = "R"
+
             num_separators = dict()
             for sep_name, sep in common_separators.items():
                 num_separators[sep_name] = sum(1 for i in col_lables if sep in str(i))
@@ -115,11 +118,11 @@ def make_reps_lookup_dict(data_df, norep, method='single_pert'):
             # check for the most common one
             most_common_separator = common_separators[max(num_separators, key=num_separators.get)] # note that if multiple separators occurs equal amount of times and are the most common, the first one in the dictionary will be picked and replicate identification can be unreliable
 
-            # for each column label, separate it, check if there are two parts after sepatation, add to rep_dict
+            # for each column label, separate it, check so there are not more than two parts after sepatation, add to rep_dict
             for i, col in enumerate(col_lables):
                 col = str(col)
                 separated_label = col.split(most_common_separator)
-                if len(separated_label)>2 or len(separated_label)<2:
+                if len(separated_label)>2: # single part after separation will occur if replicates are labeled the same and is therefore accepted and handled.
                     raise ValueError("\nWARNING:SNAKEDA failed to identify replicates from lables. Either no common separator is used before replicate identifyer or the same symbol is used in the name as the separator e.g. ASD_B_1 or ASD.B.1. Please update lables or use option for no replicates.") 
 
                 # if the experiment has not been seen before, create new key and list
@@ -241,7 +244,7 @@ def json_to_html(file, stats_data=None):
         sections=tables
         ))       
 
-def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes"):
+def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes", synthetic=False):
     """
     Function for basic data analysis.
     INPUT:
@@ -259,6 +262,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         direction - option to specify if genes or experiments are on the rows
             - genes - default
             - experiments
+        synthetic - option for if the data has naming standard of synthetic data
     OUTPUT:
         analysis - dictionary with statistics and figures show in standard output. If specified the same information as json and/or html file, in the case of json file the images will be encoded to a string"""
 
@@ -301,13 +305,14 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     else: 
         raise ValueError("Unknown direction alternative in snakeda. Supported designs are: genes and experiments")
 
+    # make lookup dictionary for replicates
     if pert_design == 'multiple':
-        rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'multi_name')
+        rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'multi_name', synthetic)
     elif pert_design == 'single':
         if isinstance(perts_df, pd.DataFrame):
-            rep_dict, norep = make_reps_lookup_dict(perts_df, norep, 'single_pert')
+            rep_dict, norep = make_reps_lookup_dict(perts_df, norep, 'single_pert') #does not need synthetic tag as the names are not used for dictionary creation
         else:
-            rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'single_name')
+            rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'single_name', synthetic)
     else:
         raise ValueError("Unknown pert_design type in snakeda. Supported designs are: single and multiple")
 
@@ -448,9 +453,10 @@ if __name__ == "__main__":
     parser.add_argument("-pd", "--pert_design", dest="pert_design", default="single", type=str, help="option to change between designs with a single and multiple perterbed genes per experiment")
     parser.add_argument("-o", "--out", dest="out", default=None, help="option to write output to file, name of file without file extention will create both json and html, can otherwise be specified to json, html or png")
     parser.add_argument("-d", "--direction", dest="direction", default="genes", help="option to specify if genes or experiments are on the rows")
+    parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, help="option for if the data has naming standard of synthetic data")
 
     # move input to args
     args = parser.parse_args()
 
     # run eda tool
-    snakeda(args.data, args.perts_df, args.norep, args.pert_design, args.out, args.direction)
+    snakeda(args.data, args.perts_df, args.norep, args.pert_design, args.out, args.direction, args.synthetic)
