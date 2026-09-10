@@ -5,7 +5,7 @@ from genesnake.data.GRNmodel import GRNmodel as GRNmodel
 from jinja2 import FileSystemLoader, Environment
 import os
 import argparse
-import difflib
+from math import floor, log10, isnan
 import json
 from PIL import Image
 
@@ -23,6 +23,15 @@ else:
     from .bin import make_PCA
     from .bin import rep_corr_test
     from .bin import pert_rank
+
+def round_significant(number, significant):
+    if number == 0:
+        return 0
+    elif number == np.nan or isnan(number):
+        return np.nan
+    else:
+        a = log10(abs(number))
+        return round(number, significant-1-int(floor(a)))
 
 def signal_to_noise_ratio(data, rep_dict, norep):
     """
@@ -325,34 +334,34 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     # Calculate basic statistics for the data
     stats0 = {"Elements" : [data_df.shape[0]*data_df.shape[1], ""], # number of elements
         "Unique values" : [len(np.unique(data_df.values)), 
-                           round(100 * len(np.unique(data_df.values))/(data_df.shape[0]*data_df.shape[1]), 2)], # number of unique elements
+                           round_significant(100 * len(np.unique(data_df.values))/(data_df.shape[0]*data_df.shape[1]), 2)], # number of unique elements
         "Zeros" : [int(np.count_nonzero(data_df.values==0)), 
-                   round(100 * np.count_nonzero(data_df.values==0)/(data_df.shape[0]*data_df.shape[1]), 2)], # number of zeros
+                   round_significant(100 * np.count_nonzero(data_df.values==0)/(data_df.shape[0]*data_df.shape[1]), 2)], # number of zeros
         "Matrix shape" : [str(data_df.shape[0]) + ", " + str(data_df.shape[1]), ""] #shape of matrix
             }
 
-    stats1 = {"Mean" : round(float(np.mean(data_df.values)), 4), # mean
-        "Median" : round(float(np.median(data_df.values)), 4), # median
-        "Max" : round(float(np.amax(data_df.values)), 4), # max
-        "Min" : round(float(np.amin(data_df.values)), 4) # min
+    stats1 = {"Mean" : round_significant(float(np.mean(data_df.values)), 4), # mean
+        "Median" : round_significant(float(np.median(data_df.values)), 4), # median
+        "Max" : round_significant(float(np.amax(data_df.values)), 4), # max
+        "Min" : round_significant(float(np.amin(data_df.values)), 4) # min
             }
 
-    stats2 = {"Variance" : round(float(np.var(data_df.values)), 4), # variance
-        "Standard deviation" : round(float(np.std(data_df.values)), 4), # standard deviation
-        "Skewness" : round(float(scipy.stats.skew(data_df.values).mean()), 4), # skew
-        "Signal to noise ratio" : round(float(signal_to_noise_ratio(data_df, rep_dict, norep)), 4) # signal to noise ratio, calculated as mean/std
+    stats2 = {"Variance" : round_significant(float(np.var(data_df.values)), 4), # variance
+        "Standard deviation" : round_significant(float(np.std(data_df.values)), 4), # standard deviation
+        "Skewness" : round_significant(float(scipy.stats.skew(data_df.values).mean()), 4), # skew
+        "Signal to noise ratio" : round_significant(float(signal_to_noise_ratio(data_df, rep_dict, norep)), 4) # signal to noise ratio, calculated as mean/std
             }
 
     # check so matrix is small enough to not run into typical memory problem
     if data_df.shape[0]<5000 and data_df.shape[1]<5000: ## arbitrary cutoff
         svd = np.linalg.svd(data_df.values)[1] # singular value decomposition
-        stats3 = {"Condition number" : round(float(np.linalg.cond(data_df.values)), 4), # condition number
-                "Max of SVD" : round(float(np.max(svd)), 4), # max of svd
-                "Median of SVD" : round(float(np.median(svd)), 4), # median of svd
-                "Min of SVD" : round(float(np.min(svd)), 4) # min of svd
+        stats3 = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
+                "Max of SVD" : round_significant(float(np.max(svd)), 4), # max of svd
+                "Median of SVD" : round_significant(float(np.median(svd)), 4), # median of svd
+                "Min of SVD" : round_significant(float(np.min(svd)), 4) # min of svd
                     }
     else:
-        stats3 = {"Condition number" : round(float(np.linalg.cond(data_df.values)), 4), # condition number
+        stats3 = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
                 "Max of SVD" : np.nan, # max of svd
                 "Median of SVD" : np.nan, # median of svd
                 "Min of SVD" : np.nan # min of svd
@@ -361,11 +370,11 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     if pert_design == 'single':
         median_rank, median_p_rank, times_smallest, times_largest = pert_rank.calc(data_df, rep_dict)
         stats4 = {"Median rank of perterbed gene" : [median_rank, 
-                        round(median_p_rank, 4)*100], # median rank of perterbed gene in experiment
+                        round_significant(median_p_rank, 4)*100], # median rank of perterbed gene in experiment
             "Times lowest rank" : [times_smallest,
-                        round(times_smallest/data_df.shape[1], 4)*100], # number of times the perterbed gene is ranked lowest
+                        round_significant(times_smallest/data_df.shape[1], 4)*100], # number of times the perterbed gene is ranked lowest
             "Times highest rank" : [times_largest,
-                        round(times_largest/data_df.shape[1], 4)*100] # number of times the perterbed gene is ranked highest
+                        round_significant(times_largest/data_df.shape[1], 4)*100] # number of times the perterbed gene is ranked highest
                 }
     else:
         # to ensure uniformity of output in spite of no replicates
@@ -380,10 +389,10 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
 
         num_rep = [len(reps) for reps in rep_dict.values()]
 
-        stats5 = {"Median observation correlation" : round(median_corr, 4), # median correlation of all columns
-            "Median replicate correlation" : round(median_rep_corr, 4), # median correlation of replicate groups
+        stats5 = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
+            "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
             "# replicate corr>median corr" : int(num_greater_repcorrs), # number of correlations within replicate groups greater than the overall median
-            "Median # of replicates" : round(np.median(num_rep), 2) # median number of replicates
+            "Median # of replicates" : round_significant(np.median(num_rep), 2) # median number of replicates
                 }
     else:
         # to ensure uniformity of output in spite of no replicates
