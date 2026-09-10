@@ -1,98 +1,84 @@
-"""
-Script used to generate a heatmap over distrubution in a numpy 2D matrix. 
-takes a numpy 2D array and bins as input and returnes a base64 html discription of the figure
-"""
-
-import matplotlib
 import matplotlib.pylab as plt
 import numpy as np
 from sklearn.decomposition import PCA
 import base64
 from io import BytesIO
 import pandas as pd
-import random
 
-def random_color():
-
-    color = "#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
-
-    return color
-
-
-def plot(array,rep_mat,out,direct):
-    
+def plot(data_df, rep_dict, out, direct):
+    """
+    Function for plotting two component PCA plots with labels depending on which dimention is reduced and if there are replicates.
+    INPUT:
+        data_df - pandas.DataFrame with gene expression, genesXexperiments
+        rep_dict - dictionary for looking up which replicates are for which experiment
+        out - option for either showing or encoding the final figure
+        direct - which dimention is to be analysed
+            - experiments
+            - genes
+    OUTPUT:
+        encoder - b64 encoded figure if the output for the snakeda tool should be a file. Figure is otherwise shown.
+    """
+    # initialize two component PCA
     pca = PCA(n_components=2)
-    if direct == "col":
-        direct_set = "experiments"
-        pcomp = pca.fit_transform(np.transpose(array.values))
-        
-        max_rep = 0
-        rep_order = np.zeros(array.shape[1])
-        
-        for i in rep_mat.keys():
-            rep = 1
-            where = rep_mat[i]
-            for j in where:
-                rep_order[j] = rep
-                rep+=1
-            if rep > max_rep:
-                max_rep = rep
-        legend_reps = list()
-        for i in range(1,max_rep):
-            legend_reps.append("rep:"+str(i))
+    max_group = 0
+    if direct=="experiments":
+        # find principal components for observations
+        pca_components = pca.fit_transform(np.transpose(data_df))
+
+        # make list for which replicate observations are part of
+        group_markers = np.empty(data_df.shape[1])
+        for i in rep_dict.keys(): # loop over experiments
+            group = 0
+            obs_inds = rep_dict[i]
+            for j in obs_inds: # loop over replicates for experiment
+                group_markers[j] = group
+                group += 1
+            if group > max_group:
+                max_group = group
+
+    elif direct=="genes":
+        pca_components = pca.fit_transform(data_df)
+        group_markers = np.zeros(data_df.shape[0])
+        max_group += 1
+
     else:
-        pcomp = pca.fit_transform(array.values)
-        rep_order = list(array.index)
-        max_rep = int(len(rep_order))
-        direct_set = "genes"
-        legend_reps = list()
-        for i in rep_order:
-            if i.isnumeric():
-                legend_reps.append("Gene:"+str(i))
-            else:
-                legend_reps.append(i)
-    compDf = pd.DataFrame(data = pcomp, columns = ['principal component 1', 'principal component 2'])
-    compDf["rep"] = rep_order
-    
+        raise ValueError("Unknown direction in make_PCA. Supported methods are: experiments and genes")
+
+    component_df = pd.DataFrame(data=pca_components, columns=["Principal component 1", "Principal component 2"])
+    component_df["Group"] = group_markers
+
     fig = plt.figure(figsize = (10,10))
     ax = fig.add_subplot(1,1,1) 
     ax.set_xlabel('Principal Component 1', fontsize = 15)
     ax.set_ylabel('Principal Component 2', fontsize = 15)
-    ax.set_title('2 component PCA of '+direct_set, fontsize = 20)
-    
-    colors = ["#e41a1c","#377eb8","#ff7f00","#984ea3","#ffff33","#a65628","#f781bf","#4daf4a"]
-    
-    if max_rep > len(colors):
-        more_cols = max_rep-len(colors)
-        for col in range(more_cols):
-            colors.append(random_color())
+    ax.set_title('2 component PCA of '+direct, fontsize = 20)
 
-    for rep, color in zip(compDf["rep"].unique().tolist(),colors):
-        indicesToKeep = compDf['rep'] == rep
-        ax.scatter(compDf.loc[indicesToKeep, 'principal component 1']
-               , compDf.loc[indicesToKeep, 'principal component 2']
-               , c = color
-               , s = 50)
-        
-    if len(legend_reps) <= 5:
-        # if there are 5 or less items in the legend just put it where ever as
-        # it's not super likely to cover anything. 
-        ax.legend(legend_reps)
-    elif len(legend_reps) <= 40:
-        # if there are 40 items this still fits in the box
-        # but needs to be put just at the edge of the plot to make sure
-        # it wont cover anything in the plot 
-        ax.legend(legend_reps,bbox_to_anchor=(0.98, 1), loc="upper left")
-        
+    if direct=="experiments":
+        for group in range(max_group):
+            ax.scatter(component_df.loc[(component_df.Group==group)]["Principal component 1"], 
+                    component_df.loc[(component_df.Group==group)]["Principal component 2"],         
+                    label="rep:"+str(group+1)
+                    )
+            ax.legend(bbox_to_anchor=(0.98, 1), loc="upper left")
+    else:
+        for group in range(max_group):
+            ax.scatter(component_df.loc[(component_df.Group==group)]["Principal component 1"], 
+                    component_df.loc[(component_df.Group==group)]["Principal component 2"],
+                    )
+
     ax.grid()
-    
+
     if out:
-        byte_file = BytesIO()
+        byte_file = BytesIO() #create in memory file to write to
         fig.savefig(byte_file,format="png")
-    
-        encoder = base64.b64encode(byte_file.getvalue())
-        byte_file.close()
-        plt.close()
-        return(encoder)
+
+        if out.endswith(".png"):
+            return(byte_file)
+        else:        
+            encoder = base64.b64encode(byte_file.getvalue()) # encode figure so it can be handled for json/html
+            byte_file.close()
+            plt.close()
+            return(encoder)
     else:
         plt.show()
+        plt.close()

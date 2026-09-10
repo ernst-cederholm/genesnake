@@ -1,601 +1,456 @@
-# need to add:
-# way to show SVD
-# way to show correlation (some form of heatmap maybe?)
-
-"""
-Main script of the EDA tool. Most of the executing code can be found here while several functions are also imported externaly
-"""
-
-# general python libraries
-from jinja2 import PackageLoader,FileSystemLoader, Environment # used to generate the html report based on manualy created template files
-from pandas.api.types import is_string_dtype
-from sklearn.ensemble import IsolationForest
-from multiprocessing import Pool
-import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import scipy.stats # used to get a number of statistics out from the data
+import scipy.stats
+from genesnake.data.GRNmodel import GRNmodel as GRNmodel
+from jinja2 import FileSystemLoader, Environment
+import os
 import argparse
 import difflib
-import math
 import json
-import sys
-import os
+from PIL import Image
 
-# import genesnake
-from genesnake.data import GRNmodel as GRNmodel
-
-# apply a trick to let the relative path .bin needed for importing the script in to geneSNAKE
-# and the direct path bin needed to run the script from terminal both exist at the same time
+# import helper functions for plotting and more involved analyses
+# check how the script runs for how to import them
 if __name__ == "__main__":
-    # plugins for the tool
-    from bin import make_PCA
-    from bin import pert_rank
-    from bin import make_hist
     from bin import make_heatmap
-    from bin import pert_simularity_test
+    from bin import make_histogram
+    from bin import make_PCA
+    from bin import rep_corr_test
+    from bin import pert_rank
 else:
-    # plugins for the tool
-    from .bin import make_PCA
-    from .bin import pert_rank
-    from .bin import make_hist
     from .bin import make_heatmap
-    from .bin import pert_simularity_test
+    from .bin import make_histogram
+    from .bin import make_PCA
+    from .bin import rep_corr_test
+    from .bin import pert_rank
 
+def signal_to_noise_ratio(data, rep_dict, norep):
+    """
+    Function to calculate the signal to noise ratio as mean over standard deviation.
+    INPUT:
+        data - pandas.DataFrame with data
+        rep_dict - dictionary to look up which columns are replicates
+        norep - marker for if there are replicates or not
+    OUTPUT:
+        SNR - calculated signal to noise ratio"""
 
-def snr(y,p,norep):
-
-    sd = np.zeros(y.shape[0])
-    m = np.zeros(y.shape[0])
     if not norep:
-        counter = 0
-        # loop over all the groups in the perturbation
-        for i in p.keys():
-            cols = p[i]
-            work_data = y.values[:,cols]
+        stdev = np.zeros((data.shape[0],1))
+        average = np.zeros((data.shape[0],1))
 
-            # and find the variance and mean square
-            sd[counter] = abs(np.std(work_data))
-            m[counter] = np.mean(np.abs(work_data))#abs(np.mean(work_data)**2)
-            counter+=1
+        # loop over the groups of replicates
+        for i, pert_gene in enumerate(rep_dict.keys()):
+            cols = rep_dict[pert_gene]
+            observations = data.iloc[:, cols]
 
-        SNR = round((np.median(m)/np.median(sd)),4)
-    # if no replicates exist simply take the SNR for the whole data at once
+            # absolute values of standard deviation and mean
+            stdev[i] = np.std(observations.values)
+            average[i] = abs(np.mean(observations))
+        SNR = np.mean(average)/np.mean(stdev)
+    # case without replicates which calculate SNR on the whole data at once
     else:
-        #SNR = (np.mean(y.values)**2)/np.var(y.values) ORIGINAL
-        SNR = np.mean(np.abs(y))/np.var(y)
+        SNR = abs(np.mean(data))/np.std(data)
+    return SNR
 
-    return(SNR)
-
-
-def shrink_pert(pert_mat):
+def match_experiment_with_gene_name(gene_names, rep_dict):
     """
-    Function for moving pertrubation scheme from full matrix to a dictonary with corresponding columns as values
-    This reduces how long the full perturbation matrix must be kept in memory and makes it easier to use the data in later functions
+    Function which tries to match experiments and gene names to update replicate lookup dictionary with
     INPUT:
-        pert_mat - a matrix with 0s for non-perturbation and non-zeros for pertrubation
+        gene_names - list with gene names, from index of expression matrix
+        rep_dict - dictionary with experiment names (without marker for replicate) as keys
     OUTPUT:
-        pert_dict - a dictonary of {gene1:[col1,col2,col3],gene2:[col4,col5]}
+        new_rep_dict - dictionary with updated keys if matches are found
     """
+    print("\nTrying to match gene and experiment names for perturbation rank analysis\n")
 
-    pert_dict = dict()
-    # check what the format of the perturbation matrix is
-    values = np.count_nonzero(pert_mat.values)
-    zeros = np.count_nonzero(pert_mat.values==0)
-
-    # assume if there are more 0s than values that it's a square matrix
-    # if not having that many perturbations in column 0 will crash things anyway
-    for row in pert_mat.iterrows():
-        if zeros > values:
-            pert_dict[row[0]]=np.where(row[1])[0].tolist()
+    new_rep_dict = {}
+    for key in rep_dict.keys():
+        # if an exact match can be found, keep it
+        if key in gene_names:
+            new_rep_dict[key] = rep_dict[key]
+        # if an exact match does not exist, try to find a close one
         else:
-            pert_dict[row[0]]=row[1].to_list()
-
-    return pert_dict
-
-
-def make_pert(data):
-    """
-    simple function to try and create a perturbation matrix based on the column names in the data
-    INPUT:
-        exp_list - a list with experiment names so that reps are clear e.g. G1.1,G1.2..G1.n
-    OUTPUT:
-        pert_dict - a dictonary of {gene1:[col1,col2,col3],gene2:[col4,col5]}
-    """
-    exp_list = list(data.columns)
-    # try to check what is the most likely seperator between name and replicate
-    dots = sum(1 for i in exp_list if "." in str(i))
-    underscore = sum(1 for i in exp_list if "_" in str(i))
-    line = sum(1 for i in exp_list if "-" in str(i))
-    space = sum(1 for i in exp_list if " " in str(i))
-
-    # check which one is most common
-    seps = {"dots":dots,"underscore":underscore,"line":line,"space":space}
-    most = max(seps, key=seps.get)
-
-    # and pick that one from a dict
-    common_seps = {"dots":".","underscore":"_","line":"-","space":" "}
-    sep = common_seps[most]
-
-    pert_dict=dict()
-    ind = 0
-
-    # for each name in the exp_list seperate it on the sep and either add a new list or append
-    for i in exp_list:
-        i = str(i)
-        sepi = i.split(sep)
-        if len(sepi)>2:
-            raise("\n\nWARNING:SNAKED failed to automatically create perturbation design matrix. Either no replicate seperation is present in the experiment names or the same symbol is used in the name as the seperator e.g. ASD_B_1 or ASD.B.1. Either provide a premade pertrubation design matrix or check the experiment names.\n\n")
-
-        # if the experiment has not been seen create a new key and list
-        if sepi[0] not in pert_dict.keys():
-            pert_dict[sepi[0]] = [ind]
-        # else append the ind value to the list in the dict
-        else:
-            pert_dict[sepi[0]].append(ind)
-        # by increasing ind with 1 the column number from data
-        ind+=1
-
-    # try to match the column names with the rows to know which row is perturbed
-    # this is only needed for the pert_rank calculation which will not be performed if
-    # more than 60% of the perturbations does not match a row
-    pert_mat = dict()
-    inds = [str(i) for i in data.index]
-    for key in pert_dict.keys():
-        # first if an exact match exists keep the key
-        if key in inds:
-            pert_mat[key] = pert_dict[key]
-        #else if no exact match exist find one that matches at least 80%
-        else:
-            closest = difflib.get_close_matches(key,inds,n=1,cutoff=0.8)
-            # if a match is found put that as the new key
-            if len(closest)>=1:
-                pert_mat[closest] = pert_dict[key]
-            # else simply add back the old one
+            closest = difflib.get_close_matches(key, gene_names, n=1, cutoff=0.8)
+            # if a close match is found, use as new key
+            if len(closest)==1:
+                new_rep_dict[closest[0]] = rep_dict[key]
+            # if a match could not be found, use the old key
             else:
-                pert_mat[key] = pert_dict[key]
+                new_rep_dict[key] = rep_dict[key]
+    return new_rep_dict
 
-    pert_dict = pert_mat
-    # check that the replicates makes sense
-    if len(pert_dict.keys()) < 1 or all(len(i)<2 for i in pert_dict.values()):
-        raise("\n\nWARNING:SNAKED failed to automatically create perturbation design matrix. Either provide a premade pertrubation design matrix or check the experiment names\n\n")
-
-    return pert_dict
-
-
-def csv_preper(file,perts,norep,direct):
+def make_reps_lookup_dict(data_df, norep, method='single_pert'):
     """
-    Function for reading a csv file in to pandas.DataFrame and prepare it for usage in snaked
+    Function for creating a lookup dictionary of which columns are replicates of the same experiment.
     INPUT:
-        file - a csv file with expression data
-        perts - optional pertrubation matrix in csv or pandas.DataFrame format, either in matrix format or memory efficent format with experiment name followed by each relevant column in the data file. E.g. rep1,1,3,5\nrep2,2,4,6.\nNote that if perts are not used SNAKED will try to estimate a perturbation design from row or column name, these should follow naming practis rep1.1,rep1.2..rep1.n.
-        direct - direction the replicates in the matrix is expected to be found in in e.g. row for experimentsXgenes [default] or col for genesXexperiments
+        data_df - pandas.DataFrame with either expression data or perturbation information, 0 for non-perterbed, non-zero for perterbed
+        norep - options for if there are replicates or not
+        method - option for method to determine which observations are replicates
+            - single_pert - will assume each time a gene is perterbed it is a replicate of the other times it is perterbed. Used when data_df is a perturbation matrix where a single gene is perterbed at a time. Groups of replicates will be named after gene perturbed.
+            - single_name - will look for common separators in the observetion lables for sign of replicates. Assumes a single gene is perterbed at a time and tries to match experiment lables with gene names.
+            - multi_name - will look for common separators in the observation lables for sign pf replicates.
     OUTPUT:
-        data - a pd.dataframe in format genesXexperiments with the expression data
-        pert - a dictonary in format group:[col1,col2,col2] where col corresponds to the relevant column in data
+        rep_dict - dictionary with keys labled as genes or experiments, depening on method, and values as column names of replicates.
+        norep - potentially updated information for if there are replicates
     """
+    rep_dict = dict()
+    norep_check = False # marker to check if replicates exist, used to potentially update norep
+    if method == 'single_pert':
+        for row in data_df.iterrows():
+            rep_dict[row[0]] = np.where(row[1])[0].tolist()
+        # check to ensure norep is set to True if no replicates are found in data
+        if data_df.shape[0] == data_df.shape[1]:
+            norep = True
+    elif method == 'single_name' or method == 'multi_name':
+        # only look for replicates if they are believed to exist
+        if not norep:
+            col_lables = list(data_df.columns)
 
-    # read data in to pandas.
-    # not that sep=None means pandas will try to check the most likely delimiter using csv.sniffer not no seperation
-    # the csv is read without row and column names and these are then added based on if the first row and/or columns are string
-    data = pd.read_csv(file,sep=None,header=None,engine="python")
-    # first check if the first row is a header
-    if is_string_dtype(data[data.index[0]]):
-        headers = data.iloc[0].values
-        # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-        data = pd.DataFrame(data.values[1:], columns=headers)
-    # then check if the first column are strings and set this to the index
-    if is_string_dtype(data[data.columns[0]]):
-        data = data.set_index(data.columns[0])
+            # check common separators between experiment name and replicate tag
+            common_separators = {"dots":".","underscore":"_","dash":"-","space":" ", "capital_r":"R"}
+            num_separators = dict()
+            for sep_name, sep in common_separators.items():
+                num_separators[sep_name] = sum(1 for i in col_lables if sep in str(i))
 
-    # if the data is in genes in the columns transpose the matrix
-    if direct == "col":
-        data = data.T
+            # check for the most common one
+            most_common_separator = common_separators[max(num_separators, key=num_separators.get)] # note that if multiple separators occurs equal amount of times and are the most common, the first one in the dictionary will be picked and replicate identification can be unreliable
+
+            # for each column label, separate it, check if there are two parts after sepatation, add to rep_dict
+            for i, col in enumerate(col_lables):
+                col = str(col)
+                separated_label = col.split(most_common_separator)
+                if len(separated_label)>2 or len(separated_label)<2:
+                    raise ValueError("\nWARNING:SNAKEDA failed to identify replicates from lables. Either no common separator is used before replicate identifyer or the same symbol is used in the name as the separator e.g. ASD_B_1 or ASD.B.1. Please update lables or use option for no replicates.") 
+
+                # if the experiment has not been seen before, create new key and list
+                if separated_label[0] not in rep_dict.keys():
+                    rep_dict[separated_label[0]] = [i]
+                # else, append the column index to the list in the dictionary
+                else:
+                    rep_dict[separated_label[0]].append(i)
+                    norep_check = True # update marker to show that replicates were found
+        else:
+            for i, name in enumerate(data_df.columns.to_list()):
+                rep_dict[name] = [i]
+
+        if method == 'single_name':
+            gene_names = [str(i) for i in data_df.index.to_list()]
+            rep_dict = match_experiment_with_gene_name(gene_names, rep_dict)
+        # check to ensure norep is set to True is no replicates are found in data
+        if not norep_check:
+            norep = True
+    else:
+        raise ValueError("Unknown method type in snakeda.make_reps_lookup_dict. Supported methods are: single_pert, single_name, and multi_name")
+    return rep_dict, norep
+
+def csv_prepper(file, direction="genes"):
+    """
+    Function for reading csv files, converting to pandas.DataFrames and automatically detecting if column and row labels exists, handles cases for none or both of them existing.
+    INPUT:
+        file - a csv file
+        direction - if labels are to be generated, option to ensure that they are applied to the correct axis
+            - genes - if genes are on the rows
+            - experiments - if experiments are on the rows
+    OUTPUT:
+        df - a pandas.DataFrame with column and rown labels, from the file is they exist, otherwise generated"""
+    # read data into dataframe
+    df = pd.read_csv(file, sep=None, header=None, engine="python") # sep=None set reader to automatically detect the separator used, therefor the engine is set to python. header=None to make it possible to handle data with and without a row with lables
+
+    # check first row for column labels and if they do set column and row names to first row and column
+    if pd.api.types.is_string_dtype(df.iloc[0][1:]):
+        col_names = df.iloc[0].values
+        # update dataframe with column lables and remove row where they are taken from
+        df = pd.DataFrame(df.values[1:], columns=col_names)
+
+        # set first column as index
+        df = df.set_index(df.columns[0])
+    else:
+        if direction == "experiments":
+            df.columns = ["G"+str(i) for i in range(1, df.shape[1]+1)]
+            df.index = ["Exp"+str(i) for i in range(1, df.shape[0]+1)]
+        elif direction == "genes":
+            df.columns = ["Exp"+str(i) for i in range(1, df.shape[1]+1)]
+            df.index = ["G"+str(i) for i in range(1, df.shape[0]+1)]
+        else:
+            raise ValueError("Unknown direction alternative in snakeda. Supported designs are: genes and experiments")
 
     # convert data to float
-    data = data.astype(float)
+    df = df.astype("float")
+    return df
 
-    # check if perturbation exists
-    if not norep:
-        if perts:
-            # if perts exist do the same thing as with the data
-            pert = pd.read_csv(perts,sep=None,header=None,engine="python")
-            # check what the format of the perturbation matrix is
-            # set datatype to string as numbers can be strings but strings not numbers
-            values = np.count_nonzero(pert.astype(str).values!="0")
-            zeros = np.count_nonzero(pert.astype(str).values=="0")
-            if zeros > values:
-                # first check if the first row is a header
-                if is_string_dtype(pert[pert.index[0]]):
-                    headers = pert.iloc[0].values
-                    # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-                    pert = pd.DataFrame(pert.values[1:], columns=headers)
-                    # then check if the first column are strings and set this to the index
-                if is_string_dtype(pert[pert.columns[0]]):
-                    pert = pert.set_index(pert.columns[0])
-            else:
-                if all(isinstance(i,str) for i in pert.iloc[0].values):
-                    headers = pert.iloc[0].values
-                    # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-                    pert = pd.DataFrame(pert.values[1:], columns=headers)
-                if is_string_dtype(pert[pert.columns[0]]):
-                    pert = pert.set_index(pert.columns[0])
-
-            if direct == "col":
-                pert = pert.T
-
-            pert = pert.astype(float)
-            pert = shrink_pert(pert)
-
-        else:
-            pert = make_pert(data)
-    else:
-        # if not using perts just return nothing
-        pert=None
-
-    return data,pert
-
-
-def json_preper(file,perts,norep,direct):
+def json_to_html(file, stats_data=None):
     """
-    Function for reading a csv file in to pandas.DataFrame and prepare it for usage in snaked
+    Fuction for taking statistics and encoded figures from json file and output as a html file for easier viewing.
     INPUT:
-        file - a json file with expression data
-        perts - optional pertrubation matrix in csv or pandas.DataFrame format, either in matrix format or memory efficent format with experiment name followed by each relevant column in the data file. E.g. rep1,1,3,5\nrep2,2,4,6.\nNote that if perts are not used SNAKED will try to estimate a perturbation design from row or column name, these should follow naming practis rep1.1,rep1.2..rep1.n.
-        direct - direction the replicates in the matrix is expected to be found in in e.g. row for experimentsXgenes [default] or col for genesXexperiments
-    OUTPUT:
-        data - a pd.dataframe in format genesXexperiments with the expression data
-        pert - a dictonary in format group:[col1,col2,col2] where col corresponds to the relevant column in data
+        file - filename without extention
+        stats_dict - optional input for when data should not be read from json"""
+
+    # check if data should be loaded from json or use dictionary from input
+    if not file.endswith(".html"):
+        with open(file+".json", "r") as f:
+            stats_data = json.load(f)
+        file = file + ".html"
+
+    stats_list = stats_data["Statistics"]
+    plot_dict = stats_data["Plots"]
+
+    script_path = os.path.abspath(__file__) # get the path to where this script is to find templates
+    script_path = script_path[0:-10]
+    
+    # Configure Jinja and ready loader
+    jinja_env = Environment(loader=FileSystemLoader(script_path+"templates"))
+    
+    # set up html templates
+    base = jinja_env.get_template("base_report.html")
+    stat_sections = jinja_env.get_template("stats_and_images.html")
+
+    # format figures
+    hist_html = "<img src='data:image/png;base64, "+ plot_dict["Histogram"] +"'>"
+    epca_html = "<img src='data:image/png;base64," + plot_dict["Experiment PCA"] + "'>"
+    gpca_html = "<img src='data:image/png;base64," + plot_dict["Gene PCA"] + "'>"
+    heat_html = "<img src='data:image/png;base64," + plot_dict["Heatmap"] + "'>"
+    
+    # format statistics
+    stats0 = pd.DataFrame(stats_list[0], index=["Value", "%"]).transpose()
+    stats1 = pd.DataFrame(stats_list[1], index=["Value"]).transpose()
+    stats2 = pd.DataFrame(stats_list[2], index=["Value"]).transpose()
+    stats3 = pd.DataFrame(stats_list[3], index=["Value"]).transpose()
+    stats4 = pd.DataFrame(stats_list[4], index=["Value", "%"]).transpose()
+    stats5 = pd.DataFrame(stats_list[5], index=["Value"]).transpose()
+
+    # add stats and plots to list rendered according to template
+    tables = list()
+    tables.append(stat_sections.render(
+        file = "EDA analysis: " + file,
+        t1 = stats0.to_html(),
+        t2 = stats1.to_html(),
+        t3 = stats2.to_html(),
+        t4 = stats3.to_html(),
+        t5 = stats4.to_html(),
+        t6 = stats5.to_html(),
+        hist=hist_html,
+        rpca=gpca_html,
+        cpca=epca_html,
+        heat=heat_html
+        ))
+    
+    # write to file according to base template render
+    with open(file, 'w+') as outfile:
+        outfile.write(base.render(
+        title=file,
+        sections=tables
+        ))       
+
+def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes"):
     """
+    Function for basic data analysis.
+    INPUT:
+        data - pandas.DataFrame, GRNmodel or csv file. matrix with gene expression, typically on the form genesXexperiments
+        perts_df - optional perturbation matrix as pandas.DataFrame or csv file, only used if pert_design is set to single
+        norep - option for when there are no replicates. Will limit some analyses, but makes it possible to run the rest
+        pert_design - option to change between designs with a single and multiple perterbed genes per experiment/observation
+            - single - one gene perterbed per observation
+            - multiple - one or more genes perterbed per observation
+        out - option to write output to file, extention alternatives:
+            - none - will write to both json and html
+            - json - will onlt write output to json, with figures encoded
+            - html - will only write to html file and bypass json
+            - png - will make one png file with all figures and write statistics to json file
+        direction - option to specify if genes or experiments are on the rows
+            - genes - default
+            - experiments
+    OUTPUT:
+        analysis - dictionary with statistics and figures show in standard output. If specified the same information as json and/or html file, in the case of json file the images will be encoded to a string"""
 
-    with open(file, 'r') as f:
-        json_data = json.load(f)
+    # Determine data type and format uniformly
+    if isinstance(data, GRNmodel):
+        data_df = data.data
+        perts_df = data.perturbation
+    elif isinstance(data, pd.DataFrame):
+        data_df = data
+    elif isinstance(data, str):
+        if data.endswith(".csv"):
+            data_df = csv_prepper(data, direction)
+        else:
+            raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, genesnake.GRNmodel, or csv file\n")
+    else: 
+        raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, genesnake.GRNmodel, or csv file\n")
 
-    # sanitise json keys to be lower case
-    json_data =  {k.lower(): v for k, v in json_data.items()}
+    # Ensure the row and column lables are strings
+    data_df.index = [str(i) for i in data_df.index.to_list()]
+    data_df.columns = [str(i) for i in data_df.columns.to_list()]
 
-    data = None
-    try:
-        data = np.array(json_data["data"])
-    except KeyError:
+    # Determine if perts_df needs to be read from csv and do if needed
+    if isinstance(perts_df, pd.DataFrame) or perts_df==None:
         pass
-    try:
-        data = np.array(json_data["expression"])
-    except KeyError:
-        raise("\n\nWARNING:SNAKED could not find any data in json file. Expression data must be under key data or expression.\n\n")
-
-    data = pd.DataFrame(data)
-
-    if direct == "col":
-        data = data.T
-
-    if "genes" in json_data.keys():
-        data.index = json_data["genes"]
-    elif "gene" in json_data.keys():
-        data.index = json_data["gene"]
-    elif "names" in json_data.keys():
-        data.index = json_data["names"]
-    elif "name" in json_data.keys():
-        data.index = json_data["name"]
-
-    if "experiments" in json_data.keys():
-        data.columns=json_data["experiments"]
-    elif "experiment" in json_data.keys():
-        data.columns=json_data["experiment"]
-
-    # check if perturbation exists
-    if not norep:
-        if perts:
-            # if perts exist do the same thing as with the data
-            pert = pd.read_csv(perts,sep=None,header=None,engine="python")
-            # check what the format of the perturbation matrix is
-            values = np.count_nonzero(pert.astype(str).values!="0")
-            zeros = np.count_nonzero(pert.astype(str).values=="0")
-            if zeros > values:
-                # first check if the first row is a header
-                if is_string_dtype(pert[pert.index[0]]):
-                    headers = pert.iloc[0].values
-                    # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-                    pert = pd.DataFrame(pert.values[1:], columns=headers)
-                    # then check if the first column are strings and set this to the index
-                if is_string_dtype(pert[pert.columns[0]]):
-                    pert = pert.set_index(pert.columns[0])
-            else:
-                if all(isinstance(i,str) for i in pert.iloc[0].values):
-                    headers = pert.iloc[0].values
-                    # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-                    pert = pd.DataFrame(pert.values[1:], columns=headers)
-                if is_string_dtype(pert[pert.columns[0]]):
-                    pert = pert.set_index(pert.columns[0])
-
-            if direct == "col":
-                pert = pert.T
-            pert = pert.astype(float)
-            pert = shrink_pert(pert)
-        elif "perturbation" in json_data.keys() or "perturbations" in json_data.keys():
-            pert = pd.DataFrame(json_data["perturbation"])
-            pert = pert.astype(float)
-            pert = shrink_pert(pert)
-
+    elif isinstance(perts_df, str):
+        if perts_df.endswith(".csv"):
+            perts_df = csv_prepper(perts_df, direction)
         else:
-            pert = make_pert(data)
-    else:
-        # if not using perts just return nothing
-        pert=None
+            raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input perts_df is a pandas.DataFrame, or csv file\n")
+    else: 
+        raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input perts_df is a pandas.DataFrame, or csv file\n")
 
-    return data,pert
+    # for consistency swap rows and columns if data has the form experimentsXgenes
+    if direction == "experiments":
+        data_df = data_df.transpose()
+        if isinstance(perts_df, pd.DataFrame):
+            perts_df = perts_df.transpose()
+    elif direction == "genes":
+        pass
+    else: 
+        raise ValueError("Unknown direction alternative in snakeda. Supported designs are: genes and experiments")
 
-
-def snakeda(data,perts=None,out=None,direct="row",norep=None,ff=None):
-    """
-    Function for performing basic data analysis and printing it to a html report or stdout.
-    INPUT:
-        data - pandas.DataFrame or file of type csv or json. input should be a matrix of genesXexperiments or experimentsXgenes (see option direct). NOTE for json file data must be named \"data\" or \"expression\".
-        perts - optional pertrubation matrix in csv or pandas.DataFrame format, either in matrix format or memory efficent format with experiment name followed by each relevant column in the data file. E.g. rep1,1,3,5\nrep2,2,4,6.\nNote that if perts are not used SNAKED will try to estimate a perturbation design from row or column name, these should follow naming practis rep1.1,rep1.2..rep1.n.\nFor .json files if pert is not given a perturbation design can be stored in the json file under the name P or perturbation, if this does not exist a similar automatic estimation as with .csv files will be performed using the experiment key.
-    out - name of file to save the created html file to. If set to None (default) analysis results will instead be printed stdout.
-    direct - direction the replicates in the matrix is expected to be found in in e.g. row for experimentsXgenes [default] or col for genesXexperiments
-    noreps - option to turn of replicates, will disable most metrics but allows for analysis of data with only a single replicate per experiment.
-    ff - option to force the file type to be either csv or json. Does nothing if data is a pandas.DataFrame.
-    OUTPUT:
-        analysis - the results of the data analysis either to a html report or printed to the stdout.
-    """
-
-    tables = list() # create an empty list to store the html objects with stats for each file in file list. This will later be added to the report in a for loop based fashion.
-
-    # first determine what the data is
-    if isinstance(data,type(pd.DataFrame())) or isinstance(data,GRNmodel.GRNmodel):
-        if isinstance(data,GRNmodel.GRNmodel):
-            M = data
-            data = M.data
-            perts = M.perturbation
-
-        # need to get the perts if not availeble
-        df = data
-        # check if perturbation exists and should do so
-        if not norep:
-            if isinstance(perts,type(pd.DataFrame())):
-                rep_mat = shrink_pert(perts)
-            elif isinstance(data,str):
-                # if perts exist do the same thing as with the data
-                pert = pd.read_csv(perts,sep=None,header=None,engine="python")
-                # check what the format of the perturbation matrix is
-                values = np.count_nonzero(pert.astype(str).values!="0")
-                zeros = np.count_nonzero(pert.astype(str).values=="0")
-                if zeros > values:
-                    # first check if the first row is a header
-                    if is_string_dtype(pert[pert.index[0]]):
-                        headers = pert.iloc[0].values
-                        # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-                        pert = pd.DataFrame(pert.values[1:], columns=headers)
-                        # then check if the first column are strings and set this to the index
-                    if is_string_dtype(pert[pert.columns[0]]):
-                        rep_mat = pert.set_index(pert.columns[0])
-                else:
-                    if all(isinstance(i,str) for i in pert.iloc[0].values):
-                        headers = pert.iloc[0].values
-                        # recreate the dataframe, this is done so that the datatype of each column is updated once the hearder row is removed
-                        rep_mat = pd.DataFrame(pert.values[1:], columns=headers)
-                    if is_string_dtype(pert[pert.columns[0]]):
-                        rep_mat = pert.set_index(pert.columns[0])
-                if direct == "col":
-                    rep_mat = rep_mat.T
-                    rep_mat = rep_mat.astype(float)
-                rep_mat = shrink_pert(rep_mat)
-            elif "perturbation" in json_data.keys() or "perturbations" in json_data.keys():
-                pert = pd.DataFrame(json_data["perturbation"])
-                pert = pert.astype(float)
-                rep_mat = shrink_pert(pert)
-
-            else:
-                rep_mat = make_pert(data)
+    if pert_design == 'multiple':
+        rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'multi_name')
+    elif pert_design == 'single':
+        if isinstance(perts_df, pd.DataFrame):
+            rep_dict, norep = make_reps_lookup_dict(perts_df, norep, 'single_pert')
         else:
-            # if not using perts just return nothing
-            pert=None
-
-    elif isinstance(data,str):
-        # if the input is a string (and thus likely a file path) determine the file type
-        if data.endswith(".csv") or ff == "csv":
-            [df,rep_mat] = csv_preper(data,perts,norep,direct)
-        elif data.endswith(".json") or ff == "json":
-            [df,rep_mat] = json_preper(data,perts,norep,direct)
-        else:
-            # if the file is neither csv or json perform controlled crash.
-            raise TypeError("\n\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, or a file of type .csv or .json\n\n")
+            rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'single_name')
     else:
-        raise TypeError("\n\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, or a file of type .csv or .json\n\n")
+        raise ValueError("Unknown pert_design type in snakeda. Supported designs are: single and multiple")
 
-    # make sure the row and column headers are strings
-    df.index = [str(i) for i in df.index.to_list()]
-    df.columns = [str(i) for i in df.columns.to_list()]
+    # Make plots
+    distribution_plot = make_histogram.plot(data_df.values, out) # histogram
+    heatmap_plot = make_heatmap.plot(data_df, out) #heatmap
+    exp_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "experiments") #PCA for experiments
+    gene_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "genes") #PCA for genes
 
-    # make some plots
-    distribution = make_hist.plot(df.values,out)
-    heatmap = make_heatmap.plot(df.values,out)
+    # Calculate basic statistics for the data
+    stats0 = {"Elements" : [data_df.shape[0]*data_df.shape[1], ""], # number of elements
+        "Unique values" : [len(np.unique(data_df.values)), 
+                           round(100 * len(np.unique(data_df.values))/(data_df.shape[0]*data_df.shape[1]), 2)], # number of unique elements
+        "Zeros" : [int(np.count_nonzero(data_df.values==0)), 
+                   round(100 * np.count_nonzero(data_df.values==0)/(data_df.shape[0]*data_df.shape[1]), 2)], # number of zeros
+        "Matrix shape" : [str(data_df.shape[0]) + ", " + str(data_df.shape[1]), ""] #shape of matrix
+            }
+
+    stats1 = {"Mean" : round(float(np.mean(data_df.values)), 4), # mean
+        "Median" : round(float(np.median(data_df.values)), 4), # median
+        "Max" : round(float(np.amax(data_df.values)), 4), # max
+        "Min" : round(float(np.amin(data_df.values)), 4) # min
+            }
+
+    stats2 = {"Variance" : round(float(np.var(data_df.values)), 4), # variance
+        "Standard deviation" : round(float(np.std(data_df.values)), 4), # standard deviation
+        "Skewness" : round(float(scipy.stats.skew(data_df.values).mean()), 4), # skew
+        "Signal to noise ratio" : round(float(signal_to_noise_ratio(data_df, rep_dict, norep)), 4) # signal to noise ratio, calculated as mean/std
+            }
+
+    # check so matrix is small enough to not run into typical memory problem
+    if data_df.shape[0]<5000 and data_df.shape[1]<5000: ## arbitrary cutoff
+        svd = np.linalg.svd(data_df.values)[1] # singular value decomposition
+        stats3 = {"Condition number" : round(float(np.linalg.cond(data_df.values)), 4), # condition number
+                "Max of SVD" : round(float(np.max(svd)), 4), # max of svd
+                "Median of SVD" : round(float(np.median(svd)), 4), # median of svd
+                "Min of SVD" : round(float(np.min(svd)), 4) # min of svd
+                    }
+    else:
+        stats3 = {"Condition number" : round(float(np.linalg.cond(data_df.values)), 4), # condition number
+                "Max of SVD" : "", # max of svd
+                "Median of SVD" : "", # median of svd
+                "Min of SVD" : "" # min of svd
+                }
+
+    if pert_design == 'single':
+        median_rank, median_p_rank, times_smallest, times_largest = pert_rank.calc(data_df, rep_dict)
+        stats4 = {"Median rank of perterbed gene" : [median_rank, 
+                        round(median_p_rank, 4)*100], # median rank of perterbed gene in experiment
+            "Times lowest rank" : [times_smallest,
+                        round(times_smallest/data_df.shape[1], 4)*100], # number of times the perterbed gene is ranked lowest
+            "Times highest rank" : [times_largest,
+                        round(times_largest/data_df.shape[1], 4)*100] # number of times the perterbed gene is ranked highest
+                }
+    else:
+        # to ensure uniformity of output in spite of no replicates
+        stats4 = {"Median rank of perterbed gene" : ["",""], 
+            "Times lowest rank" : ["",""],
+            "Times highest rank" : ["",""]
+                }
+
     if not norep:
-        col_pca = make_PCA.plot(df,rep_mat,out,"col")
-        row_pca = make_PCA.plot(df,rep_mat,out,"row")
+        # call function to calculate correlation statistics
+        median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict)
+
+        num_rep = [len(reps) for reps in rep_dict.values()]
+
+        stats5 = {"Median observation correlation" : round(median_corr, 4), # median correlation of all columns
+            "Median replicate correlation" : round(median_rep_corr, 4), # median correlation of replicate groups
+            "# replicate corr>median corr" : int(num_greater_repcorrs), # number of correlations within replicate groups greater than the overall median
+            "Median # of replicates" : round(np.median(num_rep), 2) # median number of replicates
+                }
     else:
-        pca = None
+        # to ensure uniformity of output in spite of no replicates
+        stats5 = {"Median observation correlation" : "",
+            "Median replicate correlation" : "",
+            "# replicate corr>median corr" : "",
+            "Median # of replicates" : 1 # median number of replicates
+                }
 
-    # calculate several sets of basic statistics for the numerical values
-    stats = {"value":[
-        df.shape[0]*df.shape[1], # "elems"
-        len(np.unique(df.values)), # "uniq"
-        np.count_nonzero(df.values==0), # "zeroes"
-        str(df.values.shape[0])+", "+str(df.values.shape[1]),
-    ],"%":[
-        "",
-        round((len(np.unique(df.values))/(df.values.shape[0]*df.values.shape[1]))*100,2), # "elems" "uniq"
-        round((np.count_nonzero(df.values==0)/(df.values.shape[0]*df.values.shape[1]))*100,2), # "elems" "zeroes"
-        "", # "elems" "nozero"
-    ]}
-
-    stats1 = {"value":[
-        round(np.mean(df.values),4), # "mean"
-        round(np.median(df.values),4), # "median"
-        round(np.amax(df.values),4), # "max"
-        round(np.amin(df.values),4), # "min"
-    ]}
-    stats2 = {"value":[
-        round(np.var(df.values),4), # "variance"
-        round(np.std(df.values),4), # "std", # "standard deviation"
-        round(scipy.stats.skew(df.values).mean(),4), #"skew"
-        round(snr(df,rep_mat,norep),4), # "snr_wiki"
-    ]}
-
-    svd = np.linalg.svd(df.values)[1]
-    stats3 = {"value":[
-        round(np.linalg.cond(df.values),4),
-        round(np.max(svd),4),
-        round(np.median(svd),4),
-        round(np.min(svd),4),
-    ]}
-    if not norep:
-        # get the stats for the perturbation rank
-        [median_pert_rank,median_percent_rank_pert,times_smallest,times_greatest] = pert_rank.calc(df,rep_mat)
-
-        stats4 = {"value":[
-            median_pert_rank,
-            "",
-            times_smallest,
-            times_greatest
-        ],"%":[
-            "",
-            median_percent_rank_pert*100,
-            round(times_smallest/df.shape[1],4)*100,
-            round(times_greatest/df.shape[1],4)*100
-        ]}
-
-        [median_repcorr,median_allcorr,greater_repocorr,ttest_sig_greater_repcorr] = pert_simularity_test.test(df,rep_mat)
-
-        stats5 = {"value":[
-            median_repcorr,
-            median_allcorr,
-            greater_repocorr,
-            ttest_sig_greater_repcorr
-        ]}
-    else:
-        # if not using replicates return stat block 4 and 5 as empty
-        # this is done only so the printing functions don't crash
-        stats4 = {"value":[
-            "  ",
-            "  ",
-            "  ",
-            "  "
-        ]}
-
-        stats5 = {"value":[
-            "  ",
-            "  ",
-            "  ",
-            "  "
-        ]}
-
+    #output formatting
     if out:
-        # initiate all the html stuff
-        script_path = os.path.abspath(__file__) # get the path to where this script is to find templates
-        script_path = script_path[0:-10]
+        if not out.endswith(".png"):
+            distribution_plot = format(distribution_plot.decode('utf-8'))
+            heatmap_plot = format(heatmap_plot.decode('utf-8'))
+            exp_pca_plot = format(exp_pca_plot.decode('utf-8'))
+            gene_pca_plot = format(gene_pca_plot.decode('utf-8'))
+    
+    output_dict = {"Statistics": [stats0, stats1, stats2, stats3, stats4,      stats5],
+        "Plots":{
+            "Histogram": distribution_plot,
+            "Heatmap": heatmap_plot,
+            "Experiment PCA": exp_pca_plot,
+            "Gene PCA": gene_pca_plot
+        }}
+    
+    if out:
+        # if only json is desired, write full dictionary to file
+        if out.endswith(".json"):
+            with open(out, "w") as f:
+                json.dump(output_dict, f, indent=4)
+        # if only html is desired, input dictionary into to_html function
+        elif out.endswith(".html"):
+            json_to_html(out, output_dict)
+        # if png is desired, make merged image of all figures, write statistics to json file
+        elif out.endswith(".png"):
+            distribution_img = Image.open(distribution_plot)
+            heatmap_img = Image.open(heatmap_plot)
+            exp_pca_img = Image.open(exp_pca_plot)
+            gene_pca_img = Image.open(gene_pca_plot)
 
-        # Configure Jinja and ready the loader
-        env = Environment(loader=FileSystemLoader(searchpath=script_path+"templates"))
+            out_img = Image.new("RGB", (2*distribution_img.size[0], 2*distribution_img.size[1]))
 
-        # set up the templates used for adding to the file
-        base = env.get_template("base_report.html")
-        stat_section = env.get_template("stats_and_images.html")
+            out_img.paste(distribution_img, (0,0))
+            out_img.paste(heatmap_img, (0, distribution_img.size[1]))
+            out_img.paste(exp_pca_img, (distribution_img.size[0], 0))
+            out_img.paste(gene_pca_img, (distribution_img.size[0], distribution_img.size[1]))
 
-        hist_html = None
-        rpca_html = None
-        cpca_html = None
-        heat_html = None
-        hist_html = '<img src="data:image/png;base64, {}">'.format(distribution.decode('utf-8'))
-        rpca_html = '<img src="data:image/png;base64, {}">'.format(row_pca.decode('utf-8'))
-        cpca_html = '<img src="data:image/png;base64, {}">'.format(col_pca.decode('utf-8'))
-        heat_html = '<img src="data:image/png;base64, {}">'.format(heatmap.decode('utf-8'))
+            out_img.save(out)
 
-        # add stats and plots to html list one for each file in file_list
-        stats_df = pd.DataFrame(stats, index=["Elements","Unique values","#zeros","matrix size"])
-        stats_html = stats_df.to_html()
-
-        stats_df = pd.DataFrame(stats1, index=["mean","median","max","min"])
-        stats1_html = stats_df.to_html()
-
-        stats_df = pd.DataFrame(stats2, index=["variance","stdev","skewness","SNR"])
-        stats2_html = stats_df.to_html()
-
-        stats_df = pd.DataFrame(stats3, index=["condition number","max singular value","median singular value","min singular value"])
-        stats3_html = stats_df.to_html()
-
-        stats_df = pd.DataFrame(stats4, index=["median pertrank","median percentile pertrank","# pertrank lowest","# pertrank highest"])
-        stats4_html = stats_df.to_html()
-
-        stats_df = pd.DataFrame(stats5, index=["median replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])
-        stats5_html = stats_df.to_html()
-
-        # create a name this is done if data is a pandas.dataframe
-        if isinstance(data,type(pd.DataFrame())):
-            name = "matrix"
+            with open(out[:-4]+".json", "w") as f:
+                json.dump(output_dict["Statistics"], f, indent=4)
+        # write full dictionary to json file and then reformat to html
         else:
-            name = data
-
-         # add stats and plots to html list one for each file in file_list
-        tables.append(stat_section.render(
-            file="EDA analysis of "+name,
-            t1=stats_html,
-            t2=stats1_html,
-            t3=stats2_html,
-            t4=stats3_html,
-            t5=stats4_html,
-            t6=stats5_html,
-            hist=hist_html,
-            rpca=rpca_html,
-            cpca=cpca_html,
-            heat=heat_html
-        ))
-
-        # if the out file does not end with .html append this as the file will not opened as code and not a report without that
-        if not out.endswith(".html"):
-            out = out+".html"
-
-
-        writer = open(out, "w+") # open output file for writing
-        writer.write(base.render(
-            title=out,
-            sections=tables
-        ))
-
+            with open(out+".json", "w") as f:
+                json.dump(output_dict, f, indent=4)
+            json_to_html(out)
     else:
-        # if not making a html file simply merge all stast tables and print them.
-        stats_df = pd.DataFrame(stats, index=["Elements","Unique values","#zeros","matmatrix size"])
-        stats_df = pd.concat([stats_df,pd.DataFrame(stats1, index=["mean","median","max","min"])])
-        stats_df = pd.concat([stats_df,pd.DataFrame(stats2, index=["variance","stdev","skewness","SNR"])])
-        stats_df = pd.concat([stats_df,pd.DataFrame(stats3, index=["condition value","max SVD","median SVD","min SVD"])])
-        stats_df = pd.concat([stats_df,pd.DataFrame(stats4, index=["median pertrank","median percentile pertrank","# pertrank lowest","# pertrank highest"])])
-        stats_df = pd.concat([stats_df,pd.DataFrame(stats5, index=["mediand replicate correlation","median dataset correlation","# repcorr>dataset corr","P-val replicate corr > data corr (ttest)"])])
+        # return statistics to standard output, figues will be shown one by one
+        return output_dict["Statistics"]
 
-        return stats_df
-
-
+# if script is called in terminal, parse terminal input
 if __name__ == "__main__":
-    # if script is called then parse terminal input
-    parser = argparse.ArgumentParser(description='Script for performing a general data analysis of gene expression data with a focus on comparing expression across replicates',formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('data', help="the data to analyse, can either be a csvjson file with a matrix of genesXexperiments or experimentsXgenes (see option --direction for details on this).\nNOTE for json file data must be named \"data\" or \"expression\".")
-    parser.add_argument("-p","--perts",dest="pert",default=None,help="optional pertrubation matrix in csv format, either in matrix format or memory efficent format with experiment name followed by each relevant column in the data file. E.g: \nrep1,1,3,5\nrep2,2,4,6.\nNote that if perts are not used SNAKED will try to estimate a perturbation design from row or column name,\nthese should follow naming practis rep1.1,rep1.2..rep1.n.\nFor .json files if pert is not given a perturbation design can be stored in the json file under the name P or perturbation, \nif this does not exist a similar automatic estimation as with .csv files will be performed using the experiment key")
-    parser.add_argument("-o","--out",dest="output",default=None,help="name of file to save the created html file to. If set to None (default) analysis results will instead be printed stdout")
-    parser.add_argument("-d","--direction",dest="direction",default="row",type=str,help="direction the replicates in the matrix is expected to be found in in e.g. row for experimentsXgenes [default] or col for genesXexperiments")
-    parser.add_argument("-n","--noreps",dest="noreps",default=None,help="option to turn of replicates, will disable most metrics but allows for analysis of data with only a single replicate per experiment")
-    parser.add_argument("-f","--forcefile",dest="force_file_type",default=None,type=str,help="option to force the file type to be either csv or json.")
+    parser = argparse.ArgumentParser(description="Script for general data analysis of gene expression with one or more perturebed genes", formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("data", help="the data to analyse, can be a pandas.DataFrame, GRNmodel or csv file with a matrix of genesXexperiments")
+    parser.add_argument("-p", "--perts", dest="perts_df", default=None, help="optional seperate perturbation matrix as pandas.DataFrame or csv file, only used if pert_design is set to single")
+    parser.add_argument("-nr", "--norep", dest="norep", default=False, type=bool,help="option for when there are no replicates. Will limit some analyses")
+    parser.add_argument("-pd", "--pert_design", dest="pert_design", default="single", type=str, help="option to change between designs with a single and multiple perterbed genes per experiment")
+    parser.add_argument("-o", "--out", dest="out", default=None, help="option to write output to file, name of file without file extention will create both json and html, can otherwise be specified to json, html or png")
+    parser.add_argument("-d", "--direction", dest="direction", default="genes", help="option to specify if genes or experiments are on the rows")
 
     # move input to args
     args = parser.parse_args()
-    # and store arguments in variables
-    data = args.data
-    perts = args.pert
-    out = args.output
-    direct = args.direction
-    norep = args.noreps
-    ff = args.force_file_type
 
-    # then run the eda tool based on input
-    # Note if runing from within another script the eda function has the same
-    # defaults as the argparse above
-    snakeda(data,perts,out,direct,norep,ff)
+    # run eda tool
+    snakeda(args.data, args.perts_df, args.norep, args.pert_design, args.out, args.direction)
