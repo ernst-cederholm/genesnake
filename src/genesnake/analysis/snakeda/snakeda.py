@@ -25,6 +25,13 @@ else:
     from .bin import pert_rank
 
 def round_significant(number, significant):
+    """
+    Function for rounding to specified number of significant digits.
+    INPUT:
+        number - number to be rounded
+        signigicant - number of significant digits
+    OUTPUT:
+        rounded number"""
     if number == 0:
         return 0
     elif number == np.nan or isnan(number):
@@ -44,8 +51,8 @@ def signal_to_noise_ratio(data, rep_dict, norep):
         SNR - calculated signal to noise ratio"""
 
     if not norep:
-        stdev = np.zeros((data.shape[0],1))
-        average = np.zeros((data.shape[0],1))
+        stdev = np.zeros(len(rep_dict))
+        average = np.zeros(len(rep_dict))
 
         # loop over the groups of replicates
         for i, pert_gene in enumerate(rep_dict.keys()):
@@ -275,6 +282,9 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     OUTPUT:
         analysis - dictionary with statistics and figures show in standard output. If specified the same information as json and/or html file, in the case of json file the images will be encoded to a string"""
 
+    # Cutoff size so large matrices do not run into memory capacity problems
+    cutoff = 5000 ## arbitrary untested value
+
     # Determine data type and format uniformly
     if isinstance(data, GRNmodel):
         data_df = data.data
@@ -353,7 +363,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             }
 
     # check so matrix is small enough to not run into typical memory problem
-    if data_df.shape[0]<5000 and data_df.shape[1]<5000: ## arbitrary cutoff
+    if data_df.shape[0]<cutoff and data_df.shape[1]<cutoff: 
         svd = np.linalg.svd(data_df.values)[1] # singular value decomposition
         stats3 = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
                 "Max of SVD" : round_significant(float(np.max(svd)), 4), # max of svd
@@ -383,7 +393,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             "Times highest rank" : ["",""]
                 }
 
-    if not norep:
+    if not norep and data_df.shape[1]<cutoff:
         # call function to calculate correlation statistics
         median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict)
 
@@ -395,11 +405,13 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             "Median # of replicates" : round_significant(np.median(num_rep), 2) # median number of replicates
                 }
     else:
+        num_rep = [len(reps) for reps in rep_dict.values()]
+
         # to ensure uniformity of output in spite of no replicates
         stats5 = {"Median observation correlation" : "",
             "Median replicate correlation" : "",
             "# replicate corr>median corr" : "",
-            "Median # of replicates" : 1 # median number of replicates
+            "Median # of replicates" : round_significant(np.median(num_rep), 2) # median number of replicates
                 }
 
     #output formatting

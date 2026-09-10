@@ -54,17 +54,19 @@ def plot(data_df, rep_dict, out, direct):
     ax.set_title('2 component PCA of '+direct, fontsize = 20)
 
     if direct=="experiments":
-        for group in range(max_group):
-            ax.scatter(component_df.loc[(component_df.Group==group)]["Principal component 1"], 
-                    component_df.loc[(component_df.Group==group)]["Principal component 2"],         
-                    label="rep:"+str(group+1)
-                    )
-            ax.legend(bbox_to_anchor=(0.98, 1), loc="upper left")
+        if max_group>20:
+            ax.scatter(component_df.loc[:,"Principal component 1"], 
+                    component_df.loc[:,"Principal component 2"])
+        else:
+            for group in range(max_group):
+                ax.scatter(component_df.loc[(component_df.Group==group)]["Principal component 1"], 
+                        component_df.loc[(component_df.Group==group)]["Principal component 2"],         
+                        label="rep:"+str(group+1)
+                        )
+                ax.legend(bbox_to_anchor=(0.98, 1), loc="upper left")
     else:
-        for group in range(max_group):
-            ax.scatter(component_df.loc[(component_df.Group==group)]["Principal component 1"], 
-                    component_df.loc[(component_df.Group==group)]["Principal component 2"],
-                    )
+        ax.scatter(component_df.loc[:,"Principal component 1"], 
+                component_df.loc[:,"Principal component 2"])
 
     ax.grid()
 
