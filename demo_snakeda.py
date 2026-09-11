@@ -30,11 +30,11 @@ M.set_pert(
 
 M.simulate_data(exp_type = 'ss', SNR = snr, noise_model = noise_model)
 
-snakeda(M, pert_design='multiple', out="demo/snakeda_multi_pert")
+snakeda(M, pert_design='multiple', out="demo/snakeda_multi_pert", synthetic=True)
 
 # example with csv data, labels, replicates and no perturbation matrix
 # output as html
-snakeda("demo/snakeda_replicates.csv", out="demo/snakeda_replicates.html")
+snakeda("demo/snakeda_replicates.csv", out="demo/snakeda_replicates.html", synthetic=True)
 
 # example with csv data and seperate perturbation matrix without labels, transposed
 # output as png
