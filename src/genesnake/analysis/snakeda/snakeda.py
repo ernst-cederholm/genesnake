@@ -394,25 +394,31 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
 
     stats.update(stats_temp)   
 
-    if not norep and data_df.shape[1]<cutoff:
-        # call function to calculate correlation statistics
-        median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict)
+    if not norep: 
+        if data_df.shape[1]<cutoff:
+            # call function to calculate correlation statistics
+            median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict)
+
+            stats_temp = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
+                "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
+                "# replicate corr>median corr" : int(num_greater_repcorrs) # number of correlations within replicate groups greater than the overall median
+                    }
+            stats.update(stats_temp) 
 
         num_rep = [len(reps) for reps in rep_dict.values()]
 
-        stats_temp = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
-            "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
-            "# replicate corr>median corr" : int(num_greater_repcorrs), # number of correlations within replicate groups greater than the overall median
-            "Median # of replicates" : round_significant(np.median(num_rep), 2) # median number of replicates
-                }
+        stats_temp = {"Median # of replicates" : round_significant(float(np.median(num_rep)), 2), # median number of replicates
+            "Min # of replicates" : round_significant(float(np.amin(num_rep)), 2), # min number of replicates
+            "Max # of replicates" : round_significant(float(np.amax(num_rep)), 2) # max number of replicates
+                      }
     else:
-        num_rep = [len(reps) for reps in rep_dict.values()]
-
         # to ensure uniformity of output in spite of no replicates
         stats_temp = {"Median observation correlation" : "",
             "Median replicate correlation" : "",
             "# replicate corr>median corr" : "",
-            "Median # of replicates" : round_significant(np.median(num_rep), 2) # median number of replicates
+            "Median # of replicates" : 1, # median number of replicates
+            "Min # of replicates" : 1, # min number of replicates
+            "Max # of replicates" : 1 # max number of replicates
                 }
 
     stats.update(stats_temp)
