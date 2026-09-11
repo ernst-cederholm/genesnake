@@ -201,8 +201,8 @@ def json_to_html(file, stats_data=None):
     """
     Fuction for taking statistics and encoded figures from json file and output as a html file for easier viewing.
     INPUT:
-        file - filename without extention
-        stats_dict - optional input for when data should not be read from json"""
+        file - filename without extention or .html if data should come from stats_data
+        stats_data - optional input for when data should not be read from json"""
 
     # check if data should be loaded from json or use dictionary from input
     if not file.endswith(".html"):
@@ -230,26 +230,16 @@ def json_to_html(file, stats_data=None):
     heat_html = "<img src='data:image/png;base64," + plot_dict["Heatmap"] + "'>"
     
     # format statistics
-    stats0 = pd.DataFrame(stats_list[0], index=["Value", "%"]).transpose()
-    stats1 = pd.DataFrame(stats_list[1], index=["Value"]).transpose()
-    stats2 = pd.DataFrame(stats_list[2], index=["Value"]).transpose()
-    stats3 = pd.DataFrame(stats_list[3], index=["Value"]).transpose()
-    stats4 = pd.DataFrame(stats_list[4], index=["Value", "%"]).transpose()
-    stats5 = pd.DataFrame(stats_list[5], index=["Value"]).transpose()
+    stats = pd.DataFrame(stats_list, index=["Value"]).transpose()
 
     # add stats and plots to list rendered according to template
     tables = list()
     tables.append(stat_sections.render(
         file = "EDA analysis: " + file,
-        t1 = stats0.to_html(),
-        t2 = stats1.to_html(),
-        t3 = stats2.to_html(),
-        t4 = stats3.to_html(),
-        t5 = stats4.to_html(),
-        t6 = stats5.to_html(),
+        t = stats.to_html(),
         hist=hist_html,
-        rpca=gpca_html,
-        cpca=epca_html,
+        gpca=gpca_html,
+        epca=epca_html,
         heat=heat_html
         ))
     
@@ -342,56 +332,67 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     gene_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "genes") #PCA for genes
 
     # Calculate basic statistics for the data
-    stats0 = {"Elements" : [data_df.shape[0]*data_df.shape[1], ""], # number of elements
-        "Unique values" : [len(np.unique(data_df.values)), 
-                           round_significant(100 * len(np.unique(data_df.values))/(data_df.shape[0]*data_df.shape[1]), 2)], # number of unique elements
-        "Zeros" : [int(np.count_nonzero(data_df.values==0)), 
-                   round_significant(100 * np.count_nonzero(data_df.values==0)/(data_df.shape[0]*data_df.shape[1]), 2)], # number of zeros
-        "Matrix shape" : [str(data_df.shape[0]) + ", " + str(data_df.shape[1]), ""] #shape of matrix
+    stats = {"Elements" : data_df.shape[0]*data_df.shape[1], # number of elements
+        "Unique values" : len(np.unique(data_df.values)), # number of unique elements
+        "Percent unique values" : round_significant(100 * len(np.unique(data_df.values))/(data_df.shape[0]*data_df.shape[1]), 2), # % unique
+        "Zeros" : int(np.count_nonzero(data_df.values==0)), # number of zeros
+        "Percent zeros" : round_significant(100 * np.count_nonzero(data_df.values==0)/(data_df.shape[0]*data_df.shape[1]), 2), # % zeros
+        "Matrix shape" : str(data_df.shape[0]) + ", " + str(data_df.shape[1]) #shape of matrix
             }
 
-    stats1 = {"Mean" : round_significant(float(np.mean(data_df.values)), 4), # mean
+    stats_temp = {"Mean" : round_significant(float(np.mean(data_df.values)), 4), # mean
         "Median" : round_significant(float(np.median(data_df.values)), 4), # median
         "Max" : round_significant(float(np.amax(data_df.values)), 4), # max
         "Min" : round_significant(float(np.amin(data_df.values)), 4) # min
             }
 
-    stats2 = {"Variance" : round_significant(float(np.var(data_df.values)), 4), # variance
+    stats.update(stats_temp)
+
+    stats_temp = {"Variance" : round_significant(float(np.var(data_df.values)), 4), # variance
         "Standard deviation" : round_significant(float(np.std(data_df.values)), 4), # standard deviation
         "Skewness" : round_significant(float(scipy.stats.skew(data_df.values).mean()), 4), # skew
         "Signal to noise ratio" : round_significant(float(signal_to_noise_ratio(data_df, rep_dict, norep)), 4) # signal to noise ratio, calculated as mean/std
             }
 
+    stats.update(stats_temp)
+
     # check so matrix is small enough to not run into typical memory problem
     if data_df.shape[0]<cutoff and data_df.shape[1]<cutoff: 
         svd = np.linalg.svd(data_df.values)[1] # singular value decomposition
-        stats3 = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
+        stats_temp = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
                 "Max of SVD" : round_significant(float(np.max(svd)), 4), # max of svd
                 "Median of SVD" : round_significant(float(np.median(svd)), 4), # median of svd
                 "Min of SVD" : round_significant(float(np.min(svd)), 4) # min of svd
                     }
     else:
-        stats3 = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
+        stats_temp = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
                 "Max of SVD" : np.nan, # max of svd
                 "Median of SVD" : np.nan, # median of svd
                 "Min of SVD" : np.nan # min of svd
                 }
 
+    stats.update(stats_temp)
+
     if pert_design == 'single':
         median_rank, median_p_rank, times_smallest, times_largest = pert_rank.calc(data_df, rep_dict)
-        stats4 = {"Median rank of perterbed gene" : [median_rank, 
-                        round_significant(median_p_rank, 4)*100], # median rank of perterbed gene in experiment
-            "Times lowest rank" : [times_smallest,
-                        round_significant(times_smallest/data_df.shape[1], 4)*100], # number of times the perterbed gene is ranked lowest
-            "Times highest rank" : [times_largest,
-                        round_significant(times_largest/data_df.shape[1], 4)*100] # number of times the perterbed gene is ranked highest
+        stats_temp = {"Median rank of perterbed gene" : median_rank, # median rank of perterbed gene in experiment
+            "Median % rank pert gene" : round_significant(median_p_rank, 4)*100, # median percent rank of perterbed gene in experiment
+            "Times lowest rank" : times_smallest, # number of times the perterbed gene is ranked lowest
+            "Percent lowest rank" : round_significant(times_smallest/data_df.shape[1], 4)*100, # percent of times the perterbed gene is ranked lowest
+            "Times highest rank" : times_largest, # number of times the perterbed gene is ranked highest
+            "Percent highest rank" : round_significant(times_largest/data_df.shape[1], 4)*100 # percent of times the perterbed gene is ranked highest
                 }
     else:
         # to ensure uniformity of output in spite of no replicates
-        stats4 = {"Median rank of perterbed gene" : ["",""], 
-            "Times lowest rank" : ["",""],
-            "Times highest rank" : ["",""]
+        stats_temp = {"Median rank of perterbed gene" : "", 
+            "Median % rank pert gene" : "",
+            "Times lowest rank" : "",
+            "Percent lowest rank" : "",
+            "Times highest rank" : "",
+            "Percent highest rank" : ""
                 }
+
+    stats.update(stats_temp)   
 
     if not norep and data_df.shape[1]<cutoff:
         # call function to calculate correlation statistics
@@ -399,7 +400,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
 
         num_rep = [len(reps) for reps in rep_dict.values()]
 
-        stats5 = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
+        stats_temp = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
             "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
             "# replicate corr>median corr" : int(num_greater_repcorrs), # number of correlations within replicate groups greater than the overall median
             "Median # of replicates" : round_significant(np.median(num_rep), 2) # median number of replicates
@@ -408,11 +409,13 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         num_rep = [len(reps) for reps in rep_dict.values()]
 
         # to ensure uniformity of output in spite of no replicates
-        stats5 = {"Median observation correlation" : "",
+        stats_temp = {"Median observation correlation" : "",
             "Median replicate correlation" : "",
             "# replicate corr>median corr" : "",
             "Median # of replicates" : round_significant(np.median(num_rep), 2) # median number of replicates
                 }
+
+    stats.update(stats_temp)
 
     #output formatting
     if out:
@@ -422,7 +425,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             exp_pca_plot = format(exp_pca_plot.decode('utf-8'))
             gene_pca_plot = format(gene_pca_plot.decode('utf-8'))
     
-    output_dict = {"Statistics": [stats0, stats1, stats2, stats3, stats4,      stats5],
+    output_dict = {"Statistics": stats,
         "Plots":{
             "Histogram": distribution_plot,
             "Heatmap": heatmap_plot,

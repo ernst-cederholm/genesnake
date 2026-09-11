@@ -9,8 +9,8 @@
       /* Style the tab */
       .tab {
       overflow: hidden;
-      border: 1px solid #ccc;
-      background-color: #f1f1f1;
+      border: 1px solid #2d2d2d; 
+      background-color: #f1f1f1; 
       
       }
 
@@ -29,7 +29,7 @@
 
       /* Change background color of buttons on hover */
       .tab button:hover {
-      background-color: #ddd;
+      background-color: #ddd; 
       
       }
 
@@ -41,10 +41,12 @@
 
       /* Style the tab content */
       .tabcontent {
+      position: absolute;
       display: none;
       padding: 6px 12px;
-      border: 1px solid #ccc;
+      border: 1px solid #ccc; 
       border-top: none;
+      left: 370px;
       
       }
 
@@ -66,14 +68,15 @@
     {% endfor %}
 
     <script>
-      function openImg(evt, cityName) {
+      function openImg(evt, plotName) {
       var i, tabcontent, tablinks;
       tabcontent = document.getElementsByClassName("tabcontent");
       tablinks = document.getElementsByClassName("tablinks");
       for (i = 0; i < tablinks.length; i++) {
       tablinks[i].className = tablinks[i].className.replace(" active", "");
+      tabcontent[i].style.display = "none";
       }
-      document.getElementById(cityName).style.display = "block";
+      document.getElementById(plotName).style.display = "block";
       evt.currentTarget.className += " active";
       }
 		      
