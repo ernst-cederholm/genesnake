@@ -1,6 +1,6 @@
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
-import numpy as np
+import pandas as pd
 import seaborn as sns
 import base64
 from io import BytesIO
@@ -15,9 +15,13 @@ def plot(df,out):
     OUTPUT:
         encoder - encoded heatmap plot, if json/html output is desired
     """
-        
+    # sort genes by name for more orderd plot
+    df = df.sort_index(axis=0)
+    
     fig = plt.figure(figsize=(10,10))
-    ax = sns.heatmap(df, linewidths=0, norm=colors.LogNorm()) #log based color
+    ax = sns.heatmap(df, linewidths=0, norm=colors.LogNorm(), xticklabels=False, yticklabels=False) #log based color
+    plt.xlabel("Experiments")
+    plt.ylabel("Genes")
       
     if out:
         byte_file = BytesIO() #create in memory file to write to
