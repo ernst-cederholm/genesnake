@@ -252,7 +252,7 @@ def json_to_html(file, stats_data=None):
         sections=tables
         ))       
 
-def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes", synthetic=False):
+def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes", synthetic=False, quick_calc=False):
     """
     Function for basic data analysis.
     INPUT:
@@ -271,6 +271,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             - genes - default
             - experiments
         synthetic - option for if the data has naming standard of synthetic data
+        quick_calc - option to skip svd and correlation statistics which takes up the most time for large datasets
     OUTPUT:
         analysis - dictionary with statistics and figures show in standard output. If specified the same information as json and/or html file, in the case of json file the images will be encoded to a string"""
 
@@ -325,7 +326,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
 
     # sort data and pert data frames by experiment name for nicer plotting and correlation calculation of large datasets
     data_df = data_df.sort_index(axis=1)
-    if perts_df != None:
+    if isinstance(perts_df, pd.DataFrame):
         perts_df = perts_df.sort_index(axis=1)
 
     # make lookup dictionary for replicates
@@ -371,7 +372,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     stats.update(stats_temp)
 
     # check so matrix is small enough to not run into typical memory problem
-    if data_df.shape[0]<cutoff*2:
+    if data_df.shape[0]<cutoff*2 and quick_calc==False:
         svd = np.linalg.svd(data_df.values)[1] # singular value decomposition
         stats_temp = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
                 "Max of SVD" : round_significant(float(np.max(svd)), 4), # max of svd
@@ -409,7 +410,12 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     stats.update(stats_temp)   
 
     if not norep: 
-        if data_df.shape[1]<cutoff:
+        if quick_calc:
+            stats_temp = {"Median observation correlation" : "",
+                "Median replicate correlation" : "",
+                "# replicate corr>median corr" : ""
+                    }
+        elif data_df.shape[1]<cutoff:
             # call function to calculate correlation statistics
             median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict)
 
@@ -501,14 +507,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script for general data analysis of gene expression with one or more perturebed genes", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("data", help="the data to analyse, can be a pandas.DataFrame, GRNmodel or csv file with a matrix of genesXexperiments")
     parser.add_argument("-p", "--perts", dest="perts_df", default=None, help="optional seperate perturbation matrix as pandas.DataFrame or csv file, only used if pert_design is set to single")
-    parser.add_argument("-nr", "--norep", dest="norep", default=False, type=bool,help="option for when there are no replicates. Will limit some analyses")
+    parser.add_argument("-nr", "--norep", dest="norep", default=False, type=bool, help="option for when there are no replicates. Will limit some analyses")
     parser.add_argument("-pd", "--pert_design", dest="pert_design", default="single", type=str, help="option to change between designs with a single and multiple perturbed genes per experiment")
     parser.add_argument("-o", "--out", dest="out", default=None, help="option to write output to file, name of file without file extention will create both json and html, can otherwise be specified to json, html or png")
     parser.add_argument("-d", "--direction", dest="direction", default="genes", help="option to specify if genes or experiments are on the rows")
-    parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, help="option for if the data has naming standard of synthetic data")
+    parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, type=bool, help="option for if the data has naming standard of synthetic data")
+    parser.add_argument("-q", "--quick", dest="quick_calc", default=False, type=bool, help="option to skip svd and correlation statistics for faster calculation")
 
     # move input to args
     args = parser.parse_args()
 
     # run eda tool
-    snakeda(args.data, args.perts_df, args.norep, args.pert_design, args.out, args.direction, args.synthetic)
+    snakeda(args.data, args.perts_df, args.norep, args.pert_design, args.out, args.direction, args.synthetic, args.quick_calc)

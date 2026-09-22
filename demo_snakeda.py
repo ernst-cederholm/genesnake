@@ -1,7 +1,7 @@
 import genesnake as gs
 from genesnake.analysis.snakeda.snakeda import snakeda as snakeda
 
-# possible inputs: data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes", synthetic=False
+# possible inputs: data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes", synthetic=False, quick_calc=False
 
 cell_replicates = 3
 snr = 3
