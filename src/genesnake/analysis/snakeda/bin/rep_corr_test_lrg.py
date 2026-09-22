@@ -18,13 +18,16 @@ def corr_calc(data, reps_list):
     n_tot_corrs = 0
     mean_corr = 0
 
+    # loop over groups of replicates
     for i in prange(len(reps_list)):
+        # correlation of replicates
         n_reps = len(reps_list[i])
         pearsons = data[:, reps_list[i]]
         pearsons = np.corrcoef(np.transpose(pearsons))
         mean = np.mean(pearsons[np.triu_indices(n_reps, k=1)]) * n_reps * (n_reps-1) / 2
         n_rep_corrs += n_reps * (n_reps-1) / 2
         mean_rep_corr += mean
+        # loop over groups which has not been calculated correlation with
         for k in prange(i+1, len(reps_list)):
             pearsons = data[:, np.concatenate((reps_list[i], reps_list[k]))]
             pearsons = np.corrcoef(np.transpose(pearsons))
