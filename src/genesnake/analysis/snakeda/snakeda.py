@@ -287,7 +287,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         if data.endswith(".csv"):
             data_df = csv_prepper(data, direction)
         else:
-            raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, genesnake.GRNmodel, or csv file\n")
+            raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, genesnake.GRNmodel, or csv file with the .csv extention in the name\n")
     else: 
         raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input is a pandas.DataFrame, genesnake.GRNmodel, or csv file\n")
 
@@ -296,11 +296,18 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     data_df.columns = [str(i) for i in data_df.columns.to_list()]
 
     # Determine if perts_df needs to be read from csv and do if needed
-    if isinstance(perts_df, pd.DataFrame) or perts_df==None:
+    if perts_df==None:
         pass
+    elif isinstance(perts_df, pd.DataFrame):
+        if perts_df.shape != data_df.shape:
+            perts_df = None
+            print("\nWARNING: Data and perturbation matrix of different shapes. Will try to find replicates from experiment names.")
     elif isinstance(perts_df, str):
         if perts_df.endswith(".csv"):
             perts_df = csv_prepper(perts_df, direction)
+            if perts_df.shape != data_df.shape:
+                        perts_df = None
+                        print("\nWARNING: Data and perturbation matrix of different shapes. Will try to find replicates from experiment names.")
         else:
             raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input perts_df is a pandas.DataFrame, or csv file\n")
     else: 
