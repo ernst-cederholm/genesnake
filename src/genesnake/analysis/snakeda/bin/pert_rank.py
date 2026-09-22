@@ -15,9 +15,9 @@ def calc(data_df, rep_dict):
     """
     # check to ensure that enough of experiments are matched with which gene is perturbed, cutoff at 60%
     overlap = list(set(list(rep_dict.keys()))&set(list(data_df.index)))
-    if len(overlap)<len(data_df.index)*0.6 or len(overlap)<len(rep_dict.keys())*0.6:
+    if len(overlap)<len(rep_dict.keys())*0.6:
         print("\n\nWARNING:Row names in the perturbation matrix does not seem to match those in the expression data. Skipping perturbation rank calculations.\n\n")
-        # return 4 nans so that the snaked scripts don't crash 
+        # return 4 nans so that the snakeda scripts don't crash 
         return(np.nan,np.nan,np.nan,np.nan)
 
     # get the ranked values of the dataframe, rankes within columns

@@ -16,12 +16,14 @@ if __name__ == "__main__":
     from bin import make_histogram
     from bin import make_PCA
     from bin import rep_corr_test
+    from bin import rep_corr_test_lrg
     from bin import pert_rank
 else:
     from .bin import make_heatmap
     from .bin import make_histogram
     from .bin import make_PCA
     from .bin import rep_corr_test
+    from .bin import rep_corr_test_lrg
     from .bin import pert_rank
 
 def round_significant(number, significant):
@@ -99,11 +101,11 @@ def make_reps_lookup_dict(data_df, norep, method='single_pert', synthetic=False)
     """
     Function for creating a lookup dictionary of which columns are replicates of the same experiment.
     INPUT:
-        data_df - pandas.DataFrame with either expression data or perturbation information, 0 for non-perterbed, non-zero for perterbed
+        data_df - pandas.DataFrame with either expression data or perturbation information, 0 for non-perturbed, non-zero for perturbed
         norep - options for if there are replicates or not
         method - option for method to determine which observations are replicates
-            - single_pert - will assume each time a gene is perterbed it is a replicate of the other times it is perterbed. Used when data_df is a perturbation matrix where a single gene is perterbed at a time. Groups of replicates will be named after gene perturbed.
-            - single_name - will look for common separators in the observetion lables for sign of replicates. Assumes a single gene is perterbed at a time and tries to match experiment lables with gene names.
+            - single_pert - will assume each time a gene is perturbed it is a replicate of the other times it is perturbed. Used when data_df is a perturbation matrix where a single gene is perturbed at a time. Groups of replicates will be named after gene perturbed.
+            - single_name - will look for common separators in the observetion lables for sign of replicates. Assumes a single gene is perturbed at a time and tries to match experiment lables with gene names.
             - multi_name - will look for common separators in the observation lables for sign pf replicates.
     OUTPUT:
         rep_dict - dictionary with keys labled as genes or experiments, depening on method, and values as column names of replicates.
@@ -257,9 +259,9 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         data - pandas.DataFrame, GRNmodel or csv file. matrix with gene expression, typically on the form genesXexperiments
         perts_df - optional perturbation matrix as pandas.DataFrame or csv file, only used if pert_design is set to single
         norep - option for when there are no replicates. Will limit some analyses, but makes it possible to run the rest
-        pert_design - option to change between designs with a single and multiple perterbed genes per experiment/observation
-            - single - one gene perterbed per observation
-            - multiple - one or more genes perterbed per observation
+        pert_design - option to change between designs with a single and multiple perturbed genes per experiment/observation
+            - single - one gene perturbed per observation
+            - multiple - one or more genes perturbed per observation
         out - option to write output to file, extention alternatives:
             - none - will write to both json and html
             - json - will onlt write output to json, with figures encoded
@@ -273,7 +275,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         analysis - dictionary with statistics and figures show in standard output. If specified the same information as json and/or html file, in the case of json file the images will be encoded to a string"""
 
     # Cutoff size so large matrices do not run into memory capacity problems
-    cutoff = 5000 ## arbitrary untested value
+    cutoff = 7500
 
     # Determine data type and format uniformly
     if isinstance(data, GRNmodel):
@@ -313,6 +315,11 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         pass
     else: 
         raise ValueError("Unknown direction alternative in snakeda. Supported designs are: genes and experiments")
+
+    # sort data and pert data frames by experiment name for nicer plotting and correlation calculation of large datasets
+    data_df = data_df.sort_index(axis=1)
+    if perts_df != None:
+        perts_df = perts_df.sort_index(axis=1)
 
     # make lookup dictionary for replicates
     if pert_design == 'multiple':
@@ -357,7 +364,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     stats.update(stats_temp)
 
     # check so matrix is small enough to not run into typical memory problem
-    if data_df.shape[0]<cutoff and data_df.shape[1]<cutoff: 
+    if data_df.shape[0]<cutoff*2:
         svd = np.linalg.svd(data_df.values)[1] # singular value decomposition
         stats_temp = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
                 "Max of SVD" : round_significant(float(np.max(svd)), 4), # max of svd
@@ -375,16 +382,16 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
 
     if pert_design == 'single':
         median_rank, median_p_rank, times_smallest, times_largest = pert_rank.calc(data_df, rep_dict)
-        stats_temp = {"Median rank of perterbed gene" : median_rank, # median rank of perterbed gene in experiment
-            "Median % rank pert gene" : round_significant(median_p_rank, 4)*100, # median percent rank of perterbed gene in experiment
-            "Times lowest rank" : times_smallest, # number of times the perterbed gene is ranked lowest
-            "Percent lowest rank" : round_significant(times_smallest/data_df.shape[1], 4)*100, # percent of times the perterbed gene is ranked lowest
-            "Times highest rank" : times_largest, # number of times the perterbed gene is ranked highest
-            "Percent highest rank" : round_significant(times_largest/data_df.shape[1], 4)*100 # percent of times the perterbed gene is ranked highest
+        stats_temp = {"Median rank of perturbed gene" : median_rank, # median rank of perturbed gene in experiment
+            "Median % rank pert gene" : round_significant(median_p_rank, 4)*100, # median percent rank of perturbed gene in experiment
+            "Times lowest rank" : times_smallest, # number of times the perturbed gene is ranked lowest
+            "Percent lowest rank" : round_significant(times_smallest/data_df.shape[1], 4)*100, # percent of times the perturbed gene is ranked lowest
+            "Times highest rank" : times_largest, # number of times the perturbed gene is ranked highest
+            "Percent highest rank" : round_significant(times_largest/data_df.shape[1], 2)*100 # percent of times the perturbed gene is ranked highest
                 }
     else:
         # to ensure uniformity of output in spite of no replicates
-        stats_temp = {"Median rank of perterbed gene" : "", 
+        stats_temp = {"Median rank of perturbed gene" : "", 
             "Median % rank pert gene" : "",
             "Times lowest rank" : "",
             "Percent lowest rank" : "",
@@ -403,13 +410,21 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
                 "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
                 "# replicate corr>median corr" : int(num_greater_repcorrs) # number of correlations within replicate groups greater than the overall median
                     }
-            stats.update(stats_temp) 
+        else:
+            # call function to calculate correlation statistics ofr large data sets
+            mean_corr, mean_rep_corr = rep_corr_test_lrg.test(data_df, rep_dict)
+
+            stats_temp = {"Mean observation correlation" : round_significant(mean_corr, 4), # mean correlation of all columns
+                "Mean replicate correlation" : round_significant(mean_rep_corr, 4), # mean correlation of replicate groups
+                "# replicate corr>median corr" : "" # number of correlations within replicate groups greater than the overall median, not calculated on large data sets
+                    }
+        stats.update(stats_temp) 
 
         num_rep = [len(reps) for reps in rep_dict.values()]
 
         stats_temp = {"Median # of replicates" : round_significant(float(np.median(num_rep)), 2), # median number of replicates
-            "Min # of replicates" : round_significant(float(np.amin(num_rep)), 2), # min number of replicates
-            "Max # of replicates" : round_significant(float(np.amax(num_rep)), 2) # max number of replicates
+            "Min # of replicates" : int(np.amin(num_rep)), # min number of replicates
+            "Max # of replicates" : int(np.amax(num_rep)) # max number of replicates
                       }
     else:
         # to ensure uniformity of output in spite of no replicates
@@ -480,7 +495,7 @@ if __name__ == "__main__":
     parser.add_argument("data", help="the data to analyse, can be a pandas.DataFrame, GRNmodel or csv file with a matrix of genesXexperiments")
     parser.add_argument("-p", "--perts", dest="perts_df", default=None, help="optional seperate perturbation matrix as pandas.DataFrame or csv file, only used if pert_design is set to single")
     parser.add_argument("-nr", "--norep", dest="norep", default=False, type=bool,help="option for when there are no replicates. Will limit some analyses")
-    parser.add_argument("-pd", "--pert_design", dest="pert_design", default="single", type=str, help="option to change between designs with a single and multiple perterbed genes per experiment")
+    parser.add_argument("-pd", "--pert_design", dest="pert_design", default="single", type=str, help="option to change between designs with a single and multiple perturbed genes per experiment")
     parser.add_argument("-o", "--out", dest="out", default=None, help="option to write output to file, name of file without file extention will create both json and html, can otherwise be specified to json, html or png")
     parser.add_argument("-d", "--direction", dest="direction", default="genes", help="option to specify if genes or experiments are on the rows")
     parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, help="option for if the data has naming standard of synthetic data")
