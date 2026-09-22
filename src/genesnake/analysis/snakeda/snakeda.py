@@ -8,6 +8,7 @@ import argparse
 from math import floor, log10, isnan
 import json
 from PIL import Image
+import time
 
 # import helper functions for plotting and more involved analyses
 # check how the script runs for how to import them
@@ -372,7 +373,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     stats.update(stats_temp)
 
     # check so matrix is small enough to not run into typical memory problem
-    if data_df.shape[0]<cutoff*2 and quick_calc==False:
+    if data_df.shape[0]<cutoff*2 and data_df.shape[1]<cutoff*4 and quick_calc==False:
         svd = np.linalg.svd(data_df.values)[1] # singular value decomposition
         stats_temp = {"Condition number" : round_significant(float(np.linalg.cond(data_df.values)), 4), # condition number
                 "Max of SVD" : round_significant(float(np.max(svd)), 4), # max of svd
