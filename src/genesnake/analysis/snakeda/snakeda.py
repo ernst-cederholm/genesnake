@@ -8,7 +8,6 @@ import argparse
 from math import floor, log10, isnan
 import json
 from PIL import Image
-import time
 
 # import helper functions for plotting and more involved analyses
 # check how the script runs for how to import them
@@ -298,9 +297,8 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     data_df.columns = [str(i) for i in data_df.columns.to_list()]
 
     # Determine if perts_df needs to be read from csv and do if needed
-    if perts_df==None:
-        pass
-    elif isinstance(perts_df, pd.DataFrame):
+    
+    if isinstance(perts_df, pd.DataFrame):
         if perts_df.shape != data_df.shape:
             perts_df = None
             print("\nWARNING: Data and perturbation matrix of different shapes. Will try to find replicates from experiment names.")
@@ -312,6 +310,8 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
                         print("\nWARNING: Data and perturbation matrix of different shapes. Will try to find replicates from experiment names.")
         else:
             raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input perts_df is a pandas.DataFrame, or csv file\n")
+    elif perts_df==None:
+        pass
     else: 
         raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input perts_df is a pandas.DataFrame, or csv file\n")
 
