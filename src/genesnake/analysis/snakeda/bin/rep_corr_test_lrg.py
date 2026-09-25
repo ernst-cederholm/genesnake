@@ -3,7 +3,7 @@ import numpy as np
 from numba import jit, prange
 
 @jit(nopython=True, parallel=True)
-def corr_calc(data, reps_list):
+def corr_calc(data, reps_list, norep):
     """
     Function for calculation the mean correlation of full dataset and the replicates within it.
     INPUT:
@@ -36,14 +36,21 @@ def corr_calc(data, reps_list):
             mean_corr += mean
     n_tot_corrs += n_rep_corrs
     mean_corr += mean_rep_corr
-    return mean_corr/n_tot_corrs, mean_rep_corr/n_rep_corrs
 
-def test(data_df, rep_dict):
+    if norep:
+        mean_rep_corr = np.nan
+    else:
+        mean_rep_corr = mean_rep_corr/n_rep_corrs
+
+    return mean_corr/n_tot_corrs, mean_rep_corr
+
+def test(data_df, rep_dict, norep):
     """
     Wrapper function for calculating correlation related statistics of data set. Handles conversion of data so calculation function can be optimized.
     INPUT:
         data_df - pandas.DataFrame with values, genesXexperiments
         rep_dict - dictionary to lookup which columns are replicates of which experiment
+        norep - option if there are not any replicates
     OUTPUT:
         mean_corr - mean correlation of columns over the whole dataset
         mean_rep_corr - mean correlation of replicates for an experiment
@@ -53,6 +60,6 @@ def test(data_df, rep_dict):
     reps_list = [np.array(inds) for key, inds in rep_dict.items()]
 
     # run correlation calculations
-    mean_corr, mean_rep_corr = corr_calc(data, reps_list)
+    mean_corr, mean_rep_corr = corr_calc(data, reps_list, norep)
 
     return mean_corr, mean_rep_corr

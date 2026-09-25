@@ -252,7 +252,7 @@ def json_to_html(file, stats_data=None):
         sections=tables
         ))       
 
-def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction="genes", synthetic=False, quick_calc=False):
+def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction=None, synthetic=False, quick_calc=False):
     """
     Function for basic data analysis.
     INPUT:
@@ -267,8 +267,9 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             - json - will onlt write output to json, with figures encoded
             - html - will only write to html file and bypass json
             - png - will make one png file with all figures and write statistics to json file
-        direction - option to specify if genes or experiments are on the rows
-            - genes - default
+        direction - option to specify if genes or experiments are on the rows, otherwise the largest dimention is assumed
+            - None
+            - genes
             - experiments
         synthetic - option for if the data has naming standard of synthetic data
         quick_calc - option to skip svd and correlation statistics which takes up the most time for large datasets
@@ -315,6 +316,13 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     else: 
         raise TypeError("\nWARNING:unknown input format in SNAKED analysis tool, make sure input perts_df is a pandas.DataFrame, or csv file\n")
 
+    # check for largest dimention if direction not specified
+    if not isinstance(direction, str):
+        if data_df.shape[0]>data_df.shape[1]:
+            direction = "experiments"
+        else:
+            direction = "genes"
+
     # for consistency swap rows and columns if data has the form experimentsXgenes
     if direction == "experiments":
         data_df = data_df.transpose()
@@ -353,7 +361,8 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         "Percent unique values" : round_significant(100 * len(np.unique(data_df.values))/(data_df.shape[0]*data_df.shape[1]), 2), # % unique
         "Zeros" : int(np.count_nonzero(data_df.values==0)), # number of zeros
         "Percent zeros" : round_significant(100 * np.count_nonzero(data_df.values==0)/(data_df.shape[0]*data_df.shape[1]), 2), # % zeros
-        "Matrix shape" : str(data_df.shape[0]) + ", " + str(data_df.shape[1]) #shape of matrix
+        "Number of genes" : str(data_df.shape[0]), # number of genes
+        "Number of experiments" : str(data_df.shape[1]) # number of experiments
             }
 
     stats_temp = {"Mean" : round_significant(float(np.mean(data_df.values)), 4), # mean
@@ -410,30 +419,28 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
 
     stats.update(stats_temp)   
 
+    if quick_calc:
+        stats_temp = {"Median observation correlation" : "",
+            "Median replicate correlation" : "",
+            "# replicate corr>median corr" : ""
+                }
+    elif data_df.shape[1]<cutoff:
+        # call function to calculate correlation statistics
+        median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict, norep)
+        stats_temp = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
+            "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
+            "% replicate corr>median corr" : num_greater_repcorrs # number of correlations within replicate groups greater than the overall median
+                }
+    else:
+        # call function to calculate correlation statistics ofr large data sets
+        mean_corr, mean_rep_corr = rep_corr_test_lrg.test(data_df, rep_dict, norep)
+        stats_temp = {"Mean observation correlation" : round_significant(mean_corr, 4), # mean correlation of all columns
+            "Mean replicate correlation" : round_significant(mean_rep_corr, 4), # mean correlation of replicate groups
+            "% replicate corr>median corr" : np.nan # number of correlations within replicate groups greater than the overall median, not calculated on large data sets
+                }
+    stats.update(stats_temp) 
+
     if not norep: 
-        if quick_calc:
-            stats_temp = {"Median observation correlation" : "",
-                "Median replicate correlation" : "",
-                "# replicate corr>median corr" : ""
-                    }
-        elif data_df.shape[1]<cutoff:
-            # call function to calculate correlation statistics
-            median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict)
-
-            stats_temp = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
-                "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
-                "# replicate corr>median corr" : int(num_greater_repcorrs) # number of correlations within replicate groups greater than the overall median
-                    }
-        else:
-            # call function to calculate correlation statistics ofr large data sets
-            mean_corr, mean_rep_corr = rep_corr_test_lrg.test(data_df, rep_dict)
-
-            stats_temp = {"Mean observation correlation" : round_significant(mean_corr, 4), # mean correlation of all columns
-                "Mean replicate correlation" : round_significant(mean_rep_corr, 4), # mean correlation of replicate groups
-                "# replicate corr>median corr" : "" # number of correlations within replicate groups greater than the overall median, not calculated on large data sets
-                    }
-        stats.update(stats_temp) 
-
         num_rep = [len(reps) for reps in rep_dict.values()]
 
         stats_temp = {"Median # of replicates" : round_significant(float(np.median(num_rep)), 2), # median number of replicates
@@ -442,10 +449,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
                       }
     else:
         # to ensure uniformity of output in spite of no replicates
-        stats_temp = {"Median observation correlation" : "",
-            "Median replicate correlation" : "",
-            "# replicate corr>median corr" : "",
-            "Median # of replicates" : 1, # median number of replicates
+        stats_temp = {"Median # of replicates" : 1, # median number of replicates
             "Min # of replicates" : 1, # min number of replicates
             "Max # of replicates" : 1 # max number of replicates
                 }
@@ -511,7 +515,7 @@ if __name__ == "__main__":
     parser.add_argument("-nr", "--norep", dest="norep", default=False, type=bool, help="option for when there are no replicates. Will limit some analyses")
     parser.add_argument("-pd", "--pert_design", dest="pert_design", default="single", type=str, help="option to change between designs with a single and multiple perturbed genes per experiment")
     parser.add_argument("-o", "--out", dest="out", default=None, help="option to write output to file, name of file without file extention will create both json and html, can otherwise be specified to json, html or png")
-    parser.add_argument("-d", "--direction", dest="direction", default="genes", help="option to specify if genes or experiments are on the rows")
+    parser.add_argument("-d", "--direction", dest="direction", default=None, help="option to specify if genes or experiments are on the rows, will otherwise choose the largest dimention")
     parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, type=bool, help="option for if the data has naming standard of synthetic data")
     parser.add_argument("-q", "--quick", dest="quick_calc", default=False, type=bool, help="option to skip svd and correlation statistics for faster calculation")
 
