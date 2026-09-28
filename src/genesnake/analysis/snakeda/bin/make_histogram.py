@@ -16,8 +16,15 @@ def plot(array,out):
     plot_ray = array.flatten() # make 2D array 1D 
     bins = 100 #make % of total numbers as bins
 
-    fig = plt.figure(figsize=(10,10))
-    plt.hist(plot_ray, bins=bins, histtype="bar")
+    fig, ax1 = plt.subplots(figsize=(10,10))
+    ax1.hist(plot_ray, bins=bins, histtype="bar")
+
+    # additional plot in plot to show more detail among the lower values where applicabe
+    low_vals = plot_ray[plot_ray<np.max(plot_ray)*0.1]
+    if np.max(plot_ray)>300 and low_vals.size>plot_ray.size*0.9:
+        ax2 = fig.add_axes([0.5, 0.5, 0.38, 0.35])
+        ax2.hist(low_vals, bins=30, histtype="bar")
+        ax2.set(title="Lowest 10% of values")
 
     if out:
         byte_file = BytesIO() #create in memory file to write to
