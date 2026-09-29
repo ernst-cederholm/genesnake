@@ -284,16 +284,36 @@ def infer_networks(
 		P = P.T
 		Y = Y.T
 
+		from threadpoolctl import threadpool_limits
+		from sklearn.linear_model import Lasso
+
 		def block_format(string_):
 			import textwrap
 			return(' '.join(textwrap.dedent(string_).splitlines()))
 		def perturbation_lasso(Y, P, alpha):
-			from sklearn.linear_model import Lasso
-			lasso_mod = Lasso(alpha = alpha)
-			out_net_tmp = []
-			for i in range(P.shape[0]):
-				lasso_mod.fit(Y.transpose(), -P.iloc[i, :])
-				out_net_tmp.append(lasso_mod.coef_)
+			# Underlying libraries seem to multithread with fast sync cycles,
+			# like within single matrix operations, and so care must be taken
+			# to not oversubscribe the CPU, because then other computation
+			# gets interleaved on the CPU, which grinds the lasso to a halt,
+			# because approximately all time is spent waiting for the chunk
+			# that got stuck behind the most other stuff. At least that's what
+			# I think is going on. Limiting the number of cores scikit expects
+			# to be able to access removes the scheduling conflicts /
+			# inteleaving of processing, because there are still free cores
+			# for the other things to use instead. This makes the (fragile)
+			# fast sync cycle multiprocessing run as expected.
+			# This is of course an incomplete solution, which depends on
+			# how much other stuff is running simultaneously, and how 
+			# many cores are available. What one would want to do conceptually
+			# is to reserve this number of cores for this thing only,
+			# but not sure if that is possible. The OS interleaves by default
+			# I think, and I am not sure it first asks the processes if it may.
+			with threadpool_limits(limits = 5):
+				lasso_mod = Lasso(alpha = alpha)
+				out_net_tmp = []
+				for i in range(P.shape[0]):
+					lasso_mod.fit(Y.transpose(), -P.iloc[i, :])
+					out_net_tmp.append(lasso_mod.coef_)
 			out_net = pd.DataFrame(
 				data = out_net_tmp,
 				index = Y.index,
