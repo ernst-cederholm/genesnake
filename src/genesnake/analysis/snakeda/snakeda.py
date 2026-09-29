@@ -70,33 +70,6 @@ def signal_to_noise_ratio(data, rep_dict, norep):
         SNR = abs(np.mean(data.values))/np.std(data.values)
     return SNR
 
-def match_experiment_with_gene_name(gene_names, rep_dict):
-    """
-    Function which tries to match experiments and gene names to update replicate lookup dictionary with
-    INPUT:
-        gene_names - list with gene names, from index of expression matrix
-        rep_dict - dictionary with experiment names (without marker for replicate) as keys
-    OUTPUT:
-        new_rep_dict - dictionary with updated keys if matches are found
-    """
-    print("\nTrying to match gene and experiment names for perturbation rank analysis\n")
-
-    new_rep_dict = {}
-    for key in rep_dict.keys():
-        # if an exact match can be found, keep it
-        if key in gene_names:
-            new_rep_dict[key] = rep_dict[key]
-        # if an exact match does not exist, try to find a close one
-        else:
-            #closest = difflib.get_close_matches(key, gene_names, n=1, cutoff=0.8)
-            # if a close match is found, use as new key
-            #if len(closest)==1:
-            #    new_rep_dict[closest[0]] = rep_dict[key]
-            # if a match could not be found, use the old key
-            #else:
-                new_rep_dict[key] = rep_dict[key]
-    return new_rep_dict
-
 def make_reps_lookup_dict(data_df, norep, method='single_pert', synthetic=False):
     """
     Function for creating a lookup dictionary of which columns are replicates of the same experiment.
@@ -105,8 +78,7 @@ def make_reps_lookup_dict(data_df, norep, method='single_pert', synthetic=False)
         norep - options for if there are replicates or not
         method - option for method to determine which observations are replicates
             - single_pert - will assume each time a gene is perturbed it is a replicate of the other times it is perturbed. Used when data_df is a perturbation matrix where a single gene is perturbed at a time. Groups of replicates will be named after gene perturbed.
-            - single_name - will look for common separators in the observetion lables for sign of replicates. Assumes a single gene is perturbed at a time and tries to match experiment lables with gene names.
-            - multi_name - will look for common separators in the observation lables for sign pf replicates.
+            - name - will look for common separators in the observetion lables for sign of replicates.
     OUTPUT:
         rep_dict - dictionary with keys labled as genes or experiments, depening on method, and values as column names of replicates.
         norep - potentially updated information for if there are replicates
@@ -119,7 +91,7 @@ def make_reps_lookup_dict(data_df, norep, method='single_pert', synthetic=False)
         # check to ensure norep is set to True if no replicates are found in data
         if data_df.shape[0] == data_df.shape[1]:
             norep = True
-    elif method == 'single_name' or method == 'multi_name':
+    elif method == 'name':
         # only look for replicates if they are believed to exist
         if not norep:
             col_lables = list(data_df.columns)
@@ -154,9 +126,6 @@ def make_reps_lookup_dict(data_df, norep, method='single_pert', synthetic=False)
             for i, name in enumerate(data_df.columns.to_list()):
                 rep_dict[name] = [i]
 
-        if method == 'single_name':
-            gene_names = [str(i) for i in data_df.index.to_list()]
-            rep_dict = match_experiment_with_gene_name(gene_names, rep_dict)
         # check to ensure norep is set to True is no replicates are found in data
         if not norep_check:
             norep = True
@@ -283,6 +252,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     if isinstance(data, GRNmodel):
         data_df = data.data
         perts_df = data.perturbation
+        synthetic = True
     elif isinstance(data, pd.DataFrame):
         data_df = data
     elif isinstance(data, str):
@@ -340,12 +310,12 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
 
     # make lookup dictionary for replicates
     if pert_design == 'multiple':
-        rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'multi_name', synthetic)
+        rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'name', synthetic)
     elif pert_design == 'single':
         if isinstance(perts_df, pd.DataFrame):
             rep_dict, norep = make_reps_lookup_dict(perts_df, norep, 'single_pert') #does not need synthetic tag as the names are not used for dictionary creation
         else:
-            rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'single_name', synthetic)
+            rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'name', synthetic)
     else:
         raise ValueError("Unknown pert_design type in snakeda. Supported designs are: single and multiple")
 
@@ -356,10 +326,10 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     gene_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "genes") #PCA for genes
 
     # Calculate basic statistics for the data
-    stats = {"Elements" : data_df.shape[0]*data_df.shape[1], # number of elements
-        "Unique values" : len(np.unique(data_df.values)), # number of unique elements
+    stats = {"Number of elements" : data_df.shape[0]*data_df.shape[1], # number of elements
+        "Number of unique values" : len(np.unique(data_df.values)), # number of unique elements
         "Percent unique values" : round_significant(100 * len(np.unique(data_df.values))/(data_df.shape[0]*data_df.shape[1]), 2), # % unique
-        "Zeros" : int(np.count_nonzero(data_df.values==0)), # number of zeros
+        "Number of zeros" : int(np.count_nonzero(data_df.values==0)), # number of zeros
         "Percent zeros" : round_significant(100 * np.count_nonzero(data_df.values==0)/(data_df.shape[0]*data_df.shape[1]), 2), # % zeros
         "Number of genes" : str(data_df.shape[0]), # number of genes
         "Number of experiments" : str(data_df.shape[1]) # number of experiments
@@ -420,7 +390,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     stats.update(stats_temp)   
 
     if quick_calc:
-        stats_temp = {"Median observation correlation" : "",
+        stats_temp = {"Median experiment correlation" : "",
             "Median replicate correlation" : "",
             "# replicate corr>median corr" : ""
                 }
@@ -429,7 +399,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
         median_corr, median_rep_corr, num_greater_repcorrs = rep_corr_test.test(data_df, rep_dict, norep)
         stats_temp = {"Median observation correlation" : round_significant(median_corr, 4), # median correlation of all columns
             "Median replicate correlation" : round_significant(median_rep_corr, 4), # median correlation of replicate groups
-            "% replicate corr>median corr" : num_greater_repcorrs # number of correlations within replicate groups greater than the overall median
+            "% replicate corr>median corr" : round_significant(num_greater_repcorrs, 4) # number of correlations within replicate groups greater than the overall median
                 }
     else:
         # call function to calculate correlation statistics ofr large data sets
