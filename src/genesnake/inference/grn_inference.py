@@ -328,11 +328,11 @@ def infer_networks(
 				target_nonzeros_per_gene,
 				):
 			def sparsity_deviation(alpha):
-			    network = perturbation_lasso(Y, P, alpha)
-			    avg_nonzeros = np.mean(np.count_nonzero(network.values, axis=1))
-			    deviation = avg_nonzeros - target_nonzeros_per_gene
-			    print(f"alpha = {alpha}, avg_nonzeros = {avg_nonzeros}, deviation = {deviation}")
-			    return(deviation)
+				network = perturbation_lasso(Y, P, alpha)
+				avg_nonzeros = np.mean(np.count_nonzero(network.values, axis=1))
+				deviation = avg_nonzeros - target_nonzeros_per_gene
+				print(f"alpha = {alpha}, avg_nonzeros = {avg_nonzeros}, deviation = {deviation}")
+				return(deviation)
 			from scipy.optimize import brentq
 			heuristic_lower_bound = 1e-10
 			heuristic_upper_bound = 1e2
