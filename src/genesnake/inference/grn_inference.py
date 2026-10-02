@@ -42,17 +42,21 @@ def infer_networks(
 	if method == "lsco":  # least squares, works OK
 		P = P.T
 		Y = Y.T
-		aest = np.matmul(-P, np.linalg.pinv(Y))
+		from threadpoolctl import threadpool_limits
+		with threadpool_limits(limits = 5):
+			aest = np.matmul(-P, np.linalg.pinv(Y))
 		aest.index = P.index
 		aest.columns = P.index
 		return aest.T
 	if method == "lscon":  # normalized least squares, works OK
 		P = P.T
 		Y = Y.T
-		aest = np.matmul(-P, np.linalg.pinv(Y))
-		aest = pd.DataFrame(aest)
-		for column in aest:
-			aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
+		from threadpoolctl import threadpool_limits
+		with threadpool_limits(limits = 5):
+			aest = np.matmul(-P, np.linalg.pinv(Y))
+			aest = pd.DataFrame(aest)
+			for column in aest:
+				aest[column] = np.divide(aest[column], sum(abs(aest[column]))) * Y.shape[0]
 		aest.index = P.index
 		aest.columns = P.index
 		return aest.T
