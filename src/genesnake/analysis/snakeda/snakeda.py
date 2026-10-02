@@ -18,6 +18,7 @@ if __name__ == "__main__":
     from bin import rep_corr_test
     from bin import rep_corr_test_lrg
     from bin import pert_rank
+    from bin import interactive_plot_app
 else:
     from .bin import make_heatmap
     from .bin import make_histogram
@@ -25,6 +26,7 @@ else:
     from .bin import rep_corr_test
     from .bin import rep_corr_test_lrg
     from .bin import pert_rank
+    from .bin import interactive_plot_app
 
 def round_significant(number, significant):
     """
@@ -130,7 +132,7 @@ def make_reps_lookup_dict(data_df, norep, method='single_pert', synthetic=False)
         if not norep_check:
             norep = True
     else:
-        raise ValueError("Unknown method type in snakeda.make_reps_lookup_dict. Supported methods are: single_pert, single_name, and multi_name")
+        raise ValueError("Unknown method type in snakeda.make_reps_lookup_dict. Supported methods are: single_pert and name")
     return rep_dict, norep
 
 def csv_prepper(file, direction="genes"):
@@ -221,7 +223,7 @@ def json_to_html(file, stats_data=None):
         sections=tables
         ))       
 
-def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction=None, synthetic=False, quick_calc=False):
+def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, direction=None, synthetic=False, quick_calc=False, plot_interact=False):
     """
     Function for basic data analysis.
     INPUT:
@@ -242,6 +244,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             - experiments
         synthetic - option for if the data has naming standard of synthetic data
         quick_calc - option to skip svd and correlation statistics which takes up the most time for large datasets
+        plot_interact - option to make a dash app with interactive plots, will skip the standard plots and calculations
     OUTPUT:
         analysis - dictionary with statistics and figures show in standard output. If specified the same information as json and/or html file, in the case of json file the images will be encoded to a string"""
 
@@ -318,6 +321,10 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             rep_dict, norep = make_reps_lookup_dict(data_df, norep, 'name', synthetic)
     else:
         raise ValueError("Unknown pert_design type in snakeda. Supported designs are: single and multiple")
+
+    # Check if interacive plots should be made
+    if plot_interact:
+        return interactive_plot_app.interactive_plots(data_df, rep_dict)
 
     # Make plots
     distribution_plot = make_histogram.plot(data_df.values, out) # histogram
@@ -488,9 +495,10 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--direction", dest="direction", default=None, help="option to specify if genes or experiments are on the rows, will otherwise choose the largest dimention")
     parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, type=bool, help="option for if the data has naming standard of synthetic data")
     parser.add_argument("-q", "--quick", dest="quick_calc", default=False, type=bool, help="option to skip svd and correlation statistics for faster calculation")
+    parser.add_argument("-i", "--interactive", dest="plot_interact", default=False, type=bool, help="option to make a dash app with interactive plots, will skip the standard plots and calculations")
 
     # move input to args
     args = parser.parse_args()
 
     # run eda tool
-    snakeda(args.data, args.perts_df, args.norep, args.pert_design, args.out, args.direction, args.synthetic, args.quick_calc)
+    snakeda(args.data, args.perts_df, args.norep, args.pert_design, args.out, args.direction, args.synthetic, args.quick_calc, args.plot_interact)

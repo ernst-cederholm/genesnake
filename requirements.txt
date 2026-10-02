@@ -13,3 +13,4 @@ scikit-learn
 plotly
 umap-learn
 lazy-loader
+dash #for interactive EDA plot

@@ -24,7 +24,7 @@ def corr_calc(data, reps_list, norep):
         n_reps = len(reps_list[i])
         pearsons = data[:, reps_list[i]]
         pearsons = np.corrcoef(np.transpose(pearsons))
-        mean = np.mean(pearsons[np.triu_indices(n_reps, k=1)]) * n_reps * (n_reps-1) / 2
+        mean = np.sum(pearsons[np.triu_indices(n_reps, k=1)])
         n_rep_corrs += n_reps * (n_reps-1) / 2
         mean_rep_corr += mean
         # loop over groups which has not been calculated correlation with
