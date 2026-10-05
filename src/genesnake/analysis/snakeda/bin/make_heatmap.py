@@ -20,6 +20,7 @@ def plot(df,out):
     
     fig = plt.figure(figsize=(10,10))
     ax = sns.heatmap(df, linewidths=0, norm=colors.LogNorm(), xticklabels=False, yticklabels=False) #log based color
+    plt.title("Heatmap of gene expression")
     plt.xlabel("Experiments")
     plt.ylabel("Genes")
       

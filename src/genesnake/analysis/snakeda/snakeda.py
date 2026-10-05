@@ -7,7 +7,7 @@ import os
 import argparse
 from math import floor, log10, isnan
 import json
-from PIL import Image
+from PIL import Image, ImageDraw
 
 # import helper functions for plotting and more involved analyses
 # check how the script runs for how to import them
@@ -310,6 +310,11 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     data_df = data_df.sort_index(axis=1)
     if isinstance(perts_df, pd.DataFrame):
         perts_df = perts_df.sort_index(axis=1)
+    # genes also need to be sorted before rep_dict is made for correct looking interactive heatmaps
+    if plot_interact:
+        data_df = data_df.sort_index(axis=0)
+        if isinstance(perts_df, pd.DataFrame):
+            perts_df = perts_df.sort_index(axis=0)
 
     # make lookup dictionary for replicates
     if pert_design == 'multiple':
@@ -464,12 +469,17 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
             exp_pca_img = Image.open(exp_pca_plot)
             gene_pca_img = Image.open(gene_pca_plot)
 
-            out_img = Image.new("RGB", (2*distribution_img.size[0], 2*distribution_img.size[1]))
+            out_img = Image.new("RGB", (2*distribution_img.size[0], 2*distribution_img.size[1]+50), (255, 255, 255))
 
-            out_img.paste(distribution_img, (0,0))
-            out_img.paste(heatmap_img, (0, distribution_img.size[1]))
-            out_img.paste(exp_pca_img, (distribution_img.size[0], 0))
-            out_img.paste(gene_pca_img, (distribution_img.size[0], distribution_img.size[1]))
+            out_img.paste(distribution_img, (0,50))
+            out_img.paste(heatmap_img, (0, distribution_img.size[1]+50))
+            out_img.paste(exp_pca_img, (distribution_img.size[0], 50))
+            out_img.paste(gene_pca_img, (distribution_img.size[0], distribution_img.size[1]+50))
+
+            draw = ImageDraw.Draw(out_img)
+            text = "EDA figures: " + str(out[:-4])
+            w = draw.textlength(text)
+            draw.text((distribution_img.size[1]-(2*w), 0), fill=(0,0,0), text=text, font_size=48)
 
             out_img.save(out)
 
@@ -489,13 +499,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script for general data analysis of gene expression with one or more perturebed genes", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("data", help="the data to analyse, can be a pandas.DataFrame, GRNmodel or csv file with a matrix of genesXexperiments")
     parser.add_argument("-p", "--perts", dest="perts_df", default=None, help="optional seperate perturbation matrix as pandas.DataFrame or csv file, only used if pert_design is set to single")
-    parser.add_argument("-nr", "--norep", dest="norep", default=False, type=bool, help="option for when there are no replicates. Will limit some analyses")
+    parser.add_argument("-nr", "--norep", dest="norep", default=False, type=bool, help="option for when there are no replicates. Will limit some analyses, default False")
     parser.add_argument("-pd", "--pert_design", dest="pert_design", default="single", type=str, help="option to change between designs with a single and multiple perturbed genes per experiment")
     parser.add_argument("-o", "--out", dest="out", default=None, help="option to write output to file, name of file without file extention will create both json and html, can otherwise be specified to json, html or png")
     parser.add_argument("-d", "--direction", dest="direction", default=None, help="option to specify if genes or experiments are on the rows, will otherwise choose the largest dimention")
-    parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, type=bool, help="option for if the data has naming standard of synthetic data")
-    parser.add_argument("-q", "--quick", dest="quick_calc", default=False, type=bool, help="option to skip svd and correlation statistics for faster calculation")
-    parser.add_argument("-i", "--interactive", dest="plot_interact", default=False, type=bool, help="option to make a dash app with interactive plots, will skip the standard plots and calculations")
+    parser.add_argument("-s", "--synthetic", dest="synthetic", default=False, type=bool, help="option for if the data has naming standard of synthetic data, default False")
+    parser.add_argument("-q", "--quick", dest="quick_calc", default=False, type=bool, help="option to skip svd and correlation statistics for faster calculation, default False")
+    parser.add_argument("-i", "--interactive", dest="plot_interact", default=False, type=bool, help="option to make a dash app with interactive plots, will skip the standard plots and calculations, default False")
 
     # move input to args
     args = parser.parse_args()

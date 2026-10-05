@@ -16,9 +16,6 @@ def interactive_plots(data_df, rep_dict):
     # initilize a dash app with pages, where the pages will be found within the same document
     app = Dash(__name__, use_pages=True, pages_folder="")
 
-    # sort the rown for nicer heatmaps
-    data_df = data_df.sort_index(axis=0)
-
     def pca_fit_and_format(data_df, rep_dict, direct):
         """
         Function for fitting a two component PCA to gene expression
@@ -85,7 +82,10 @@ def interactive_plots(data_df, rep_dict):
         other = pca_exp_components[pca_exp_components.index!=exp]
         fig.add_trace(go.Scatter(x=other["Principal component 1"], y=other["Principal component 2"], mode='markers', text=other.index, name=""))
         fig.add_trace(go.Scatter(x=chosen["Principal component 1"], y=chosen["Principal component 2"], mode='markers', text=chosen.index, name=""))
-        fig.update_layout(showlegend=False, title_text="2 component PCA of experiments", title_subtitle_text="Chosen experiment group marked in red")
+        fig.update_layout(showlegend=False, title_text="2 component PCA of experiments", 
+                        title_subtitle_text="Chosen experiment group marked in red", 
+                        xaxis=dict(title=dict(text="Principal component 1")), 
+                        yaxis=dict(title=dict(text="Principal component 2")))
         return fig
     
     # PCA over experiments animation layout where you can pick if the animation should highlight experiments or replicates
@@ -103,36 +103,48 @@ def interactive_plots(data_df, rep_dict):
     def animation(type):
         # Set up base figure
         max_reps = np.max([len(reps) for reps in rep_dict.values()])
-        pca_exp_anim_fig = go.Figure(data=[go.Scatter(x=pca_exp_components["Principal component 1"], 
-                                            y=pca_exp_components["Principal component 2"], 
-                                            mode='markers', text=pca_exp_components.index, name=""),
-                                        go.Scatter(x=pca_exp_components["Principal component 1"][pca_exp_components["Group"]==0], 
-                                            y=pca_exp_components["Principal component 2"][pca_exp_components["Group"]==0],
-                                            mode='markers', text=pca_exp_components[pca_exp_components["Group"]==0].index, name="")])
-        # Update layout with play and pause buttons for the animation
-        pca_exp_anim_fig.update_layout(title_text="Animation of PCA over experiments", showlegend=False,
-                updatemenus = [dict(type = "buttons",
-                buttons = [
-                    dict(args = [None],
-                        label = "Play",
-                        method = "animate"
-                        ),
-                    dict(args = [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate", "transition": {"duration": 0}}],
-                        label = "Pause",
-                        method = "animate")])])
+        
         # Depending on which animation chosen loop over correct group of points, updates the second scatter plot of the ones initially drawn
         if type == "Replicate":
+            pca_exp_anim_fig = go.Figure(data=[go.Scatter(x=pca_exp_components["Principal component 1"], 
+                                            y=pca_exp_components["Principal component 2"], 
+                                            mode='markers', text=pca_exp_components.index, name="Experiments"),
+                                        go.Scatter(x=pca_exp_components["Principal component 1"][pca_exp_components["Group"]==0], 
+                                            y=pca_exp_components["Principal component 2"][pca_exp_components["Group"]==0],
+                                            mode='markers', text=pca_exp_components[pca_exp_components["Group"]==0].index, name="Rep 0")])
+            # Update layout with play and pause buttons for the animation
+            pca_exp_anim_fig.update_layout(title_text="Animation of PCA over experiments",
+                    xaxis=dict(title=dict(text="Principal component 1")), 
+                    yaxis=dict(title=dict(text="Principal component 2")),
+                    updatemenus = [dict(type = "buttons",
+                        buttons = [dict(args = [None], label = "Play", method = "animate"),
+                            dict(args = [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate", "transition": {"duration": 0}}], 
+                                 label = "Pause", method = "animate")])])
             pca_exp_anim_fig.update(frames=[go.Frame(
                     data=[go.Scatter(x=pca_exp_components["Principal component 1"][pca_exp_components["Group"]==k], 
-                                                        y=pca_exp_components["Principal component 2"][pca_exp_components["Group"]==k],
-                                                        mode='markers', text=pca_exp_components[pca_exp_components["Group"]==k].index, name="")],
+                                    y=pca_exp_components["Principal component 2"][pca_exp_components["Group"]==k],
+                                    mode='markers', text=pca_exp_components[pca_exp_components["Group"]==k].index, name="Rep "+str(k))],
                             traces=[1])
                             for k in range(max_reps)])
         else:
+            pca_exp_anim_fig = go.Figure(data=[go.Scatter(x=pca_exp_components["Principal component 1"], 
+                                                        y=pca_exp_components["Principal component 2"], 
+                                                        mode='markers', text=pca_exp_components.index, name="Experiments"),
+                                                    go.Scatter(x=pca_exp_components["Principal component 1"].iloc[pca_exp_components.index==pca_exp_components.index[0]], 
+                                                        y=pca_exp_components["Principal component 2"].iloc[pca_exp_components.index==pca_exp_components.index[0]],
+                                                        mode='markers', text=pca_exp_components[pca_exp_components.index==pca_exp_components.index[0]].index, name=pca_exp_components.index[0])])
+                        # Update layout with play and pause buttons for the animation
+            pca_exp_anim_fig.update_layout(title_text="Animation of PCA over experiments",
+                    xaxis=dict(title=dict(text="Principal component 1")), 
+                    yaxis=dict(title=dict(text="Principal component 2")),
+                    updatemenus = [dict(type = "buttons",
+                        buttons = [dict(args = [None], label = "Play", method = "animate"),
+                            dict(args = [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate", "transition": {"duration": 0}}], 
+                                 label = "Pause", method = "animate")])])
             pca_exp_anim_fig.update(frames=[go.Frame(
                     data=[go.Scatter(x=pca_exp_components["Principal component 1"][pca_exp_components.index==exp], 
                                                         y=pca_exp_components["Principal component 2"][pca_exp_components.index==exp],
-                                                        mode='markers', text=pca_exp_components[pca_exp_components.index==exp].index, name="")],
+                                                        mode='markers', text=pca_exp_components[pca_exp_components.index==exp].index, name=str(exp))],
                             traces=[1])
                             for exp in pca_exp_components.index.unique()])
         return pca_exp_anim_fig
@@ -142,7 +154,9 @@ def interactive_plots(data_df, rep_dict):
 
     # make basic figure
     pca_gene_fig = go.Figure(go.Scatter(x=pca_gene_components["Principal component 1"], y=pca_gene_components["Principal component 2"], mode='markers', text=pca_gene_components.index, name=""))
-    pca_gene_fig.update_layout(showlegend=False, title_text="2 component PCA of genes")
+    pca_gene_fig.update_layout(showlegend=False, title_text="2 component PCA of genes", 
+                            xaxis=dict(title=dict(text="Principal component 1")), 
+                            yaxis=dict(title=dict(text="Principal component 2")))
 
     # set the layout
     pca_gene_layout = html.Div([
@@ -222,8 +236,7 @@ def interactive_plots(data_df, rep_dict):
                     ticktext=["0", f"{(max_val/100):.2g}", f"{(max_val/10):.2g}", f"{max_val:.0f}"] 
                     ))
         # update layout so individual labels are not shown
-        fig.update_layout(minreducedwidth=1000,
-                        minreducedheight=2000,
+        fig.update_layout(title_text="Heatmap of gene expression",
                         xaxis=dict(showticklabels=False, title=dict(text="Experiments")), 
                         yaxis=dict(showticklabels=False, title=dict(text="Genes")))
         return all_select, exp_select, fig
@@ -248,6 +261,7 @@ def interactive_plots(data_df, rep_dict):
     def histogram_for_range(range_vals):
         fig = go.Figure()
         fig.add_trace(go.Histogram(x=plot_ray, xbins=dict(start=range_vals[0], end=range_vals[1], size=(range_vals[1]-range_vals[0])/bins)))
+        fig.update_layout(title_text="Distribution of gene expression")
         return fig
 
     # Landing page layout
@@ -276,9 +290,8 @@ def interactive_plots(data_df, rep_dict):
     app.layout = html.Div([
         html.H1('EDA interactive plots'),
         html.Div([
-            html.Div(
-                dcc.Link(f"{page['name']}", href=page["relative_path"])
-            ) for page in dash.page_registry.values()
+            dcc.Link(dcc.Button(f"{page['name']}", style=dict(color="blue")), href=page["relative_path"])
+            for page in dash.page_registry.values()
         ]),
         dash.page_container
     ])

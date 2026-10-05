@@ -18,6 +18,7 @@ def plot(array,out):
 
     fig, ax1 = plt.subplots(figsize=(10,10))
     ax1.hist(plot_ray, bins=bins, histtype="bar")
+    ax1.set(title="Distribution of gene expression values")
 
     # additional plot in plot to show more detail among the lower values where applicabe
     low_vals = plot_ray[plot_ray<np.max(plot_ray)*0.1]
