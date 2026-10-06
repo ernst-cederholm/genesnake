@@ -327,16 +327,6 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     else:
         raise ValueError("Unknown pert_design type in snakeda. Supported designs are: single and multiple")
 
-    # Check if interacive plots should be made
-    if plot_interact:
-        return interactive_plot_app.interactive_plots(data_df, rep_dict)
-
-    # Make plots
-    distribution_plot = make_histogram.plot(data_df.values, out) # histogram
-    heatmap_plot = make_heatmap.plot(data_df, out) #heatmap
-    exp_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "experiments") #PCA for experiments
-    gene_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "genes") #PCA for genes
-
     # Calculate basic statistics for the data
     stats = {"Number of elements" : data_df.shape[0]*data_df.shape[1], # number of elements
         "Number of unique values" : len(np.unique(data_df.values)), # number of unique elements
@@ -383,7 +373,7 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
     if pert_design == 'single':
         median_rank, median_p_rank, times_smallest, times_largest = pert_rank.calc(data_df, rep_dict)
         stats_temp = {"Median rank of perturbed gene" : median_rank, # median rank of perturbed gene in experiment
-            "Median % rank pert gene" : round_significant(median_p_rank, 4)*100, # median percent rank of perturbed gene in experiment
+            "Median % rank pert gene" : round_significant(median_p_rank*100, 4), # median percent rank of perturbed gene in experiment
             "Times lowest rank" : times_smallest, # number of times the perturbed gene is ranked lowest
             "Percent lowest rank" : round_significant(times_smallest/data_df.shape[1], 4)*100, # percent of times the perturbed gene is ranked lowest
             "Times highest rank" : times_largest, # number of times the perturbed gene is ranked highest
@@ -437,6 +427,16 @@ def snakeda(data, perts_df=None, norep=False, pert_design='single', out=None, di
                 }
 
     stats.update(stats_temp)
+
+    # Check if interacive plots should be made
+    if plot_interact:
+        return interactive_plot_app.interactive_plots(data_df, rep_dict, stats)
+
+    # Make plots
+    distribution_plot = make_histogram.plot(data_df.values, out) # histogram
+    heatmap_plot = make_heatmap.plot(data_df, out) #heatmap
+    exp_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "experiments") #PCA for experiments
+    gene_pca_plot = make_PCA.plot(data_df.values, rep_dict, out, "genes") #PCA for genes
 
     #output formatting
     if out:
