@@ -5,6 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       body {font-family: Arial;}
+
+      table {
+        margin: 0.5em auto;
+        border-collapse: collapse;
+        border: 1px solid #ffffff;
+        float: left;
+      }
+
+      th {
+        padding: 0.2em;
+        text-align: left;
+      }
+
+      td {
+        padding: 0.2em;
+        text-align: right;
+      }
+
+      tbody tr:nth-child(n+1) {
+        border-bottom: 1px solid #ffffff;
+      }
+
+      tbody tr:nth-child(odd) {
+        background-color: #ddd;
+      }
       
       /* Style the tab */
       .tab {
@@ -21,7 +46,7 @@
       border: none;
       outline: none;
       cursor: pointer;
-      padding: 14px 16px;
+      padding: 0.6em 0.8em;
       transition: 0.3s;
       font-size: 17px;
       
@@ -43,10 +68,10 @@
       .tabcontent {
       position: absolute;
       display: none;
-      padding: 6px 12px;
+      padding: 0.5em 0.7em;
       border: 1px solid #ccc; 
       border-top: none;
-      left: 370px;
+      left: 26em;
       
       }
 
