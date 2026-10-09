@@ -286,9 +286,9 @@ def interactive_plots(data_df, rep_dict, stats):
     stat_k2 = ["Variance", "Standard deviation", "Skewness", "Signal to noise ratio", "Max of SVD", "Median of SVD", "Min of SVD", "Median # of replicates", "Min # of replicates", "Max # of replicates", ""]
     stat_k3 = ["Condition number", "Median rank of perturbed gene", "Median % rank pert gene", "Times lowest rank", "Percent lowest rank", "Times highest rank", "Percent highest rank", "Median observation correlation", "Median replicate correlation", "% replicate corr>median corr", ""]
     stats_table = html.Table([html.Tbody([
-                    html.Tr([html.Td(html.B(stat_k1[i])), html.Td(stats[stat_k1[i]]), 
-                             html.Td(html.B(stat_k2[i])), html.Td(stats[stat_k2[i]]), 
-                             html.Td(html.B(stat_k3[i])), html.Td(stats[stat_k3[i]])])  for i in range(11)])])
+                    html.Tr([html.Td(stat_k1[i]), html.Td(stats[stat_k1[i]]), 
+                             html.Td(stat_k2[i]), html.Td(stats[stat_k2[i]]), 
+                             html.Td(stat_k3[i]), html.Td(stats[stat_k3[i]])])  for i in range(11)])])
 
     # Landing page layout
     info_layout = html.Div([
