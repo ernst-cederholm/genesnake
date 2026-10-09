@@ -1,28 +1,12 @@
-<h2>General stats for file: {{ file }}</h2>
-<div class="box" style="float: left" >
-  {{t1}}
+<h2>General stats, {{ file }}</h2>
+<div>
+  {{t}}
 </div>
-<div class="box" style="float: left">
-  {{t2}}
-</div>
-<div class="box" style="float: left">  
-  {{t3}}
-</div>
-<div class="box" style="float: left">  
-  {{t4}}
-</div>
-<div class="box" style="float: left"> 
-  {{t5}}
-</div>
-<div class="box"> 
-  {{t6}}
-</div>
-
 
 <div class="tab">
   <button class="tablinks" onclick="openImg(event, 'dist{{c}}')">Distribution</button>
-  <button class="tablinks" onclick="openImg(event, 'rpca{{c}}')">PCA analysis genes</button>
-  <button class="tablinks" onclick="openImg(event, 'cpca{{c}}')">PCA analysis experiments</button>
+  <button class="tablinks" onclick="openImg(event, 'gpca{{c}}')">PCA analysis genes</button>
+  <button class="tablinks" onclick="openImg(event, 'epca{{c}}')">PCA analysis experiments</button>
   <button class="tablinks" onclick="openImg(event, 'heat{{c}}')">Heatmap</button>
 </div>
 
@@ -32,20 +16,20 @@
   <p>Value distribution of data.</p>
 </div>
 
-<div id="rpca{{c}}" class="tabcontent">
+<div id="gpca{{c}}" class="tabcontent">
   <span onclick="this.parentElement.style.display='none'" class="topright">&times</span>
-  {{ rpca }}
+  {{ gpca }}
   <p>2D PCA analysis over genes.</p>
 </div>
 
-<div id="cpca{{c}}" class="tabcontent">
+<div id="epca{{c}}" class="tabcontent">
   <span onclick="this.parentElement.style.display='none'" class="topright">&times</span>
-  {{ cpca }}
+  {{ epca }}
   <p>2D PCA analysis over experiments.</p>
 </div>
 
 <div id="heat{{c}}" class="tabcontent">
   <span onclick="this.parentElement.style.display='none'" class="topright">&times</span>
   {{ heat }}
-  <p>Heatmap of all elements in data.</p>
+  <p>Heatmap of all elements in data, sorted by name.</p>
 </div>

@@ -11,7 +11,7 @@ import sys
 import genesnake as gs
 
 genes = 100
-network = gs.grn.make_FFLATnetwork.make_FFLATTnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0,self_loops=False)
+network = gs.grn.make_FFLATTnetwork(NETWORK_SIZE=genes,FFL_ENRICHED=0,self_loops=False)
 
 print(network)
 print("activating edges:",(network.values>0).sum())
@@ -36,4 +36,4 @@ M.simulate_data(exp_type="steady-state",SNR=0.5,noise_model="normal")
 #print(M.data)
 #print(M.noise_free_data)
 #gs.analysis.snakeda(M.noise_free_data,M.perturbation)
-gs.analysis.snakeda(M.noise_free_data,M.perturbation,out="GS_EDA.html")
+gs.analysis.snakeda(M,out="GS_EDA.html")

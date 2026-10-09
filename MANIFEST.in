@@ -2,6 +2,8 @@
 # There are a few zip files used by FFLATT at runtime in here 
 # that should be included in the distribution archive
 graft src/genesnake/grn
+# Some html files used when presenting data from EDA
+graft src/genesnake/analysis/snakeda/templates
 
 # Relevant documentation:
 # https://packaging.python.org/en/latest/specifications/pyproject-toml/#arbitrary-tool-configuration-the-tool-table

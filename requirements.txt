@@ -1,5 +1,5 @@
-numpy
-pandas
+numpy #<2.0.0
+pandas #<3.0.0
 matplotlib
 scipy
 joblib
@@ -13,3 +13,4 @@ scikit-learn
 plotly
 umap-learn
 lazy-loader
+dash #for interactive EDA plot
