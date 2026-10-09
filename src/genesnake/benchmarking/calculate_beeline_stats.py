@@ -31,7 +31,8 @@ def early_precision_rate(
 	# if curious.
 	ERMA = gs.benchmarking.calculate_ERMA(reference_network)
 	if ERMA == 0:
-		early_precision_rate = np.inf
+		raise ValueError(
+                'ERMA is 0, which implies that the reference network has density 0. Something has gone wrong')
 	else:
 		early_precision_rate = top_k_accuracy_ / ERMA
 	return(early_precision_rate)
@@ -71,7 +72,7 @@ def top_k_accuracy(
 
 	# precision
 	if (TP + FP) == 0:
-		precision = np.inf
+		precision = np.nan
 	else:
 		precision = TP / (TP + FP)
 
