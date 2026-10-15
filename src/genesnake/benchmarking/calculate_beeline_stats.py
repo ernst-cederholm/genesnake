@@ -7,7 +7,7 @@ import copy
 def early_precision_rate(
 		inferred_network, 
 		reference_network,
-		fraction_of_K = 1):
+		fraction_of_P = 1):
 	"""
 	Calculate Early Precision Rate (EPR) according to
 	dspin bioarxiv preprint at
@@ -25,7 +25,7 @@ def early_precision_rate(
 	top_k_accuracy_ = top_k_accuracy(
 		inferred_network, 
 		reference_network,
-		fraction_of_K = fraction_of_K)
+		fraction_of_P = fraction_of_P)
 	# Using ERMA to calculate the precision of a random model since
 	# they are the same. See calculate_ERMA documentation for explanation
 	# if curious.
@@ -41,7 +41,7 @@ def early_precision_rate(
 def top_k_accuracy(
 		inferred_network, 
 		reference_network,
-		fraction_of_K = 1):
+		fraction_of_P = 1):
 	"""
 	Calculate Top K accuracy according to
 	dspin bioarxiv preprint at
@@ -102,7 +102,7 @@ def top_k_accuracy(
 	edges. A consequence is that a method can achieve a score as high as it's
 	global precision, even though it ouputs PP < K.
 	"""
-	K = round(len(np.array(reference_network).nonzero()[0]) * fraction_of_K)
+	K = round(len(np.array(reference_network).nonzero()[0]) * fraction_of_P)
 	if K == 0:
 		import warnings
 		warnings.warn('There are no edges in the reference network')
@@ -133,7 +133,7 @@ def top_k_accuracy(
 def precision_at_k(
 		inferred_network,
 		reference_network,
-		fraction_of_K = 1):
+		fraction_of_P = 1):
 	"""
 	For background, see the docstring of top_k_accuracy.
 
@@ -193,7 +193,7 @@ def precision_at_k(
 	"""
 	reference_network = reference_network.astype(dtype=bool)
 	K = sum(reference_network)
-	K = round(K * fraction_of_K)
+	K = round(K * fraction_of_P)
 
 	if K == 0:
 		import warnings
