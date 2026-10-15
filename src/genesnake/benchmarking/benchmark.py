@@ -71,6 +71,10 @@ def benchmark(
 		inferred_network = estimated_network,
 		reference_network = reference_network,
 		)
+	stats['precision_at_k'] = gs.benchmarking.calculate_beeline_stats.precision_at_k(
+		inferred_network = estimated_network,
+		reference_network = reference_network,
+		)
 	stats['f1_scores'] = gs.benchmarking.calculate_f1_scores(
 		estimated_network = estimated_network,
 		reference_network = reference_network,
