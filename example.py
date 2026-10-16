@@ -56,7 +56,7 @@ estimated_network = gs.inference.infer_networks(
 all_stats = gs.benchmarking.benchmark(
 	estimated_network = estimated_network,
 	reference_network = reference_network.astype(bool),
-	plot_dir = 'example_outputs',
+	#plot_dir = 'example_outputs',
 	method_name = 'example',
 	exclude_diagonal = True
 	)
@@ -136,8 +136,8 @@ subfig2.suptitle("inital steady_state_RNA")
 subfig3.suptitle("Noise free data")
 subfig4.suptitle("Fold change data")
 
-fig.savefig('example_outputs/network_and_data.svg')
+fig.savefig('demo/network_and_data.svg')
 
 
 print()
-print('Output figures written to ./example_outputs')
+print('Output figures written to ./demo')

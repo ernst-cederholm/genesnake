@@ -1,30 +1,40 @@
-"""
-Script used to generate a heatmap over distrubution in a numpy 2D matrix. 
-takes a numpy 2D array and bins as input and returnes a base64 html discription of the figure
-"""
-
-import matplotlib
-import matplotlib.pylab as plt
-import numpy as np
+import matplotlib.colors as colors
+import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 import base64
 from io import BytesIO
 
-
-def plot(array,out):
-    
-    byte_file = BytesIO()
+# TODO: add lables
+def plot(df,out):
+    """
+    Function for plotting a heatmap of expression data.
+    INPUT:
+        df - matrix with expression data, genesXexperiments
+        out - option for writing input to html file
+    OUTPUT:
+        encoder - encoded heatmap plot, if json/html output is desired
+    """
+    # sort genes by name for more orderd plot
+    df = df.sort_index(axis=0)
     
     fig = plt.figure(figsize=(10,10))
-    ax = sns.heatmap(array, linewidths=0)
+    ax = sns.heatmap(df, linewidths=0, norm=colors.LogNorm(), xticklabels=False, yticklabels=False) #log based color
+    plt.title("Heatmap of gene expression")
+    plt.xlabel("Experiments")
+    plt.ylabel("Genes")
       
     if out:
-        byte_file = BytesIO()
+        byte_file = BytesIO() #create in memory file to write to
         fig.savefig(byte_file,format="png")
     
-        encoder = base64.b64encode(byte_file.getvalue())
-        byte_file.close()
-        plt.close()
-        return(encoder)
+        if out.endswith(".png"):
+            return(byte_file)
+        else:        
+            encoder = base64.b64encode(byte_file.getvalue()) # encode figure so it can be handled for json/html
+            byte_file.close()
+            plt.close()
+            return(encoder)
     else:
         plt.show()
+        plt.close()

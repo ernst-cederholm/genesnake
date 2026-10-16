@@ -94,3 +94,85 @@ def top_k_accuracy(
         return 0.0
         
     return float(true_positives / predicted_positives)
+
+
+def precision_at_k(
+        inferred_network,
+        reference_network,
+        fraction_of_P = 1):
+    """
+    For background, see the docstring of top_k_accuracy.
+
+    Another choice for handling the problem when PP < K is to choose to not
+    score PN in the top K list, and thus setting TN = 0. Then,
+    metric = (TP + 0) / K = TP / K.
+    The bad part is that this metric is neither accuracy nor precision.
+    A good part is that it handles the problem of TN in such
+    a way that one avoids the issues with using accuracy for class imbalanced
+    problems. One can not trivially game this metric for sparse problems, and
+    so it is infomative in that sense.
+    This metric seems to be commonly known as 'precision at K',
+    so I adopted that name to be as consistent and conventional as possible.
+
+    For PP > K, this metric equals the precision of the top K predictions.
+    This is probably where it gets it's name from, and I am guessing that
+    people who use it also rarely encounter PP < K. For PP > K, it's also
+    equal to top_k_accuracy.
+
+    For PP < K, this metric will be < precision. The difference will increase
+    with K - PP. One way to think about it is that the metric penalises
+    models that are too sparse, by substituting a score 0 for the K - PP
+    predictions they didn't make.
+    Thus, sparse models that achieves high precision in exactly
+    the way they are designed to, by being sparse, will not score well
+    in this metric, despite the metric having precision in the name, a metric
+    that is commonly used and suitable for sparse problems and predictions.
+    This risks masking interesting performances by sparse
+    models that one would like to see and know about.
+
+    Being a "top K" metric, the intuition is that it's about the "early"
+    performance of models, a small subset of the most confident predictions.
+    Depending on how K is set, that can probably be the case. As we've
+    seen it used in GRN inference though, K is usually set to P, the number of
+    positive / existing edges in the reference network.
+    That choice of K means that a model needs both recall 1 and precision 1 to
+    reach 1 in precision at K.
+    In fact, precision = recall, because for top K metrics, and with K = P,
+    precision = TP / PP = TP / K = TP / P = recall
+    Fixing precision = recall, and thus requiring good recall for good score
+    does not match the intuition about the metric having to do with "early"
+    performance. One perspective might be that the notion of "early" performance
+    is inherently tied to the precision of the most confident predictions,
+    and this metric is not precision. Of course, the blame for this might
+    be on the selection of K rather than the metric itself. For K << P,
+    high precision at K does not require high recall.
+
+    Since precision at K with K = P is as much about recall
+    as precision (exactly actually), it seems similar to other well known metrics,
+    like AUPR and f1 scores. The practical tests I did also showed that
+    precision at K behaves similar to AUPR. This makes is less useful in
+    practice, conveying similar information.
+
+    So, the paragraphs above explain why I left the original
+    top K accuracy untouched (despite its admittedly poor name), and
+    instead introduced this metric as an option alongside it.
+    """
+    reference_network = reference_network.astype(dtype=bool)
+    K = sum(reference_network)
+    K = round(K * fraction_of_P)
+
+    if K == 0:
+        import warnings
+        warnings.warn('There are no edges in the reference network')
+        p_at_k = np.nan
+        return p_at_k
+
+    tmp = inferred_network
+    iis = sorted(range(len(tmp)), key = lambda i: tmp[i], reverse = True)
+    ref = reference_network[iis][:K]
+    inf = inferred_network[iis][:K].astype(dtype = bool)
+
+    TP = sum(inf & ref)
+    p_at_k = TP / K
+
+    return p_at_k

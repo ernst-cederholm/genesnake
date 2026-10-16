@@ -1,0 +1,23 @@
+table {
+  margin: 0.5em auto;
+}
+
+td:nth-child(even) {
+  padding-bottom: 0.2em;
+  padding-top: 0.2em;
+  padding-left: 0.2em;
+  padding-right: 0.6em;
+}
+
+td:nth-child(odd) {
+  font-weight: bold;
+  text-align: right;
+  padding-bottom: 0.2em;
+  padding-top: 0.2em;
+  padding-right: 0.2em;
+  padding-left: 0.6em;
+}
+
+tbody tr:nth-child(odd) {
+  background-color: #ddd;
+}
