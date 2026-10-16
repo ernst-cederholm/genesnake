@@ -8,6 +8,9 @@ from typing import Optional
 import numpy as np
 import genesnake as gs
 
+# Weights at or below this magnitude are treated as "no prediction".
+ZERO_WEIGHT_TOL: float = 1e-12
+
 
 def early_precision_rate(
     inferred_network: np.ndarray, 
@@ -34,7 +37,11 @@ def early_precision_rate(
         fraction_of_k=fraction_of_k,
         top_k=top_k
     )
-    
+
+    # calculate_ERMA divides by the network size, so guard the empty case.
+    if np.asarray(reference_network).size == 0:
+        return 0.0
+
     erma = gs.benchmarking.calculate_ERMA(reference_network)
     
     if erma <= 0.0:
@@ -51,7 +58,12 @@ def top_k_accuracy(
 ) -> float:
     """
     Calculates the precision of the network using only the strongest K predictions.
-    
+
+    Zero weights (|w| <= ZERO_WEIGHT_TOL) are not predictions and are never counted,
+    even when the network has fewer than K non-zero weights. In that case the
+    precision is computed over the non-zero predictions only (TP / PP), so sparse
+    methods are neither rewarded nor penalised for leaving edges at zero.
+
     Args:
         inferred_network: The continuous edge weight matrix of the predicted GRN.
         reference_network: The boolean ground-truth edge matrix.
@@ -59,33 +71,36 @@ def top_k_accuracy(
         top_k: An explicit number of top edges to evaluate (overrides fraction_of_k).
         
     Returns:
-        The precision (True Positives / Predicted Positives) among the top K edges.
+        The precision (True Positives / Predicted Positives) among the top K
+        non-zero edges, or 0.0 if there are no such edges.
     """
     reference_bool = np.asarray(reference_network, dtype=bool)
-    
+
     # 1. Determine the integer K
     if top_k is not None:
         k = int(top_k)
     else:
         k = int(round(reference_bool.sum() * fraction_of_k))
-        
-    if k <= 0:
-        return 0.0
 
     # 2. Flatten and get absolute values to evaluate connection strength
-    abs_net_flat = np.abs(np.asarray(inferred_network)).flatten()
+    abs_net = np.abs(np.asarray(inferred_network))
+    abs_net_flat = abs_net.flatten()
     n_elements = len(abs_net_flat)
-    
+
     # Cap K if it exceeds the maximum possible edges
     k = min(k, n_elements)
+    if k <= 0:
+        return 0.0
 
     # 3. Find the cutoff threshold using O(N) partitioning instead of O(N log N) sorting
     cutoff_idx = n_elements - k
     cutoff = np.partition(abs_net_flat, cutoff_idx)[cutoff_idx]
-    
-    # 4. Create boolean mask of inferred edges that meet the cutoff
-    inferred_bool = np.abs(inferred_network) >= cutoff
-    
+
+    # 4. Predicted edges: at or above the cutoff AND non-zero. With fewer than K
+    #    non-zero weights the cutoff is 0, and the second condition keeps true
+    #    zeros out of predicted_positives.
+    inferred_bool = (abs_net >= cutoff) & (abs_net > ZERO_WEIGHT_TOL)
+
     # 5. Calculate statistics
     true_positives = (inferred_bool & reference_bool).sum()
     predicted_positives = inferred_bool.sum()
